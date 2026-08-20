@@ -77,7 +77,25 @@ Every Grader call is stateless but context-rich. It receives:
 
 That last item is what produces Progressive Hints: attempt 1 nudges, attempt 2 names the error type, attempt 3 shows the structure.
 
-Configuration: `systemPrompt` overridden to strip Claude Code's own ~8-11k-token harness prompt, tools disabled, thinking off, 90s hard timeout. In-process semaphore at concurrency 2 with a FIFO queue behind it. See [ADR 0004](./adr/0004-stateless-grading-stateful-authoring.md).
+### Configuration
+
+Stripping Claude Code's own ~8-11k-token harness prompt takes **four settings, not one** — measured in step 1:
+
+| setting | why |
+|---|---|
+| `systemPrompt` as a plain string | replaces the harness prompt rather than adding to it |
+| `settingSources: []` | the default is `["user","project","local"]`, which loads `CLAUDE.md`, `~/.claude`, and hooks |
+| `skills: []` | otherwise project and user skills re-inflate the context |
+| `strictMcpConfig: true` | claude.ai connectors load under subscription auth otherwise |
+| `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | auto-memory ignores `settingSources` entirely |
+
+Tools are disabled with **`tools: []`**. `allowedTools`/`disallowedTools` govern permission, not availability, and will not do this.
+
+Thinking is **`adaptive` with `effort: 'low'`, not disabled**. Disabling it is no faster — it matched or lost to `adaptive`/`low` on every pair in step 1 — and it carries the tag-leakage risk § Authoring documents, which would corrupt a strict JSON contract.
+
+Also: 90s hard timeout, `maxTurns: 1`, and an in-process semaphore at concurrency 2 with a FIFO queue behind it. See [ADR 0004](./adr/0004-stateless-grading-stateful-authoring.md).
+
+Token accounting reads `result.modelUsage[model]`, not `result.usage` — the latter aggregates across models and under-reports the grading model. True context size is `inputTokens + cacheReadInputTokens`.
 
 ### Response contract
 
@@ -93,6 +111,8 @@ Field order matters — `feedback_ru` is emitted first so the streamed explanati
 ```
 
 The Coherence Guard reconciles the last field against the third — see [ADR 0003](./adr/0003-verdict-authority-split.md).
+
+**The parser must tolerate markdown fences.** Sonnet 5 wrapped its JSON in them on 5 of 5 runs of the longest case in step 1. It is a routine model habit, not something worth failing a Submission over — but log it when it happens.
 
 ### Error Type enum
 
@@ -110,7 +130,9 @@ Stable in storage, Russian labels rendered at display time.
 
 A failed or timed-out grading persists the Submission with `status: 'grading_failed'`, shows the Student a Russian retry message, and leaves the Exercise unlocked. **A failure must never be rendered as a wrong answer.**
 
-Grading runs to completion server-side and persists regardless of whether the client is still listening. At ~15s per call, students will close tabs.
+This path is **load-bearing, not defensive**: step 1 measured roughly one contract failure in 24 calls (~4%) — an intermittent parse failure on the longest output.
+
+Grading runs to completion server-side and persists regardless of whether the client is still listening. Even at the measured 4-7s per call, a closed tab must never lose a Submission.
 
 ## Progression
 
@@ -167,7 +189,7 @@ Restrained visual identity. Typography carries more weight here than in most app
 
 ## Build order
 
-1. **Grading spike, no UI.** SDK harness with `systemPrompt` overridden, tools off, thinking off, streaming, JSON parse, enum validation, Coherence Guard. Measure against the baseline below. **This is the go/no-go** — everything else is ordinary web work.
+1. **Grading spike, no UI** — **done 2026-08-20, GO.** SDK harness with `systemPrompt` overridden, tools off, streaming, JSON parse, enum validation, Coherence Guard, measured against the baseline below. This was the go/no-go; everything else is ordinary web work. Results in § Agent SDK, step 1.
 2. **Skeleton and deploy path.** Next.js, schema, auth, seed script, systemd, Caddy, DuckDNS. Prove the `HOME`/credentials path here, not in week four.
 3. **Student vertical slice.** One hardcoded Lesson → Practice → streamed grading → progression.
 4. **Authoring** — forms, markdown, images.
@@ -178,7 +200,9 @@ Restrained visual identity. Typography carries more weight here than in most app
 
 ## Measured baseline
 
-Three single-shot `claude -p` calls, 2026-08-20, from this Pi. Numbers include Claude Code's full harness system prompt, which the SDK path will strip.
+### `claude -p` subprocess, step 0, 2026-08-20
+
+Single-shot calls from this Pi. Numbers include Claude Code's full harness system prompt, which the SDK path strips.
 
 | | wall | api | ttft | first stream token |
 |---|---|---|---|---|
@@ -196,9 +220,29 @@ Findings that shaped the design:
 - **Spawning the CLI without redirecting stdin costs a flat 3s stall** (`no stdin data received in 3s`).
 - Quality on both Languages was high: all three planted English errors caught, and the Tajik agreement error caught with the full personal-ending paradigm and the `-ро` definiteness marker explained correctly.
 
+### Agent SDK, step 1, 2026-08-20
+
+24 calls on this Pi with the configuration in § Grading. Against the subprocess baseline: **Tajik/Opus 19s → 6.7s, English/Sonnet 10.6s → 4.4s.** Context per call fell from 8-11k harness tokens to **882-988 total**, cache reads included.
+
+| case | wall | api | first text | context |
+|---|---|---|---|---|
+| English, three planted errors (Sonnet 5) | 7.56s | 6.74s | 2.64s | 894 |
+| English, Progressive Hint attempt 2 (Sonnet 5) | 6.32s | 5.40s | 2.90s | 988 |
+| English, correct answer (Sonnet 5) | 4.44s | 3.57s | 2.58s | 895 |
+| Tajik, agreement error (Opus 5) | 6.68s | 5.81s | 3.35s | 882 |
+
+Findings that shaped the design:
+
+- **Stripping the harness prompt is worth 2-3× the wall time**, and all four settings in § Grading are required to do it.
+- **Time to first streamed token got worse, not better** — 1.3-1.5s under the subprocess, 2.5-3.5s under the SDK. Streaming is still mandatory, but the gap it now covers is 4-7s rather than 16-19s.
+- **Disabling thinking is not faster.** `adaptive` + `effort: 'low'` matched or beat it on every pair. Single sample per cell — directional, not conclusive.
+- **Progressive Hints work from `priorSubmissions` alone**, with no session state, exactly as [ADR 0004](./adr/0004-stateless-grading-stateful-authoring.md) requires.
+- **Quality held.** All three planted English errors caught with correct Error Types every run; the Tajik case matched [ADR 0002](./adr/0002-grader-model-per-language.md)'s ground truth.
+- Later runs benefited from a **warm prompt cache**, so cold-start numbers will be slightly worse.
+
 ## Open risks
 
 - The Tajik Error Type enum is unreviewed by a Tajik speaker.
-- The Verdict remains model-dependent at the `partially_correct`/`incorrect` boundary. The Coherence Guard fixes incoherence, not disagreement.
-- Rate-limit behaviour under real concurrent use is unmeasured — the baseline above is sequential single calls.
-- The latency saved by stripping the harness system prompt is unproven until step 1.
+- The Verdict is unstable at the `partially_correct`/`incorrect` boundary — not only between models but **run to run within one model**: five identical calls returned `partially_correct` ×3 and `incorrect` ×2, with an identical error list every time. Progression is unaffected, since neither Verdict advances the Student, but the label the Student reads is not reproducible. The Coherence Guard fixes incoherence, not this. See [ADR 0003](./adr/0003-verdict-authority-split.md).
+- Rate-limit behaviour under real concurrent use is unmeasured — every call measured so far has been sequential.
+- The Coherence Guard's code path is untested against real incoherence: it did not fire once in 24 calls.
