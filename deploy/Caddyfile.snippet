@@ -1,0 +1,21 @@
+# Append to /etc/caddy/Caddyfile. The global options block (email, acme_ca) is
+# already set by the other project on this box and is deliberately not repeated.
+#
+# No basic_auth. A second gate on top of a session login is daily friction that
+# protects nothing (design.md § Security).
+language-learner.duckdns.org {
+	encode gzip
+
+	# fail2ban reads this. JSON because the filter matches on structured fields
+	# rather than guessing at a text layout.
+	log {
+		output file /var/log/caddy/language-learner.access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format json
+	}
+
+	# The application binds 127.0.0.1 only, so this is the sole way in.
+	reverse_proxy localhost:4100
+}

@@ -1,0 +1,35 @@
+[Unit]
+Description=Language Learner (Next.js on :4100)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dykmoby
+Group=dykmoby
+WorkingDirectory=/home/dykmoby/language-learner
+
+# THE LOAD-BEARING LINE. The Agent SDK reads Claude credentials from ~/.claude at
+# call time (ADR 0001). systemd does derive HOME from User=, but this is the one
+# setting whose failure mode is an error that does not present as an auth error,
+# so it is stated outright rather than inherited. Do not remove it, and do not
+# change User= without moving the credentials too.
+Environment=HOME=/home/dykmoby
+Environment=NODE_ENV=production
+
+# Port, database path and everything else. Never checked in.
+EnvironmentFile=/etc/language-learner.env
+
+ExecStart=/home/dykmoby/.nvm/versions/node/v24.17.0/bin/node node_modules/next/dist/bin/next start -H ${HOSTNAME} -p ${PORT}
+
+# "Killing the process brings it back" — always, not on-failure, so a clean
+# exit is restarted too.
+Restart=always
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=language-learner
+
+[Install]
+WantedBy=multi-user.target

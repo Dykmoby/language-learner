@@ -1,0 +1,47 @@
+/* Step 2 ships three screens and no visual identity — that work belongs with
+   the screens that need it (design.md § Interface). This is legibility only. */
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #16181d;
+  --muted: #5b6270;
+  --line: #d9dce3;
+  --accent: #2f5fd0;
+  --bad: #b3261e;
+  --good: #146b3a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e8eaef;
+    --muted: #99a0ae;
+    --line: #2b2f38;
+    --accent: #8ab0ff;
+    --bad: #f2b8b5;
+    --good: #7fd1a1;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+main { max-width: 34rem; margin: 0 auto; padding: 3rem 1.25rem; }
+h1 { font-size: 1.5rem; margin: 0 0 1.5rem; font-weight: 650; }
+label { display: block; margin-bottom: 1rem; }
+label span { display: block; margin-bottom: 0.35rem; color: var(--muted); font-size: 0.9rem; }
+input[type='text'], input[type='password'] {
+  width: 100%; padding: 0.6rem 0.7rem; font: inherit;
+  color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+button {
+  font: inherit; padding: 0.6rem 1.1rem; border-radius: 6px; cursor: pointer;
+  color: var(--bg); background: var(--accent); border: 1px solid transparent;
+}
+button:disabled { opacity: 0.6; cursor: default; }
+.error { color: var(--bad); margin: 0 0 1rem; }
+.ok { color: var(--good); }
+.muted { color: var(--muted); }
