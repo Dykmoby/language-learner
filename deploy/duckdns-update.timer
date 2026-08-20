@@ -1,0 +1,12 @@
+[Unit]
+Description=Update the DuckDNS record every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+# Catches up after the Pi has been off, so the record is refreshed on the way up
+# rather than 5 minutes later.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

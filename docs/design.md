@@ -15,7 +15,9 @@ The settled design, agreed 2026-08-20. Domain vocabulary lives in [`../CONTEXT.m
 
 **`HOME` is load-bearing.** The Agent SDK reads credentials from `~/.claude`. Running the service as any other user fails every grading call with an error that does not look like an auth error. Prove this path early.
 
-Ports 4000, 8001-8006 and 1001-1006 are already taken on this box by other projects. Redis is running on 6379 but is deliberately unused here.
+**So is the outbound proxy.** Measured in step 2: outbound HTTPS leaves this box through a proxy on `127.0.0.1:7890`, which interactive shells get from the profile and systemd units do not. Without `HTTP_PROXY`/`HTTPS_PROXY` in the unit's environment file, every Grader call fails with `Failed to authenticate. API Error: 403 Request not allowed` — an error that names credentials while the credentials are fine. See [ADR 0001](./adr/0001-claude-agent-sdk-as-grading-engine.md).
+
+Ports 4000, 8001-8006 and 1001-1006 are already taken on this box by other projects. Redis is running on 6379 but is deliberately unused here. The application binds `127.0.0.1:4100` only, so Caddy is the sole ingress and nothing on the LAN can reach it without TLS.
 
 No Docker — it adds an ARM image build step for no isolation benefit on a single-tenant box.
 
@@ -190,7 +192,7 @@ Restrained visual identity. Typography carries more weight here than in most app
 ## Build order
 
 1. **Grading spike, no UI** — **done 2026-08-20, GO.** SDK harness with `systemPrompt` overridden, tools off, streaming, JSON parse, enum validation, Coherence Guard, measured against the baseline below. This was the go/no-go; everything else is ordinary web work. Results in § Agent SDK, step 1.
-2. **Skeleton and deploy path.** Next.js, schema, auth, seed script, systemd, Caddy, DuckDNS. Prove the `HOME`/credentials path here, not in week four.
+2. **Skeleton and deploy path** — **done 2026-08-20.** Next.js, schema, auth, seed script, systemd, Caddy, DuckDNS. The `HOME`/credentials path is proven: the deployed service returns a healthy check in 4.8s at 861 context tokens, inside the spike's measured band. The failure it actually surfaced was the proxy, not `HOME` — see § Platform.
 3. **Student vertical slice.** One hardcoded Lesson → Practice → streamed grading → progression.
 4. **Authoring** — forms, markdown, images.
 5. **Generation and Refinement.**
