@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node src/db/migrate.ts",
     "db:seed": "node src/db/seed.ts",
+    "db:seed-content": "node src/content/seed-content.ts",
     "test:contract": "node --test tests/grader-contract.test.ts tests/semaphore.test.ts tests/smoke.test.ts"
   },
   "dependencies": {

@@ -61,6 +61,8 @@ Speaking and listening are deliberately out of scope. Adding them pulls in TTS/S
 
 Applied in order: trim → collapse internal whitespace → case-insensitive → strip trailing `.!?` → `ё` → `е`.
 
+Stripping the trailing punctuation uncovers any space that sat before it, so that step trims its own tail — otherwise `I have a cat .` fails against `I have a cat`, which marks typography rather than language.
+
 Each Exercise stores an **array** of accepted answers plus an optional `caseSensitive` flag, needed for "put the word in the correct form" where capitalisation is the point. Word order matches an exact sequence against one or more accepted orders.
 
 **No typo tolerance.** In a language-learning app, tolerating a misspelling teaches the misspelling.
@@ -193,7 +195,7 @@ Restrained visual identity. Typography carries more weight here than in most app
 
 1. **Grading spike, no UI** — **done 2026-08-20, GO.** SDK harness with `systemPrompt` overridden, tools off, streaming, JSON parse, enum validation, Coherence Guard, measured against the baseline below. This was the go/no-go; everything else is ordinary web work. Results in § Agent SDK, step 1.
 2. **Skeleton and deploy path** — **done 2026-08-20.** Next.js, schema, auth, seed script, systemd, Caddy, DuckDNS. The `HOME`/credentials path is proven: the deployed service returns a healthy check in 4.8s at 861 context tokens, inside the spike's measured band. The failure it actually surfaced was the proxy, not `HOME` — see § Platform.
-3. **Student vertical slice.** One hardcoded Lesson → Practice → streamed grading → progression.
+3. **Student vertical slice** — **done 2026-08-20.** One seeded Lesson → Practice → streamed grading → progression. Content is a checked-in fixture (`src/content/english-a1.ts`) seeded by its own script; the Deterministic Check, the incremental `feedback_ru` extractor and the progress derivation are pure and tested exhaustively; the Grader's failure path is tested at the HTTP seam by booting an application that cannot grade. The live-model happy path stays a manual check on the Pi, for the same reason step 2's healthy check did.
 4. **Authoring** — forms, markdown, images.
 5. **Generation and Refinement.**
 6. **Tests** — batch grading and review screen.

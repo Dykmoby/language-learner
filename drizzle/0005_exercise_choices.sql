@@ -1,0 +1,1 @@
+ALTER TABLE `exercises` ADD `choices` text DEFAULT '[]' NOT NULL;

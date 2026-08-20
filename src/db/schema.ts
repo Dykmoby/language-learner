@@ -38,6 +38,17 @@ export const EXERCISE_KINDS = [
 ] as const;
 export type ExerciseKind = (typeof EXERCISE_KINDS)[number];
 
+// design.md § Exercise Kinds — which Kinds are settled in code and which go to
+// the Grader. A property of the Kind itself, so it lives beside the Kind rather
+// than as a branch in whichever module happens to need it first.
+export const DETERMINISTIC_KINDS = [
+  'fill_gap', 'multiple_choice', 'word_order',
+] as const satisfies readonly ExerciseKind[];
+
+export function isDeterministic(kind: ExerciseKind): boolean {
+  return (DETERMINISTIC_KINDS as readonly ExerciseKind[]).includes(kind);
+}
+
 // A Course sits inside one Language and is fixed at a single CEFR level for its
 // whole duration, so the level never has to be resolved per Lesson.
 export const courses = sqliteTable('courses', {
@@ -99,6 +110,12 @@ export const exercises = sqliteTable('exercises', {
   // correct form" may have several right answers. Unused by Grader-judged Kinds.
   acceptedAnswers: text('accepted_answers', { mode: 'json' }).$type<string[]>().notNull().default([]),
   caseSensitive: integer('case_sensitive', { mode: 'boolean' }).notNull().default(false),
+  // What the Student is offered rather than what is accepted: the options of a
+  // multiple choice, the fragments of a word order, in the order they are shown.
+  // Separate from acceptedAnswers because these are shown to everyone and those
+  // are the answer — an Exercise that stored only its accepted answers could not
+  // be rendered at all.
+  choices: text('choices', { mode: 'json' }).$type<string[]>().notNull().default([]),
 }, (t) => [unique('exercises_set_position_unq').on(t.exerciseSetId, t.position)]);
 
 // An additional answer confirmed correct by an Admin resolving a Dispute. Kept
@@ -117,7 +134,12 @@ export type ExerciseRow = typeof exercises.$inferSelect;
 
 // --- Progress ----------------------------------------------------------------
 
-export const SUBMISSION_STATUSES = ['graded', 'grading_failed'] as const;
+// 'revealed' is the Reveal offered after three failed attempts: the Student took
+// the Reference Answer instead of a fourth attempt. It is a row here rather than
+// a flag on the Exercise because completion is derived from Submissions — a
+// separate flag is a second source of truth that can disagree with them.
+export const SUBMISSION_STATUSES = ['graded', 'grading_failed', 'revealed'] as const;
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 export { LANGUAGES, VERDICTS };
 
 // The link between a Student and a Course. A Student may hold several at once,

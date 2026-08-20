@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { openDatabase } from '../../src/db/client.ts';
 import { runMigrations } from '../../src/db/migrate.ts';
 import { seedStudents, type SeedAccount } from '../../src/db/seed.ts';
+import { seedCourseContent } from '../../src/content/seed-content.ts';
+import type { CourseFixture } from '../../src/content/english-a1.ts';
 import { tempDatabasePath } from './temp-db.ts';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
@@ -71,6 +73,11 @@ export type BootOptions = {
   accounts?: SeedAccount[];
   /** Extra environment for the child. Used to boot with a deliberately broken HOME. */
   env?: Record<string, string>;
+  /**
+   * Content to seed, through the same script the Pi runs. Left out by default so
+   * a test that is not about Lessons boots an application with none.
+   */
+  content?: CourseFixture[];
 };
 
 async function waitUntilServing(baseUrl: string, child: ChildProcess, timeoutMs = 90_000): Promise<void> {
@@ -98,6 +105,7 @@ export async function bootApp(options: BootOptions = {}): Promise<BootedApp> {
   const handle = openDatabase(databasePath);
   runMigrations(handle);
   seedStudents(handle.db, options.accounts ?? [ADMIN, STUDENT]);
+  for (const fixture of options.content ?? []) seedCourseContent(handle.db, fixture);
   handle.close();
 
   let child: ChildProcess | null = null;
