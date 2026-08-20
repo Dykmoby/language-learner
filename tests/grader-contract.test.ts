@@ -323,3 +323,31 @@ test('the contract module imports nothing from the SDK and performs no I/O', () 
   assert.ok(!/\bnode:(fs|net|http|child_process|sqlite)\b/.test(source), 'no I/O module reference');
   assert.ok(!/\bprocess\.env\b/.test(source), 'no environment reads — configuration belongs to the caller');
 });
+
+// --- ADR 0002: Haiku never grades -------------------------------------------
+
+import { graderModelRefusal } from '../src/grader/contract.ts';
+
+test('a Haiku model is refused as a Grader, in any Language', () => {
+  // ADR 0002 exists because Haiku is the obvious cost and latency optimisation
+  // and "someone will propose it again". Asked to grade `Ман китоб мехонед`, it
+  // reported that `-ед` marks third person singular; it marks second person
+  // plural/polite. A grader that teaches false morphology with confidence is
+  // worse than no grader at all, so the rule is enforced rather than commented.
+  for (const model of ['claude-haiku-4-5-20251001', 'claude-haiku-4-5', 'CLAUDE-HAIKU-99']) {
+    const refusal = graderModelRefusal(model);
+    assert.ok(refusal, `${model} must be refused`);
+    assert.match(refusal, /ADR 0002/, 'the refusal says which decision forbids it');
+  }
+});
+
+test('the models the design actually grades with are allowed', () => {
+  // design.md § Grading: Sonnet 5 for English, Opus 5 for Tajik.
+  assert.equal(graderModelRefusal('claude-sonnet-5'), null);
+  assert.equal(graderModelRefusal('claude-opus-5'), null);
+});
+
+test('an empty Grader model is refused rather than sent', () => {
+  assert.ok(graderModelRefusal(''));
+  assert.ok(graderModelRefusal('   '));
+});

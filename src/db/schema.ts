@@ -6,6 +6,9 @@
 
 import { sqliteTable, text, integer, index, unique, check } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+// The Grader's pure contract module owns these: it imports nothing, so it is the
+// safe place for the single definition both it and the schema depend on.
+import { LANGUAGES, VERDICTS } from '../grader/contract.ts';
 
 // A Student is every account. Admin is a role a Student additionally holds —
 // a flag, not a separate table and not a separate account, because the Admin
@@ -34,8 +37,6 @@ export const EXERCISE_KINDS = [
   'fill_gap', 'multiple_choice', 'word_order',
 ] as const;
 export type ExerciseKind = (typeof EXERCISE_KINDS)[number];
-
-export const LANGUAGES = ['en', 'tj'] as const;
 
 // A Course sits inside one Language and is fixed at a single CEFR level for its
 // whole duration, so the level never has to be resolved per Lesson.
@@ -117,7 +118,7 @@ export type ExerciseRow = typeof exercises.$inferSelect;
 // --- Progress ----------------------------------------------------------------
 
 export const SUBMISSION_STATUSES = ['graded', 'grading_failed'] as const;
-export const VERDICTS = ['correct', 'partially_correct', 'incorrect'] as const;
+export { LANGUAGES, VERDICTS };
 
 // The link between a Student and a Course. A Student may hold several at once,
 // across both Languages.

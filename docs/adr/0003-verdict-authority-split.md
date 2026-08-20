@@ -16,6 +16,8 @@ The guard is deliberate, not defensive clutter — do not "simplify" it away. It
 
 Where `partially_correct` ends and `incorrect` begins remains genuinely unstable — across models and across runs of one model — and remains an open risk. Progression is unaffected, since neither Verdict advances the Student; what is not reproducible is the label the Student reads.
 
+When the guard forbids `correct`, it substitutes `partially_correct` rather than `incorrect`. The Grader found faults but judged the answer worth crediting; downgrading it all the way to `incorrect` would be the server making a pedagogical judgement, which is exactly what this ADR keeps with the model that read the answer. Progression is unaffected either way — neither Verdict advances the Student.
+
 Store **both** the Verdict the Grader proposed and the Verdict after the guard. Keeping only the guarded value makes the instability above impossible to measure later.
 
 In step 1 the guard never fired: all 24 responses were internally coherent. The rule stands on the evidence above, but its code path has not been exercised against real incoherence — so it is covered by tests rather than by observation.

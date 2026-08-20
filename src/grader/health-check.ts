@@ -6,12 +6,11 @@
 // service user, with the service's real HOME — and not that a simpler path built
 // for the check works.
 
-import { grade } from './grade.ts';
-import type { ExerciseContext } from './contract.ts';
+import { grade, type GradeRequest } from './grade.ts';
 
 // English, so the check runs on the faster of the two Grader models (ADR 0002).
 // The answer has one planted error: the missing indefinite article.
-const KNOWN_INPUT: { model: string; context: ExerciseContext; submission: string } = {
+const KNOWN_INPUT: GradeRequest = {
   model: 'claude-sonnet-5',
   submission: 'I have cat.',
   context: {

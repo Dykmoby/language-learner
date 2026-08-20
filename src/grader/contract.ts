@@ -6,9 +6,14 @@
 // Lifted from the grading spike (prototype/grading-spike, prototypes/grading-spike/grader.ts),
 // whose README marks this as the liftable half. Vocabulary follows CONTEXT.md.
 
-export type Verdict = 'correct' | 'partially_correct' | 'incorrect';
+// Runtime arrays, not just types: the database schema needs the same values at
+// runtime, and declaring them twice is how two sources of truth for one glossary
+// term drift apart. This module imports nothing, so it is the one that owns them.
+export const VERDICTS = ['correct', 'partially_correct', 'incorrect'] as const;
+export type Verdict = (typeof VERDICTS)[number];
 
-export type Language = 'en' | 'tj';
+export const LANGUAGES = ['en', 'tj'] as const;
+export type Language = (typeof LANGUAGES)[number];
 
 // design.md § Error Type enum. Stable in storage; only the Russian label changes,
 // and that label is resolved at display time and never persisted. A test reads
@@ -48,7 +53,7 @@ export type ParseOutcome =
   | { ok: false; reason: string; raw: string };
 
 function isVerdict(v: unknown): v is Verdict {
-  return v === 'correct' || v === 'partially_correct' || v === 'incorrect';
+  return (VERDICTS as readonly unknown[]).includes(v);
 }
 
 // A fenced block anywhere in the output, not only a whole-string fence: the
@@ -239,4 +244,24 @@ export function buildUserPrompt(ctx: ExerciseContext): string {
 
 export function buildStudentBlock(submission: string): string {
   return `<student_answer>\n${submission}\n</student_answer>`;
+}
+
+// ADR 0002 — Haiku must never grade, in any Language.
+//
+// Asked to grade `Ман китоб мехонед`, Haiku 4.5 reported that `-ед` marks third
+// person singular. It marks second person plural/polite. A grader that teaches
+// false morphology with confidence is worse than no grader in a language-learning
+// application, and the ADR notes Haiku is the obvious cost optimisation that
+// "someone will propose it again" — so the rule is enforced here rather than left
+// as a comment on a `string`.
+//
+// The SDK invokes an auxiliary Haiku model on every query regardless; that one
+// does not grade. What this forbids is Haiku producing a Verdict, an Error, or an
+// explanation a Student reads.
+export function graderModelRefusal(model: string): string | null {
+  if (/haiku/i.test(model)) {
+    return `ADR 0002 forbids grading with Haiku: ${model} must never produce a Verdict a Student reads`;
+  }
+  if (model.trim() === '') return 'no Grader model configured';
+  return null;
 }

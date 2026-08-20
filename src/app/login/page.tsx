@@ -7,14 +7,16 @@ function messageFor(params: Record<string, string | string[] | undefined>): stri
   const error = typeof params.error === 'string' ? params.error : null;
   if (!error) return null;
 
-  const number = (key: string, fallback: number) => {
+  // The value arrives in a URL anyone can edit, so it is clamped rather than
+  // trusted: a hostile duration only ever becomes the default.
+  const positiveIntOr = (key: string, fallback: number) => {
     const raw = params[key];
     const n = typeof raw === 'string' ? Number(raw) : NaN;
     return Number.isFinite(n) && n > 0 ? Math.ceil(n) : fallback;
   };
 
-  if (error === 'locked') return ru.login.lockedOut(number('minutes', 15));
-  if (error === 'slow') return ru.login.slowDown(number('seconds', 2));
+  if (error === 'locked') return ru.login.lockedOut(positiveIntOr('minutes', 15));
+  if (error === 'slow') return ru.login.slowDown(positiveIntOr('seconds', 2));
   return ru.login.invalid;
 }
 

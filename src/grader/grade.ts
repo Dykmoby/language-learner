@@ -12,7 +12,7 @@ import { accessSync, constants } from 'node:fs';
 import { join } from 'node:path';
 import {
   buildSystemPrompt, buildUserPrompt, buildStudentBlock,
-  parseGraderOutput, validateErrorTypes, coherenceGuard,
+  parseGraderOutput, validateErrorTypes, coherenceGuard, graderModelRefusal,
   type ExerciseContext, type GraderResponse, type GuardOutcome, type Verdict,
 } from './contract.ts';
 import { Semaphore } from './semaphore.ts';
@@ -36,7 +36,9 @@ export type GraderUsage = {
   modelsInvoked: string[];
 };
 
-export type GradingFailureKind = 'timeout' | 'contract' | 'sdk';
+// 'refused' is a call that never went out: the configuration asked for something
+// the domain forbids, such as grading with Haiku (ADR 0002).
+export type GradingFailureKind = 'timeout' | 'contract' | 'sdk' | 'refused';
 
 export type GradingFailure = {
   kind: GradingFailureKind;
@@ -148,6 +150,15 @@ function credentialsLookUnreachable(): boolean {
   }
 }
 
+function failure(
+  kind: GradingFailureKind,
+  reason: string,
+  raw: string | null,
+  hints?: { likelyCredentials: boolean; likelyEgress: boolean },
+): GradingFailure {
+  return { kind, reason, raw, ...(hints ?? diagnose(reason)) };
+}
+
 type SdkMessage = Record<string, unknown>;
 
 function textDeltaOf(message: SdkMessage): string | null {
@@ -191,12 +202,7 @@ export function grade(request: GradeRequest): GradingHandle {
       ok: false,
       wallMs: 0,
       usage: EMPTY_USAGE,
-      failure: {
-        kind: 'sdk',
-        ...diagnose(error instanceof Error ? error.message : String(error)),
-        reason: error instanceof Error ? error.message : String(error),
-        raw: null,
-      },
+      failure: failure('sdk', error instanceof Error ? error.message : String(error), null),
     }))
     .finally(() => deltas.close());
 
@@ -206,6 +212,16 @@ export function grade(request: GradeRequest): GradingHandle {
 async function runQuery(request: GradeRequest, deltas: DeltaStream): Promise<GradingOutcome> {
   const { model, context, submission } = request;
   const timeoutMs = config.grader.timeoutMs;
+
+  const refusal = graderModelRefusal(model);
+  if (refusal !== null) {
+    // Refused before the call goes out, so a forbidden model costs nothing and,
+    // more to the point, never reaches a Student.
+    return {
+      ok: false, wallMs: 0, usage: EMPTY_USAGE,
+      failure: failure('refused', refusal, null, { likelyCredentials: false, likelyEgress: false }),
+    };
+  }
 
   const prompt = [buildUserPrompt(context), '', buildStudentBlock(submission)].join('\n');
 
@@ -278,14 +294,11 @@ async function runQuery(request: GradeRequest, deltas: DeltaStream): Promise<Gra
       ok: false,
       wallMs,
       usage,
-      failure: (() => {
-        const reason = timedOut
-          ? `grading aborted after ${timeoutMs}ms`
-          : error instanceof Error ? error.message : String(error);
-        // A timeout is a timeout — it is not evidence about credentials or egress.
-        const hints = timedOut ? { likelyCredentials: false, likelyEgress: false } : diagnose(reason);
-        return { kind: timedOut ? 'timeout' as const : 'sdk' as const, reason, ...hints, raw: text || null };
-      })(),
+      // A timeout is a timeout — it is not evidence about credentials or egress.
+      failure: timedOut
+        ? failure('timeout', `grading aborted after ${timeoutMs}ms`, text || null,
+                  { likelyCredentials: false, likelyEgress: false })
+        : failure('sdk', error instanceof Error ? error.message : String(error), text || null),
     };
   } finally {
     clearTimeout(timer);
@@ -296,10 +309,7 @@ async function runQuery(request: GradeRequest, deltas: DeltaStream): Promise<Gra
   if (sdkError || !text) {
     return {
       ok: false, wallMs, usage,
-      failure: (() => {
-        const reason = sdkError ?? 'the Grader produced no text';
-        return { kind: 'sdk' as const, reason, ...diagnose(reason), raw: text || null };
-      })(),
+      failure: failure('sdk', sdkError ?? 'the Grader produced no text', text || null),
     };
   }
 
@@ -310,8 +320,15 @@ async function runQuery(request: GradeRequest, deltas: DeltaStream): Promise<Gra
       ok: false, wallMs, usage,
       // A contract failure means the call reached the model and came back. It
       // says nothing about credentials or the network.
-      failure: { kind: 'contract', reason: parsed.reason, likelyCredentials: false, likelyEgress: false, raw: parsed.raw },
+      failure: failure('contract', parsed.reason, parsed.raw, { likelyCredentials: false, likelyEgress: false }),
     };
+  }
+
+  if (parsed.wasFenced) {
+    // design.md § Response contract: a routine model habit, not worth failing a
+    // Submission over — but logged when it happens, so a change in how often it
+    // happens is visible rather than invisible.
+    console.warn(`[grader] ${model} wrapped its JSON in markdown fences`);
   }
 
   return {
