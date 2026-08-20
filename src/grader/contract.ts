@@ -133,6 +133,83 @@ export function parseGraderOutput(raw: string): ParseOutcome {
   };
 }
 
+// --- The streamed half of the same contract ----------------------------------
+
+// design.md § Response contract fixes feedback_ru first so the streamed
+// explanation reaches the Student before the Verdict resolves. What that means in
+// practice is that the deltas coming off the SDK are a JSON object being typed
+// out character by character:
+//
+//   {"feedback_ru": "Почти
+//   {"feedback_ru": "Почти! Артикль
+//
+// Piping that to the browser shows the Student JSON syntax; buffering until the
+// object closes throws away the streaming step 1 measured as the difference
+// between a 3s wait and a dead application. So this decodes the value of
+// feedback_ru as far as it can be known from the text that has arrived, and the
+// caller streams whatever is newly revealed.
+//
+// The rule it never breaks: an incomplete escape is not output. Half of `\uD83D`
+// is not a character, and half of `\n` is a backslash the Student would read.
+
+const SIMPLE_ESCAPES: Readonly<Record<string, string>> = {
+  '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t',
+};
+
+// Also tolerant of a markdown fence, because the fence arrives before the object
+// does and parseGraderOutput already forgives it downstream. Finding the field by
+// its key rather than by parsing means the fence costs nothing here.
+const FEEDBACK_FIELD = /"feedback_ru"\s*:\s*"/;
+
+// A high surrogate on its own is half a character. Held back until its pair
+// arrives rather than emitted and repaired, because the caller sends the suffix
+// onward and cannot take it back.
+function withoutTrailingHalfPair(value: string): string {
+  const last = value.charCodeAt(value.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? value.slice(0, -1) : value;
+}
+
+export function feedbackRuSoFar(rawSoFar: string): string {
+  const opening = FEEDBACK_FIELD.exec(rawSoFar);
+  // The field has not started yet — nothing to show, and not an error either.
+  if (!opening) return '';
+
+  let out = '';
+  let i = opening.index + opening[0].length;
+
+  while (i < rawSoFar.length) {
+    const ch = rawSoFar[i]!;
+    if (ch === '"') break; // the value has closed; everything after is another field's business
+    if (ch !== '\\') {
+      out += ch;
+      i += 1;
+      continue;
+    }
+
+    const escaped = rawSoFar[i + 1];
+    if (escaped === undefined) break; // the backslash arrived and what it escapes has not
+
+    if (escaped === 'u') {
+      const hex = rawSoFar.slice(i + 2, i + 6);
+      // Split anywhere across its six characters, which is the case that a
+      // hand-picked set of test prefixes always misses.
+      if (hex.length < 4 || !/^[0-9a-fA-F]{4}$/.test(hex)) break;
+      out += String.fromCharCode(Number.parseInt(hex, 16));
+      i += 6;
+      continue;
+    }
+
+    const decoded = SIMPLE_ESCAPES[escaped];
+    // Not a JSON escape at all. Stop rather than guess: the terminal result comes
+    // from parseGraderOutput, which will report the malformed payload properly.
+    if (decoded === undefined) break;
+    out += decoded;
+    i += 2;
+  }
+
+  return withoutTrailingHalfPair(out);
+}
+
 // Reports every Error Type outside the per-Language enum rather than throwing:
 // an invented type is a contract violation to record, and the caller decides
 // what it costs.

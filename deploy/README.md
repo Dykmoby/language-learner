@@ -26,6 +26,23 @@ Re-running leaves existing accounts untouched and says so. `--force` overwrites 
 that is how a password gets changed, since there is no web surface that creates
 or edits an account.
 
+## Seeding content
+
+Until authoring lands (build-order step 4), Courses and Lessons come from a
+fixture checked into the repo — `src/content/english-a1.ts`.
+
+```bash
+DATABASE_PATH=/home/dykmoby/language-learner/data/language-learner.db \
+  node src/content/seed-content.ts
+```
+
+Separate from the account seed, and re-runnable: it matches a Course by its
+Language and title, a Lesson by its position and an Exercise by its position in
+the Exercise Set, and updates them in place. Editing the fixture and re-running
+is how a typo gets fixed; no Submission is lost doing it. It also enrols every
+existing Student in the seeded Course, because nothing else does yet — so run the
+account seed first.
+
 ## Traps this step actually hit
 
 **The outbound proxy is as load-bearing as `HOME`.** Interactive shells on this box
