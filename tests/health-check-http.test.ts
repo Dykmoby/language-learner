@@ -36,16 +36,22 @@ test('a signed-out request for the health check is refused', async () => {
   assert.equal((await client.fetch('/api/admin/health', { method: 'POST' })).status, 307);
 });
 
-test('the Admin landing page links to the health check; a Student sees no such link', async () => {
+test('the Admin landing page leads to the health check; a Student sees no way in at all', async () => {
+  // The check now sits inside the Admin section rather than being linked
+  // directly from the home page, so the route to it is two steps. Both are
+  // asserted: a link into the section, and the check inside it.
   const admin = new Client(app.baseUrl);
   await admin.signIn(ADMIN.username, ADMIN.password);
   const adminHtml = await (await admin.fetch('/')).text();
-  assert.ok(adminHtml.includes('/admin/health'), 'the Admin is offered the check');
+  assert.ok(adminHtml.includes('href="/admin"'), 'the Admin is offered the section');
   assert.ok(adminHtml.includes(ru.home.adminBadge), 'and is shown the Admin badge');
+
+  const section = await (await admin.fetch('/admin')).text();
+  assert.ok(section.includes('/admin/health'), 'and the check is inside it');
 
   const student = new Client(app.baseUrl);
   await student.signIn(STUDENT.username, STUDENT.password);
   const html = await (await student.fetch('/')).text();
-  assert.ok(!html.includes('/admin/health'));
+  assert.ok(!html.includes('/admin'), 'a Student is offered neither the section nor the check');
   assert.ok(!html.includes(ru.home.adminBadge), 'and is not shown the Admin badge');
 });

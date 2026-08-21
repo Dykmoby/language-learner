@@ -43,6 +43,13 @@
       "when": 1787220502446,
       "tag": "0005_exercise_choices",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787287090982,
+      "tag": "0006_drafts",
+      "breakpoints": true
     }
   ]
 }
