@@ -52,6 +52,7 @@ function offersChoices(kind: ExerciseKind): boolean {
 
 export const EXERCISE_FAULTS = [
   'prompt_empty',
+  'too_many_fragments',
   'reference_answer_empty',
   'accepted_answers_required',
   'accepted_answers_not_allowed',
@@ -84,7 +85,8 @@ export type AuthoredExercise = {
   choices?: readonly string[];
 };
 
-function blank(value: string): boolean {
+/** A value that normalises away is absent, whatever the raw string looked like. */
+export function isBlank(value: string): boolean {
   return value.trim() === '';
 }
 
@@ -94,10 +96,11 @@ function blank(value: string): boolean {
 // exactly once, and that is a search rather than a comparison.
 //
 // Bounded by memoising (position, fragments-used) so a pathological set cannot
-// hang the form. Above the cap the check is skipped rather than guessed at:
-// reporting a fault nobody verified would be worse than reporting none, and a
-// word order with more than twelve fragments is not an Exercise anyone authored.
-const MAX_FRAGMENTS = 12;
+// hang the form. Beyond the cap the Exercise is **refused** rather than waved
+// through: a word order with more than twelve fragments is not something anyone
+// can author usefully, and passing what could not be checked would leave exactly
+// the hole these rules exist to close once Generation is writing the Drafts.
+export const MAX_FRAGMENTS = 12;
 
 function fragmentsBuildAnswer(
   answer: string,
@@ -110,7 +113,6 @@ function fragmentsBuildAnswer(
     .filter((fragment) => fragment !== '');
 
   if (parts.length === 0 || target === '') return false;
-  if (parts.length > MAX_FRAGMENTS) return true;
 
   const everyFragment = (1 << parts.length) - 1;
   const exhausted = new Set<number>();
@@ -156,11 +158,11 @@ export function exerciseFaults(exercise: AuthoredExercise): ExerciseFault[] {
 
   // Held to the same standard as an answer: a value that normalises away is
   // absent, whatever the raw string looked like.
-  const accepted = (exercise.acceptedAnswers ?? []).filter((value) => !blank(value));
-  const choices = (exercise.choices ?? []).filter((value) => !blank(value));
+  const accepted = (exercise.acceptedAnswers ?? []).filter((value) => !isBlank(value));
+  const choices = (exercise.choices ?? []).filter((value) => !isBlank(value));
 
-  if (blank(exercise.prompt)) faults.push({ code: 'prompt_empty' });
-  if (blank(exercise.referenceAnswer)) faults.push({ code: 'reference_answer_empty' });
+  if (isBlank(exercise.prompt)) faults.push({ code: 'prompt_empty' });
+  if (isBlank(exercise.referenceAnswer)) faults.push({ code: 'reference_answer_empty' });
 
   if (isDeterministic(exercise.kind)) {
     if (accepted.length === 0) faults.push({ code: 'accepted_answers_required' });
@@ -184,15 +186,19 @@ export function exerciseFaults(exercise: AuthoredExercise): ExerciseFault[] {
     for (const answer of accepted) {
       if (!onOffer(answer)) faults.push({ code: 'accepted_answer_not_a_choice', offending: answer });
     }
-    if (!blank(exercise.referenceAnswer) && !onOffer(exercise.referenceAnswer)) {
+    if (!isBlank(exercise.referenceAnswer) && !onOffer(exercise.referenceAnswer)) {
       faults.push({ code: 'reference_answer_not_a_choice', offending: exercise.referenceAnswer });
     }
   }
 
   if (exercise.kind === 'word_order' && choices.length > 0) {
-    for (const answer of accepted) {
-      if (!fragmentsBuildAnswer(answer, choices, caseSensitive)) {
-        faults.push({ code: 'fragments_do_not_build_answer', offending: answer });
+    if (choices.length > MAX_FRAGMENTS) {
+      faults.push({ code: 'too_many_fragments' });
+    } else {
+      for (const answer of accepted) {
+        if (!fragmentsBuildAnswer(answer, choices, caseSensitive)) {
+          faults.push({ code: 'fragments_do_not_build_answer', offending: answer });
+        }
       }
     }
   }

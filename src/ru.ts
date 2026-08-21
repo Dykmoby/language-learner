@@ -71,7 +71,6 @@ export const ru = {
     graderModel: (model: string) => `Проверяющий: ${model}`,
     published: 'Опубликован',
     unpublishedChanges: 'Есть неопубликованные изменения',
-    edit: 'Редактировать',
     healthLink: 'Проверка Проверяющего',
     back: 'К управлению курсами',
     home: 'На главную',
@@ -213,10 +212,12 @@ export const ru = {
     reference_answer_empty: 'Заполните эталонный ответ.',
     accepted_answers_required:
       'Это упражнение проверяется без Проверяющего, поэтому нужен хотя бы один принимаемый ответ.',
+    too_many_fragments:
+      'Слишком много фрагментов: в задании на порядок слов их должно быть не больше двенадцати.',
     accepted_answers_not_allowed:
       'Этот ответ проверяет Проверяющий — список принимаемых ответов здесь не используется. Удалите его.',
     choices_required: 'Нужно не меньше двух вариантов: из одного выбирать нечего.',
-    choices_not_allowed: 'У этого типа упражнения нет вариантов для показа. Удалите их.',
+    choices_not_allowed: 'У этого вида упражнений нет вариантов для показа. Удалите их.',
     accepted_answer_not_a_choice:
       'Такого варианта нет среди предложенных — студент не сможет его выбрать.',
     reference_answer_not_a_choice:
@@ -232,7 +233,7 @@ export const ru = {
     // Says plainly what the two buttons do, because the whole design rests on
     // them being different acts.
     explanation:
-      'Сохранение создаёт новую версию черновика — студент по-прежнему видит опубликованный урок. Опубликовать нужно отдельно.',
+      'Сохранение создаёт новый черновик — студент по-прежнему видит опубликованный урок. Опубликовать нужно отдельно.',
     lessonTitle: 'Название урока',
     grammarFocus: 'Тема урока',
     grammarFocusHint: 'Эту строку получает Проверяющий при каждой проверке ответа.',
@@ -240,15 +241,18 @@ export const ru = {
     preview: 'Предпросмотр',
     save: 'Сохранить черновик',
     saving: 'Сохранение…',
-    saved: 'Черновик сохранён. Студент пока видит опубликованную версию.',
+    saved: 'Черновик сохранён. Студент пока видит опубликованный урок.',
     publish: 'Опубликовать',
     publishing: 'Публикация…',
-    publishedNow: 'Урок опубликован. Студенты видят новую версию.',
+    publishedNow: 'Урок опубликован. Студенты видят обновлённый урок.',
     // The Draft is saved; only the publish was refused, and saying so is the
     // difference between "your work is safe" and "your work is gone".
     publishRefused: 'Опубликовать нельзя. Черновик сохранён — исправьте и попробуйте снова.',
     saveFailed: 'Не удалось сохранить черновик. Попробуйте ещё раз.',
-    nothingToPublish: 'Нет несохранённых изменений для публикации.',
+    nothingToPublish: 'Публиковать нечего: черновик совпадает с опубликованным уроком.',
+    saveFirst: 'Сначала сохраните черновик — публикуется только сохранённое.',
+    unsaved: 'Есть несохранённые правки.',
+    alreadyPublished: 'Этот черновик уже опубликован. Обновите страницу.',
     unpublishedChanges: 'Черновик новее опубликованного урока.',
     upToDate: 'Опубликованный урок совпадает с черновиком.',
     exerciseCount: (n: number) => `${n} ${plural(n, 'упражнение', 'упражнения', 'упражнений')} в практике`,
@@ -267,6 +271,8 @@ export const ru = {
     grammar_focus_empty:
       'Заполните тему урока: её получает Проверяющий при каждой проверке ответа.',
     theory_empty: 'Заполните теорию урока.',
+    duplicate_exercise_id:
+      'Это упражнение указано в черновике дважды. Оставьте одно.',
   },
 
   errors: {
@@ -287,7 +293,7 @@ export function errorTypeLabel(type: string): string {
 // for the same reason an unknown Error Type is: dropping it would hide a real
 // fault from the person who has to fix it.
 export function faultMessage(code: string): string {
-  const documented: Record<string, string> = ru.documentFaults;
-  const exercise: Record<string, string> = ru.exerciseFaults;
-  return documented[code] ?? exercise[code] ?? code;
+  const lessonLevel: Record<string, string> = ru.documentFaults;
+  const exerciseLevel: Record<string, string> = ru.exerciseFaults;
+  return lessonLevel[code] ?? exerciseLevel[code] ?? code;
 }

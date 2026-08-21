@@ -12,13 +12,11 @@
 import { useState } from 'react';
 import { ru, faultMessage } from '../../../../ru.ts';
 import { renderTheory } from '../../../../content/markdown.ts';
-import type { DocumentFault } from '../../../../content/lesson-document.ts';
-
-type Theory = { title: string; grammarFocus: string; theoryMarkdown: string };
+import type { DocumentFault, LessonTheory } from '../../../../content/lesson-document.ts';
 
 type Props = {
   lessonId: number;
-  initial: Theory;
+  initial: LessonTheory;
   draftId: number | null;
   hasUnpublishedChanges: boolean;
 };
@@ -26,18 +24,25 @@ type Props = {
 type Phase = 'editing' | 'saving' | 'publishing';
 
 export function DraftEditor({ lessonId, initial, draftId, hasUnpublishedChanges }: Props) {
-  const [theory, setTheory] = useState<Theory>(initial);
+  const [theory, setTheory] = useState<LessonTheory>(initial);
   const [phase, setPhase] = useState<Phase>('editing');
   const [savedDraftId, setSavedDraftId] = useState<number | null>(draftId);
   const [ahead, setAhead] = useState(hasUnpublishedChanges);
+  // Typed-but-not-saved. Without it, Publish would send the id of the last saved
+  // Draft while the Admin looked at newer text, and report success — the worst
+  // shape this mistake can take, because nothing looks wrong afterwards.
+  const [unsaved, setUnsaved] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [faults, setFaults] = useState<DocumentFault[]>([]);
 
   const busy = phase !== 'editing';
+  // Publishing is only ever offered for a Draft that is saved and not yet live.
+  const canPublish = savedDraftId !== null && ahead && !unsaved;
 
-  function edit(patch: Partial<Theory>) {
+  function edit(patch: Partial<LessonTheory>) {
     setTheory((current) => ({ ...current, ...patch }));
+    setUnsaved(true);
     setNotice(null);
     setProblem(null);
     setFaults([]);
@@ -58,6 +63,7 @@ export function DraftEditor({ lessonId, initial, draftId, hasUnpublishedChanges 
       const body = (await response.json()) as { draftId: number };
       setSavedDraftId(body.draftId);
       setAhead(true);
+      setUnsaved(false);
       setNotice(ru.draft.saved);
     } catch {
       setProblem(ru.draft.saveFailed);
@@ -67,8 +73,8 @@ export function DraftEditor({ lessonId, initial, draftId, hasUnpublishedChanges 
   }
 
   async function publish() {
-    if (savedDraftId === null) {
-      setProblem(ru.draft.nothingToPublish);
+    if (!canPublish) {
+      setProblem(unsaved ? ru.draft.saveFirst : ru.draft.nothingToPublish);
       return;
     }
     setPhase('publishing');
@@ -81,10 +87,15 @@ export function DraftEditor({ lessonId, initial, draftId, hasUnpublishedChanges 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ draftId: savedDraftId }),
       });
-      const body = (await response.json()) as { ok?: boolean; faults?: DocumentFault[] };
+      const body = (await response.json()) as
+        { ok?: boolean; reason?: string; faults?: DocumentFault[] };
       if (!response.ok || body.ok !== true) {
         setFaults(body.faults ?? []);
-        setProblem(ru.draft.publishRefused);
+        // Already live means this tab is a step behind, not that the work is
+        // wrong — saying "исправьте и попробуйте снова" would send the Admin
+        // hunting for a mistake that is not there.
+        setProblem(body.reason === 'already_published' ? ru.draft.alreadyPublished : ru.draft.publishRefused);
+        if (body.reason === 'already_published') setAhead(false);
         return;
       }
       setAhead(false);
@@ -98,7 +109,9 @@ export function DraftEditor({ lessonId, initial, draftId, hasUnpublishedChanges 
 
   return (
     <>
-      <p className="muted">{ahead ? ru.draft.unpublishedChanges : ru.draft.upToDate}</p>
+      <p className="muted">
+        {unsaved ? ru.draft.unsaved : ahead ? ru.draft.unpublishedChanges : ru.draft.upToDate}
+      </p>
 
       <label>
         <span>{ru.draft.lessonTitle}</span>
@@ -150,7 +163,7 @@ export function DraftEditor({ lessonId, initial, draftId, hasUnpublishedChanges 
         <button type="button" onClick={save} disabled={busy}>
           {phase === 'saving' ? ru.draft.saving : ru.draft.save}
         </button>
-        <button type="button" className="secondary" onClick={publish} disabled={busy || savedDraftId === null}>
+        <button type="button" className="secondary" onClick={publish} disabled={busy || !canPublish}>
           {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
         </button>
       </p>

@@ -165,3 +165,21 @@ test('a Lesson that does not exist is a 404 on every Draft surface', async () =>
   assert.equal((await postJson(admin, '/api/admin/lessons/9999/draft', A_THEORY)).status, 404);
   assert.equal((await postJson(admin, '/api/admin/lessons/9999/publish', {})).status, 404);
 });
+
+test('republishing a Draft that is already live is refused with a conflict', async () => {
+  const admin = await signedIn(ADMIN);
+
+  const saved = await postJson(admin, '/api/admin/lessons/2/draft', {
+    title: ENGLISH_A1.lessons[1]!.title,
+    grammarFocus: ENGLISH_A1.lessons[1]!.grammarFocus,
+    theoryMarkdown: '# Первая опубликованная правка',
+  });
+  const { draftId } = (await saved.json()) as { draftId: number };
+  assert.equal((await postJson(admin, '/api/admin/lessons/2/publish', { draftId })).status, 200);
+
+  const again = await postJson(admin, '/api/admin/lessons/2/publish', { draftId });
+  assert.equal(again.status, 409, 'nothing is wrong with the Draft — it is simply already live');
+  const body = (await again.json()) as { ok: boolean; reason: string };
+  assert.equal(body.ok, false);
+  assert.equal(body.reason, 'already_published');
+});

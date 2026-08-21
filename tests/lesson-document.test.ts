@@ -7,6 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   documentFaults, parseLessonTheory, DOCUMENT_FAULTS,
   type LessonDocument,
@@ -108,4 +109,33 @@ test('every document fault code has a Russian message, and so does every Exercis
   }
   assert.equal(faultMessage('prompt_empty'), ru.exerciseFaults.prompt_empty, 'Exercise codes resolve too');
   assert.equal(faultMessage('not_a_code'), 'not_a_code', 'an unknown code is shown as it came');
+});
+
+test('two entries claiming the same Exercise row are refused', () => {
+  // Both would be written to that row and the second would win: two Exercises in
+  // the document, one in the Practice, and nothing said about it. Unreachable
+  // today — the document is composed on the server — but the Exercise forms are
+  // what will reach it.
+  const shared = { kind: 'fill_gap' as const, prompt: 'Вставьте.', referenceAnswer: 'is', acceptedAnswers: ['is'] };
+  assert.deepEqual(
+    documentFaults({
+      ...A_DOCUMENT,
+      exercises: [{ ...shared, id: 7 }, { ...shared, id: 7 }],
+    }),
+    [{ code: 'duplicate_exercise_id', exercisePosition: 2 }],
+  );
+
+  // Two Exercises that have no id yet are two new Exercises, not a duplicate.
+  assert.deepEqual(
+    documentFaults({ ...A_DOCUMENT, exercises: [shared, shared] }),
+    [],
+  );
+});
+
+test('the document rules stay pure', () => {
+  const source = readFileSync(new URL('../src/content/lesson-document.ts', import.meta.url), 'utf8');
+  const imports = [...source.matchAll(/^\s*import[\s\S]*?from\s+'([^']+)';/gm)].map((m) => m[1]!);
+  assert.deepEqual(imports, ['./exercise-validity.ts'], 'the rules are the only dependency');
+  assert.ok(!/\bnode:(fs|net|http|child_process|sqlite)\b/.test(source), 'no I/O module reference');
+  assert.ok(!/drizzle/.test(source), 'no database reference');
 });

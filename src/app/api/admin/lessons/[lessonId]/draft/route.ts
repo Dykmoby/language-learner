@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { getDatabase } from '../../../../../../db/index.ts';
-import { currentStudent } from '../../../../../../auth/current-student.ts';
+import { adminOrRefusal, idFromParam } from '../../../../../../admin/guard.ts';
 import { openDraft, saveDraft } from '../../../../../../admin/drafts.ts';
 import { parseLessonTheory } from '../../../../../../content/lesson-document.ts';
 
@@ -11,16 +11,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ lessonId: string }> },
 ): Promise<Response> {
-  // The middleware has already turned away anyone without a session, and the
-  // pages 404 for a non-Admin. This is the same narrowing at the endpoint,
-  // because an endpoint that relied on another layer having looked is an
-  // endpoint anyone can call.
-  const student = await currentStudent();
-  if (!student) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
-  if (!student.isAdmin) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  const { student, refusal } = await adminOrRefusal();
+  if (refusal) return refusal;
 
-  const lessonId = Number((await params).lessonId);
-  if (!Number.isInteger(lessonId)) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  const lessonId = idFromParam((await params).lessonId);
+  if (lessonId === null) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
   const theory = parseLessonTheory(await request.json().catch(() => null));
   if (theory === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
@@ -39,8 +34,5 @@ export async function POST(
     document: { ...open.document, ...theory },
   });
 
-  return NextResponse.json(
-    { draftId: draft.id },
-    { headers: { 'cache-control': 'no-store' } },
-  );
+  return NextResponse.json({ draftId: draft.id }, { headers: { 'cache-control': 'no-store' } });
 }

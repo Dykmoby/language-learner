@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  exerciseFaults, EXERCISE_FAULTS,
+  exerciseFaults, EXERCISE_FAULTS, MAX_FRAGMENTS,
   type AuthoredExercise, type ExerciseFaultCode,
 } from '../src/content/exercise-validity.ts';
 import { ru } from '../src/ru.ts';
@@ -292,4 +292,43 @@ test('the validity rules stay pure', () => {
   );
   assert.ok(!/\bnode:(fs|net|http|child_process|sqlite)\b/.test(source), 'no I/O module reference');
   assert.ok(!/drizzle/.test(source), 'no database reference');
+});
+
+test('a word order with more fragments than can be checked is refused, not waved through', () => {
+  // The tiling search is bounded so a pathological set cannot hang the form.
+  // Beyond the bound the Exercise is refused rather than passed: passing what
+  // could not be checked would leave exactly the hole these rules exist to close
+  // once Generation is writing the Drafts.
+  const fragments = Array.from({ length: MAX_FRAGMENTS + 1 }, (_, i) => `w${i}`);
+  assert.deepEqual(
+    codes({
+      kind: 'word_order',
+      referenceAnswer: fragments.join(' '),
+      acceptedAnswers: [fragments.join(' ')],
+      choices: fragments,
+    }),
+    ['too_many_fragments'],
+    'refused even though the answer genuinely is built from the fragments',
+  );
+
+  // Exactly at the bound it is still checked properly, in both directions.
+  const atBound = Array.from({ length: MAX_FRAGMENTS }, (_, i) => `w${i}`);
+  assert.deepEqual(
+    codes({
+      kind: 'word_order',
+      referenceAnswer: atBound.join(' '),
+      acceptedAnswers: [atBound.join(' ')],
+      choices: atBound,
+    }),
+    [],
+  );
+  assert.deepEqual(
+    codes({
+      kind: 'word_order',
+      referenceAnswer: atBound.join(' '),
+      acceptedAnswers: [[...atBound, 'extra'].join(' ')],
+      choices: atBound,
+    }),
+    ['fragments_do_not_build_answer'],
+  );
 });

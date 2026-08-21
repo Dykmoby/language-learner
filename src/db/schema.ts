@@ -133,7 +133,7 @@ export type ExerciseRow = typeof exercises.$inferSelect;
 // only meet when a Draft is deliberately published.
 //
 // Append-only. Every save writes a new row rather than overwriting the last, so
-// the history exists from the first edit — restoring an earlier version is then
+// the history exists from the first edit — restoring an earlier Draft is then
 // another append rather than a deletion, and browsing the history can never
 // destroy work.
 //

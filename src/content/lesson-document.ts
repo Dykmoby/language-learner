@@ -14,7 +14,7 @@
 // Pure: this is what is checked before a document is stored, and again before it
 // is published into the tables a Student reads.
 
-import { exerciseFaults, type AuthoredExercise, type ExerciseFaultCode } from './exercise-validity.ts';
+import { exerciseFaults, isBlank, type AuthoredExercise, type ExerciseFaultCode } from './exercise-validity.ts';
 
 export type DocumentExercise = AuthoredExercise & {
   /**
@@ -35,7 +35,9 @@ export type LessonDocument = {
 /** The Theory half — the only half an Admin edits until the Exercise forms land. */
 export type LessonTheory = Pick<LessonDocument, 'title' | 'grammarFocus' | 'theoryMarkdown'>;
 
-export const DOCUMENT_FAULTS = ['title_empty', 'grammar_focus_empty', 'theory_empty'] as const;
+export const DOCUMENT_FAULTS = [
+  'title_empty', 'grammar_focus_empty', 'theory_empty', 'duplicate_exercise_id',
+] as const;
 export type DocumentFaultCode = (typeof DOCUMENT_FAULTS)[number];
 
 export type DocumentFault = {
@@ -44,10 +46,6 @@ export type DocumentFault = {
   exercisePosition?: number;
   offending?: string;
 };
-
-function blank(value: string): boolean {
-  return value.trim() === '';
-}
 
 /**
  * Every reason this document is not publishable, or an empty array.
@@ -59,14 +57,27 @@ function blank(value: string): boolean {
 export function documentFaults(document: LessonDocument): DocumentFault[] {
   const faults: DocumentFault[] = [];
 
-  if (blank(document.title)) faults.push({ code: 'title_empty' });
+  if (isBlank(document.title)) faults.push({ code: 'title_empty' });
   // Not cosmetic: design.md § Grading hands the grammar focus to the Grader on
   // every call, so a blank one silently removes context from every Submission
   // made in this Lesson.
-  if (blank(document.grammarFocus)) faults.push({ code: 'grammar_focus_empty' });
-  if (blank(document.theoryMarkdown)) faults.push({ code: 'theory_empty' });
+  if (isBlank(document.grammarFocus)) faults.push({ code: 'grammar_focus_empty' });
+  if (isBlank(document.theoryMarkdown)) faults.push({ code: 'theory_empty' });
 
+  // Two entries claiming the same Exercise row would both be written to it, and
+  // the second would win: two Exercises in the document, one row in the Practice,
+  // no complaint. Nothing can produce this today — the document is composed on
+  // the server — but the Exercise forms are what will, so it is refused here
+  // rather than discovered as a Practice that silently lost an Exercise.
+  const claimed = new Set<number>();
   document.exercises.forEach((exercise, index) => {
+    if (exercise.id !== undefined) {
+      if (claimed.has(exercise.id)) {
+        faults.push({ code: 'duplicate_exercise_id', exercisePosition: index + 1 });
+      }
+      claimed.add(exercise.id);
+    }
+
     for (const fault of exerciseFaults(exercise)) {
       faults.push({ ...fault, exercisePosition: index + 1 });
     }

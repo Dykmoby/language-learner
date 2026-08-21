@@ -127,6 +127,10 @@ export type PublishResult =
   // Refused rather than written: publishing is the review step, so a document
   // that breaks a rule is exactly what it exists to stop.
   | { ok: false; reason: 'invalid'; faults: DocumentFault[] }
+  // Already live. Republishing one is never what an Admin means: it would write
+  // an older document over a newer one and report success, which is the worst
+  // shape a mistake can take here.
+  | { ok: false; reason: 'already_published' }
   | { ok: false; reason: 'not_found' };
 
 /**
@@ -139,6 +143,7 @@ export type PublishResult =
 export function publishDraft(db: Db, draftId: number): PublishResult {
   const draft = db.select().from(lessonDrafts).where(eq(lessonDrafts.id, draftId)).get();
   if (!draft) return { ok: false, reason: 'not_found' };
+  if (draft.publishedAt !== null) return { ok: false, reason: 'already_published' };
 
   const faults = documentFaults(draft.document);
   if (faults.length > 0) return { ok: false, reason: 'invalid', faults };

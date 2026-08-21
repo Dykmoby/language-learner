@@ -81,7 +81,7 @@ test('saving a Draft leaves the Lesson the Student reads completely unchanged', 
   }
 });
 
-test('every save appends a version rather than overwriting the last', () => {
+test('every save appends a Draft rather than overwriting the last', () => {
   const handle = freshDatabase();
   try {
     const lesson = firstLesson(handle.db);
@@ -92,10 +92,10 @@ test('every save appends a version rather than overwriting the last', () => {
     const second = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, title: 'Второе' } });
 
     const all = handle.db.select().from(lessonDrafts).where(eq(lessonDrafts.lessonId, lesson.id)).all();
-    assert.equal(all.length, 2, 'both versions are kept');
+    assert.equal(all.length, 2, 'both Drafts are kept');
     assert.notEqual(first.id, second.id);
     assert.equal(latestDraft(handle.db, lesson.id)!.id, second.id, 'the newest is the newest');
-    assert.equal(all.find((d) => d.id === first.id)!.document.title, 'Первое', 'the earlier one still holds what it held');
+    assert.equal(all.find((d) => d.id === first.id)!.document.title, 'Первое', 'the earlier Draft still holds what it held');
   } finally {
     handle.cleanup();
   }
@@ -297,6 +297,35 @@ test('publishing a Draft that does not exist is refused', () => {
     const result = publishDraft(handle.db, 9999);
     assert.equal(result.ok, false);
     assert.equal(result.ok === false && result.reason, 'not_found');
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('a Draft that is already live is refused rather than published again', () => {
+  const handle = freshDatabase();
+  try {
+    const lesson = firstLesson(handle.db);
+    const studentId = admin(handle.db).id;
+    const base = publishedDocument(handle.db, lesson.id)!;
+
+    const first = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, theoryMarkdown: '# Первая правка' } });
+    assert.equal(publishDraft(handle.db, first.id).ok, true);
+
+    const second = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, theoryMarkdown: '# Вторая правка' } });
+    assert.equal(publishDraft(handle.db, second.id).ok, true);
+
+    // The browser is a step behind and asks for the older Draft again. Writing
+    // it would put the first edit back over the second and report success.
+    const stale = publishDraft(handle.db, first.id);
+    assert.equal(stale.ok, false);
+    assert.equal(stale.ok === false && stale.reason, 'already_published');
+
+    assert.equal(
+      handle.db.select().from(lessons).where(eq(lessons.id, lesson.id)).get()!.theoryMarkdown,
+      '# Вторая правка',
+      'the newer edit still stands',
+    );
   } finally {
     handle.cleanup();
   }
