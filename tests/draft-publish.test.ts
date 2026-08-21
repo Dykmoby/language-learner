@@ -37,6 +37,17 @@ type Db = ReturnType<typeof freshDatabase>['db'];
 const admin = (db: Db) => db.select().from(students).where(eq(students.username, 'igor')).get()!;
 const firstLesson = (db: Db) => db.select().from(lessons).orderBy(asc(lessons.position)).all()[0]!;
 
+/**
+ * saveDraft refuses an incoherent Exercise rather than storing one. Every
+ * document here is coherent, so a refusal is a broken test rather than a case to
+ * assert — the refusal path has its own test below.
+ */
+function saved(db: Db, input: Parameters<typeof saveDraft>[1]) {
+  const result = saveDraft(db, input);
+  if (!result.ok) throw new Error(`the Draft was refused: ${result.faults.map((f) => f.code).join(', ')}`);
+  return result.draft;
+}
+
 function exercisesOf(db: Db, lessonId: number) {
   const set = db.select().from(exerciseSets).where(eq(exerciseSets.lessonId, lessonId)).get()!;
   return db.select().from(exercises)
@@ -68,7 +79,7 @@ test('saving a Draft leaves the Lesson the Student reads completely unchanged', 
     const lesson = firstLesson(handle.db);
     const before = publishedDocument(handle.db, lesson.id)!;
 
-    saveDraft(handle.db, {
+    saved(handle.db, {
       lessonId: lesson.id,
       studentId: admin(handle.db).id,
       document: { ...before, title: 'Совершенно другое название', theoryMarkdown: '# Другая теория' },
@@ -88,8 +99,8 @@ test('every save appends a Draft rather than overwriting the last', () => {
     const studentId = admin(handle.db).id;
     const base = publishedDocument(handle.db, lesson.id)!;
 
-    const first = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, title: 'Первое' } });
-    const second = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, title: 'Второе' } });
+    const first = saved(handle.db, { lessonId: lesson.id, studentId, document: { ...base, title: 'Первое' } });
+    const second = saved(handle.db, { lessonId: lesson.id, studentId, document: { ...base, title: 'Второе' } });
 
     const all = handle.db.select().from(lessonDrafts).where(eq(lessonDrafts.lessonId, lesson.id)).all();
     assert.equal(all.length, 2, 'both Drafts are kept');
@@ -106,7 +117,7 @@ test('publishing makes the Draft the Lesson a Student reads', () => {
   try {
     const lesson = firstLesson(handle.db);
     const base = publishedDocument(handle.db, lesson.id)!;
-    const draft = saveDraft(handle.db, {
+    const draft = saved(handle.db, {
       lessonId: lesson.id,
       studentId: admin(handle.db).id,
       document: { ...base, title: 'Новое название', theoryMarkdown: '# Новая теория\n\nТекст.' },
@@ -138,7 +149,7 @@ test('publishing preserves Exercise identity, so Submissions are never orphaned'
       feedbackRu: 'Верно', corrected: null, failureReason: null, createdAt: new Date(),
     }).run();
 
-    const draft = saveDraft(handle.db, {
+    const draft = saved(handle.db, {
       lessonId: lesson.id,
       studentId: admin(handle.db).id,
       document: { ...publishedDocument(handle.db, lesson.id)!, theoryMarkdown: '# Правка' },
@@ -170,7 +181,7 @@ test('a reordered Practice publishes without colliding on position', () => {
     // Positions are unique within an Exercise Set, so a publish that wrote them
     // one at a time in place would collide on the first swap.
     const reversed = { ...document, exercises: [...document.exercises].reverse() };
-    const draft = saveDraft(handle.db, { lessonId: lesson.id, studentId: admin(handle.db).id, document: reversed });
+    const draft = saved(handle.db, { lessonId: lesson.id, studentId: admin(handle.db).id, document: reversed });
     assert.equal(publishDraft(handle.db, draft.id).ok, true);
 
     const after = exercisesOf(handle.db, lesson.id);
@@ -188,7 +199,7 @@ test('an Exercise added in a Draft gets an id, and keeps it across the next publ
     const studentId = admin(handle.db).id;
     const document = publishedDocument(handle.db, lesson.id)!;
 
-    const added = saveDraft(handle.db, {
+    const added = saved(handle.db, {
       lessonId: lesson.id,
       studentId,
       document: {
@@ -210,7 +221,7 @@ test('an Exercise added in a Draft gets an id, and keeps it across the next publ
 
     // Without that write-back, the next publish would not recognise the Exercise
     // and would delete and re-insert it — taking its Submissions with it.
-    const again = saveDraft(handle.db, {
+    const again = saved(handle.db, {
       lessonId: lesson.id,
       studentId,
       document: { ...latestDraft(handle.db, lesson.id)!.document, theoryMarkdown: '# Ещё правка' },
@@ -229,7 +240,7 @@ test('a Draft that breaks a rule is refused rather than published', () => {
     const before = handle.db.select().from(lessons).where(eq(lessons.id, lesson.id)).get()!;
     const document = publishedDocument(handle.db, lesson.id)!;
 
-    const draft = saveDraft(handle.db, {
+    const draft = saved(handle.db, {
       lessonId: lesson.id,
       studentId: admin(handle.db).id,
       // Blank grammar focus: every Submission in this Lesson would be graded
@@ -271,11 +282,11 @@ test('a Course reports which of its Lessons are ahead of what is published', () 
       'nothing is ahead before anything is edited',
     );
 
-    saveDraft(handle.db, {
+    saved(handle.db, {
       lessonId: first!.id, studentId,
       document: { ...publishedDocument(handle.db, first!.id)!, theoryMarkdown: '# Правка' },
     });
-    const publishedDraft = saveDraft(handle.db, {
+    const publishedDraft = saved(handle.db, {
       lessonId: second!.id, studentId,
       document: { ...publishedDocument(handle.db, second!.id)!, theoryMarkdown: '# Тоже правка' },
     });
@@ -309,10 +320,10 @@ test('a Draft that is already live is refused rather than published again', () =
     const studentId = admin(handle.db).id;
     const base = publishedDocument(handle.db, lesson.id)!;
 
-    const first = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, theoryMarkdown: '# Первая правка' } });
+    const first = saved(handle.db, { lessonId: lesson.id, studentId, document: { ...base, theoryMarkdown: '# Первая правка' } });
     assert.equal(publishDraft(handle.db, first.id).ok, true);
 
-    const second = saveDraft(handle.db, { lessonId: lesson.id, studentId, document: { ...base, theoryMarkdown: '# Вторая правка' } });
+    const second = saved(handle.db, { lessonId: lesson.id, studentId, document: { ...base, theoryMarkdown: '# Вторая правка' } });
     assert.equal(publishDraft(handle.db, second.id).ok, true);
 
     // The browser is a step behind and asks for the older Draft again. Writing

@@ -28,6 +28,11 @@ export const ru = {
   common: {
     signOut: 'Выйти',
     loading: 'Загрузка…',
+    // The same act on both things an Admin reorders — the Lessons of a Course
+    // and the Exercises of a Practice. One definition, so a translator sees it
+    // once and the two screens cannot end up saying different words for it.
+    moveUp: 'Выше',
+    moveDown: 'Ниже',
   },
 
   login: {
@@ -71,9 +76,69 @@ export const ru = {
     graderModel: (model: string) => `Проверяющий: ${model}`,
     published: 'Опубликован',
     unpublishedChanges: 'Есть неопубликованные изменения',
+    // Never published at all: no student has ever seen this Lesson, and it is
+    // not in the course they read.
+    draft: 'Черновик — студенты его не видят',
     healthLink: 'Проверка Проверяющего',
     back: 'К управлению курсами',
     home: 'На главную',
+
+    // Creating a Course.
+    newCourseTitle: 'Новый курс',
+    courseTitleField: 'Название курса',
+    languageField: 'Язык курса',
+    levelField: 'Уровень по CEFR',
+    // A Course is fixed at one level for its whole duration, so this is asked
+    // once and never again.
+    levelHint: 'Уровень задаётся один раз и действует для всего курса.',
+    graderModelField: 'Модель Проверяющего',
+    graderModelHint:
+      'Подставляется по языку курса: английский — Sonnet 5, таджикский — Opus 5. Можно изменить.',
+    createCourse: 'Создать курс',
+    creatingCourse: 'Создание курса…',
+    courseCreated: 'Курс создан.',
+
+    // Creating and ordering Lessons.
+    newLessonTitle: 'Новый урок',
+    lessonTitleField: 'Название урока',
+    lessonStartsAsDraft:
+      'Урок создаётся черновиком: студенты увидят его только после публикации.',
+    createLesson: 'Добавить урок',
+    creatingLesson: 'Добавление урока…',
+    lessonCreated: 'Урок добавлен. Откройте его, чтобы написать теорию и упражнения.',
+    reordering: 'Сохранение порядка…',
+    orderSaved: 'Порядок уроков сохранён.',
+
+    // Enrollment.
+    rosterTitle: 'Доступ к курсу',
+    rosterHint:
+      'Курс, на который никто не записан, не виден никому — включая того, кто его написал.',
+    enroll: 'Записать на курс',
+    enrolling: 'Запись…',
+    enrolledAlready: 'Записан',
+    enrolledNow: 'Студент записан на курс.',
+    noStudents: 'Нет ни одного аккаунта.',
+
+    // Every write in the section fails the same way, and says so the same way.
+    writeFailed: 'Не удалось сохранить. Попробуйте ещё раз.',
+  },
+
+  // The refusals the authoring writes report, keyed by the stable code. Same
+  // split as everywhere else: the code is what is checked, this is only what is
+  // read, and a test asserts every code has exactly one entry here.
+  authoringFaults: {
+    course_title_empty: 'Заполните название курса.',
+    language_unknown: 'Выберите язык курса: английский или таджикский.',
+    level_unknown: 'Выберите уровень по CEFR.',
+    // ADR 0002. The rule is stated rather than hidden behind «недоступно»,
+    // because someone will reach for Haiku again and deserves to know why not.
+    grader_model_forbidden:
+      'Haiku не проверяет ответы ни на одном языке: он уверенно объясняет грамматику неверно. Выберите Sonnet 5 или Opus 5.',
+    grader_model_unknown: 'Такой модели нет в списке. Выберите Sonnet 5 или Opus 5.',
+    lesson_title_empty: 'Заполните название урока.',
+    course_not_found: 'Курс не найден. Обновите страницу.',
+    student_not_found: 'Студент не найден. Обновите страницу.',
+    order_mismatch: 'Порядок уроков устарел. Обновите страницу и попробуйте снова.',
   },
 
   health: {
@@ -203,6 +268,25 @@ export const ru = {
     tense_tj: 'Время глагола',
   } as Record<string, string>,
 
+  // design.md § Exercise Kinds — the names an Admin picks between. The stable
+  // enum value is what is stored; this is only what is read.
+  exerciseKinds: {
+    composition: 'Сочинение',
+    translation: 'Перевод',
+    open_writing: 'Свободное письмо',
+    fill_gap: 'Вставить пропущенное',
+    multiple_choice: 'Выбор варианта',
+    word_order: 'Порядок слов',
+  } as Record<string, string>,
+
+  // Which half of design.md § Exercise Kinds a Kind falls in. Shown on the form
+  // because it is what decides whether the Reference Answer is context for a
+  // model or the thing the answer is compared against.
+  judgedBy: {
+    grader: 'Ответ проверяет Проверяющий',
+    deterministic: 'Ответ проверяется без Проверяющего, сравнением с принимаемыми ответами',
+  },
+
   // design.md § Exercise Kinds, read by an Admin filling in an authoring form.
   // Keyed by the stable fault code the validity rules report — the code is what
   // is checked and stored, this is only what is read, and a test asserts every
@@ -249,6 +333,37 @@ export const ru = {
     // difference between "your work is safe" and "your work is gone".
     publishRefused: 'Опубликовать нельзя. Черновик сохранён — исправьте и попробуйте снова.',
     saveFailed: 'Не удалось сохранить черновик. Попробуйте ещё раз.',
+    // An incoherent Exercise never reaches a Draft, so this refusal is about the
+    // Exercises and says so: the theory and the title are still in the form.
+    saveRefused: 'Черновик не сохранён: исправьте упражнения ниже.',
+
+    // Images in Theory.
+    imageUpload: 'Вставить изображение',
+    imageUploading: 'Загрузка изображения…',
+    imageUploadHint: (megabytes: number) =>
+      `PNG, JPEG, GIF или WebP, не больше ${megabytes} МБ. Разметка вставится там, где стоит курсор.`,
+    imageUploadFailed: 'Не удалось загрузить изображение. Попробуйте ещё раз.',
+    imageAlt: 'изображение',
+
+    // Draft history.
+    historyTitle: 'История черновиков',
+    historyExplanation:
+      'Каждое сохранение создаёт новый черновик, и ни один не удаляется. Восстановление добавляет копию выбранного черновика в конец истории — все предыдущие остаются на месте.',
+    historyEmpty: 'Черновиков пока нет: урок ещё ни разу не сохраняли.',
+    historyEntry: (position: number) => `Черновик ${position}`,
+    historyAuthor: (username: string) => `автор: ${username}`,
+    historyAuthorUnknown: 'автор неизвестен',
+    historyPublished: 'опубликован',
+    historySelected: 'Показан сейчас',
+    historyShow: 'Показать',
+    restore: 'Восстановить этот черновик',
+    restoring: 'Восстановление…',
+    restored: 'Черновик восстановлен — он добавлен в конец истории как новый. Студенты по-прежнему видят опубликованный урок: чтобы это изменить, опубликуйте отдельно.',
+    restoreFailed: 'Не удалось восстановить черновик. Попробуйте ещё раз.',
+    historyTheory: 'Теория этого черновика',
+    historyExercises: 'Упражнения этого черновика',
+    historyNoExercises: 'В этом черновике упражнений нет.',
+    backToDraft: 'К черновику',
     nothingToPublish: 'Публиковать нечего: черновик совпадает с опубликованным уроком.',
     saveFirst: 'Сначала сохраните черновик — публикуется только сохранённое.',
     unsaved: 'Есть несохранённые правки.',
@@ -258,10 +373,62 @@ export const ru = {
     exerciseCount: (n: number) => `${n} ${plural(n, 'упражнение', 'упражнения', 'упражнений')} в практике`,
     // The Exercise forms are not built yet; saying so is better than an Admin
     // concluding the Exercises were lost.
-    exercisesNotEditable: 'Упражнения пока редактируются только через сид-скрипт.',
+    // The Exercise forms.
+    exercisesTitle: 'Упражнения',
+    noExercises: 'В этом уроке пока нет упражнений. Урок без упражнений публикуется, но практики в нём не будет.',
+    exerciseAt: (position: number) => `Упражнение ${position}`,
+    exerciseKind: 'Вид упражнения',
+    addExercise: 'Добавить упражнение',
+    prompt: 'Формулировка задания',
+    referenceAnswer: 'Эталонный ответ',
+    referenceAnswerGraderHint:
+      'Проверяющий получает его как образец при каждой проверке. Ошибка здесь тихо портит проверку всех ответов на это упражнение.',
+    referenceAnswerRevealHint: 'Его же увидит студент, если попросит показать ответ.',
+    acceptedAnswers: 'Принимаемые ответы — по одному в строке',
+    acceptedOrders: 'Принимаемые порядки — по одному в строке',
+    caseSensitive: 'Различать заглавные и строчные буквы',
+    caseSensitiveHint:
+      'Нужно там, где важна именно форма записи. В остальных случаях оставьте выключенным.',
+    choices: 'Варианты, которые видит студент',
+    fragments: 'Фрагменты, из которых студент собирает предложение',
+    addChoice: 'Добавить вариант',
+    addFragment: 'Добавить фрагмент',
+    removeChoice: 'Убрать',
+    correctChoice: 'Принимается',
+    referenceChoice: 'Эталон',
+    // Shown before anything is clicked, so an Admin knows which Exercises carry
+    // a Student's work while they are still deciding what to change.
+    hasSubmissions: (n: number) =>
+      `На это упражнение уже ${plural(n, 'дан', 'дано', 'дано')} ${n} ${plural(n, 'ответ', 'ответа', 'ответов')}.`,
+    // Removing an Exercise cascades to every Submission made against it, and a
+    // Student's work is not something to throw away without saying so.
+    removeExercise: 'Удалить упражнение',
+    removeWithSubmissions: (n: number) =>
+      `У этого упражнения уже есть ${n} ${plural(n, 'ответ', 'ответа', 'ответов')} студентов. Удаление упражнения удалит и их — это нельзя отменить.`,
+    confirmRemove: 'Всё равно удалить',
+    cancelRemove: 'Не удалять',
+    neverPublished: 'Этот урок ещё ни разу не опубликован — студенты его не видят.',
     faultAt: (position: number) => `Упражнение ${position}:`,
     backToCourse: 'К курсу',
   },
+
+  // Why an upload was refused, keyed by the stable code the endpoint reports.
+  // Same split as everywhere else, and a test asserts every code has exactly one
+  // entry here.
+  uploadRefusals: {
+    too_large: 'Файл слишком большой. Уменьшите его и попробуйте снова.',
+    wrong_type: 'Это не изображение из разрешённых: PNG, JPEG, GIF или WebP.',
+  },
+
+  // What made a Draft, read on the history screen. Recorded when it is saved
+  // rather than guessed afterwards — by step 5 most versions will not have been
+  // typed by a person.
+  draftOrigins: {
+    manual: 'ручная правка',
+    restore: 'восстановление черновика',
+    generation: 'генерация',
+    refinement: 'доработка с Claude',
+  } as Record<string, string>,
 
   // The faults that are about the Lesson rather than one of its Exercises.
   // Split from exerciseFaults because they are reported in different places on
@@ -288,12 +455,14 @@ export function errorTypeLabel(type: string): string {
   return ru.errorTypes[type] ?? type;
 }
 
-// A fault code is either about the Lesson or about one of its Exercises, and the
-// form that shows it does not care which. An unknown code is shown as it came,
-// for the same reason an unknown Error Type is: dropping it would hide a real
-// fault from the person who has to fix it.
+// A fault code is about the Lesson, about one of its Exercises, or about a write
+// in the Admin section, and the form that shows it does not care which. An
+// unknown code is shown as it came, for the same reason an unknown Error Type
+// is: dropping it would hide a real fault from the person who has to fix it.
 export function faultMessage(code: string): string {
   const lessonLevel: Record<string, string> = ru.documentFaults;
   const exerciseLevel: Record<string, string> = ru.exerciseFaults;
-  return lessonLevel[code] ?? exerciseLevel[code] ?? code;
+  const authoring: Record<string, string> = ru.authoringFaults;
+  const uploads: Record<string, string> = ru.uploadRefusals;
+  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code] ?? uploads[code] ?? code;
 }

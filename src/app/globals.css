@@ -42,6 +42,14 @@ button {
   color: var(--bg); background: var(--accent); border: 1px solid transparent;
 }
 button:disabled { opacity: 0.6; cursor: default; }
+/* The authoring forms choose from fixed lists — a Language, a CEFR level, a
+   Grader model, an Exercise Kind — so a select is as much a form control here as
+   a text input, and has to look like one. */
+select {
+  width: 100%; padding: 0.6rem 0.7rem; font: inherit;
+  color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px;
+}
 .error { color: var(--bad); margin: 0 0 1rem; }
 .ok { color: var(--good); }
 .muted { color: var(--muted); }
@@ -118,3 +126,23 @@ input.gap {
   border: 1px solid var(--line); border-radius: 6px;
 }
 .given.inline { display: inline-block; padding: 0.15rem 0.5rem; }
+
+/* --- Authoring forms -------------------------------------------------------
+   The Exercise forms put several controls on one line — an option, whether it is
+   the Reference Answer, whether it is accepted, and a way to remove it — so the
+   label-on-its-own-line default has to be opted out of rather than fought. */
+label.inline { display: inline-flex; gap: 0.4rem; align-items: baseline; margin-right: 1rem; }
+label.inline span { display: inline; margin: 0; color: var(--fg); font-size: 1rem; }
+input[type='file'] { font: inherit; color: var(--fg); }
+
+ol.exercises { list-style: none; padding: 0; }
+ol.exercises > li {
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 1rem 1rem 0.25rem; margin-bottom: 1rem;
+}
+ul.choiceRows { list-style: none; padding: 0; margin: 0 0 0.5rem; }
+ul.choiceRows > li {
+  display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+ul.choiceRows input[type='text'] { flex: 1 1 12rem; width: auto; }

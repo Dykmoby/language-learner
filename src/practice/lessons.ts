@@ -5,7 +5,7 @@
 // way to fetch a Lesson without also having been told whether this Student may
 // have it. A guard that only hides a link is not a guard.
 
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
@@ -49,10 +49,19 @@ export function rememberCurrentCourse(db: Db, studentId: number, courseId: numbe
   db.update(students).set({ currentCourseId: courseId }).where(eq(students.id, studentId)).run();
 }
 
-/** Every Lesson in a Course with this Student's progress and unlock state. */
+/**
+ * Every Lesson in a Course with this Student's progress and unlock state.
+ *
+ * Published Lessons only. A Lesson an Admin has created and not yet published is
+ * not merely hidden here — it is absent, so it cannot sit in the middle of
+ * sequential unlocking and gate the Lesson after it. Dropping the row is what
+ * makes that true; a flag on the outline would have to be remembered by every
+ * caller that walks it.
+ */
 export function courseOutline(db: Db, studentId: number, courseId: number): LessonOutline[] {
   const courseLessons = db.select().from(lessons)
-    .where(eq(lessons.courseId, courseId)).orderBy(asc(lessons.position)).all();
+    .where(and(eq(lessons.courseId, courseId), isNotNull(lessons.publishedAt)))
+    .orderBy(asc(lessons.position)).all();
   if (courseLessons.length === 0) return [];
 
   const sets = db.select().from(exerciseSets)

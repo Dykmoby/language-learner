@@ -1,13 +1,14 @@
 // The Admin section: the spine everything authoring hangs off.
 //
-// Read-only. Every Course in the system, not merely the ones this Admin is
-// enrolled in — which is the whole reason this reads through its own module
-// rather than the Student's.
+// Every Course in the system, not merely the ones this Admin is enrolled in —
+// which is the whole reason this reads through its own module rather than the
+// Student's — and the form that creates another one.
 
 import { ru } from '../../ru.ts';
 import { requireAdmin } from '../../admin/guard.ts';
 import { getDatabase } from '../../db/index.ts';
 import { everyCourse } from '../../admin/catalogue.ts';
+import { NewCourseForm } from './new-course.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,9 @@ export default async function AdminPage() {
           ))}
         </ul>
       )}
+
+      <h2>{ru.admin.newCourseTitle}</h2>
+      <NewCourseForm />
 
       <p className="actions">
         <a href="/admin/health">{ru.admin.healthLink}</a>

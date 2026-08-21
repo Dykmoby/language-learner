@@ -50,4 +50,15 @@ export const config = {
     timeoutMs: int('GRADER_TIMEOUT_MS', 90_000),
     concurrency: int('GRADER_CONCURRENCY', 2),
   },
+
+  uploads: {
+    // Outside the build output, deliberately: an image written into .next would
+    // not survive the next build, and the point of serving through a route is
+    // that the folder outlives every deploy. Beside the database, which is the
+    // other thing on this box that must not be rebuilt away.
+    directory: str('UPLOAD_DIR', 'data/uploads'),
+    // A Theory illustration, not a photo library. Refused before anything
+    // reaches disk rather than truncated after.
+    maxBytes: int('UPLOAD_MAX_BYTES', 2 * 1024 * 1024),
+  },
 } as const;

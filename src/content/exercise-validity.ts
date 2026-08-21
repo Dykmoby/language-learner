@@ -46,8 +46,27 @@ export function isDeterministic(kind: ExerciseKind): boolean {
 // Student types their answer rather than choosing it.
 const KINDS_WITH_CHOICES = ['multiple_choice', 'word_order'] as const satisfies readonly ExerciseKind[];
 
-function offersChoices(kind: ExerciseKind): boolean {
+/** Whether this Kind shows the Student something to pick from or arrange. */
+export function offersChoices(kind: ExerciseKind): boolean {
   return (KINDS_WITH_CHOICES as readonly ExerciseKind[]).includes(kind);
+}
+
+/**
+ * Whether this Kind's accepted answers are drawn from its own options rather
+ * than typed out.
+ *
+ * Only a multiple choice works that way, and the distinction is sharper than it
+ * looks: a word order also has options, but its accepted answers are whole
+ * orderings that must tile every fragment, not the fragments themselves. So
+ * "has options" and "answers are options" are two different properties, and
+ * conflating them carries an option label across into a Kind where it is not an
+ * answer at all.
+ *
+ * A property of the Kind, so it lives here beside the Kind rather than as a
+ * branch in whichever module happens to need it first.
+ */
+export function answersAreChoices(kind: ExerciseKind): boolean {
+  return kind === 'multiple_choice';
 }
 
 export const EXERCISE_FAULTS = [

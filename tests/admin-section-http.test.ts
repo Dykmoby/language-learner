@@ -13,7 +13,9 @@ import { ru } from '../src/ru.ts';
 
 // Every page in the Admin section. A page added to the section without being
 // added here is a page whose guard nobody checked.
-const ADMIN_PAGES = ['/admin', '/admin/courses/1', '/admin/lessons/1', '/admin/health'];
+const ADMIN_PAGES = [
+  '/admin', '/admin/courses/1', '/admin/lessons/1', '/admin/lessons/1/history', '/admin/health',
+];
 
 let app: BootedApp;
 

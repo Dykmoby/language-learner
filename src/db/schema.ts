@@ -64,6 +64,14 @@ export const lessons = sqliteTable('lessons', {
   theoryMarkdown: text('theory_markdown').notNull(),
   // Handed to the Grader as context on every call (design.md § Grading).
   grammarFocus: text('grammar_focus').notNull(),
+  // When this Lesson first became something a Student reads. Null on one that
+  // has been created and never published — a Lesson authored through the Admin
+  // screens starts that way, and must not appear in a Student's Course as
+  // something they can open and cannot do, nor sit in the middle of sequential
+  // unlocking. The Student's read side drops these rows entirely; the Admin's
+  // shows them, because an unpublished Lesson is exactly what an Admin is
+  // working on.
+  publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
 }, (t) => [unique('lessons_course_position_unq').on(t.courseId, t.position)]);
 
 // A Test is owned by a Course rather than a Lesson. It gives no feedback until
@@ -141,10 +149,19 @@ export type ExerciseRow = typeof exercises.$inferSelect;
 // ADR 0004: full-document exchange is what Refinement will do every turn, and a
 // document that held only some of the Lesson would have to be reshaped, and every
 // stored Draft migrated, as soon as anything else became editable.
+// Where a Draft came from. Recorded rather than inferred, because the history
+// screen has to say what each Draft *was*, and by step 5 most of them will not
+// have been typed by a person. `restore` is in use from the moment the history
+// exists: restoring appends a new Draft, and calling that one a manual edit
+// would be the one thing a history must never do — misreport what happened.
+export const DRAFT_ORIGINS = ['manual', 'restore', 'generation', 'refinement'] as const;
+export type DraftOrigin = (typeof DRAFT_ORIGINS)[number];
+
 export const lessonDrafts = sqliteTable('lesson_drafts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   lessonId: integer('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
   document: text('document', { mode: 'json' }).$type<LessonDocument>().notNull(),
+  origin: text('origin', { enum: DRAFT_ORIGINS }).notNull().default('manual'),
   // Set on the Draft that was published, null on every Draft that was not. The
   // same fact could be a pointer on the Lesson instead; it is here because that
   // would make `lessons` and `lesson_drafts` reference each other in a cycle for

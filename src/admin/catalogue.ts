@@ -14,8 +14,8 @@ import { asc, eq, inArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
-  courses, lessons, exerciseSets, exercises,
-  type CourseRow, type LessonRow,
+  courses, lessons, exerciseSets, exercises, enrollments, students,
+  type CourseRow, type LessonRow, type StudentRow,
 } from '../db/schema.ts';
 import { lessonsWithUnpublishedChanges } from './drafts.ts';
 
@@ -51,8 +51,13 @@ export function everyCourse(db: Db): CourseSummary[] {
  * `unpublished_changes` means a Draft has moved ahead of it and nobody has
  * pressed Publish. The distinction is the whole reason saving and publishing are
  * separate acts.
+ *
+ * `draft` is the third and narrowest state: a Lesson that has never been
+ * published at all. It is not a stronger form of `unpublished_changes` — no
+ * Student has ever seen this Lesson, so there is nothing for a Draft to be ahead
+ * of, and the Course they read does not contain it.
  */
-export type LessonPublication = 'published' | 'unpublished_changes';
+export type LessonPublication = 'published' | 'unpublished_changes' | 'draft';
 
 export type AdminLesson = {
   lesson: LessonRow;
@@ -94,7 +99,34 @@ export function adminCourse(db: Db, courseId: number): AdminCourse | null {
     lessons: own.map((lesson) => ({
       lesson,
       exerciseCount: counts.get(lesson.id) ?? 0,
-      publication: ahead.has(lesson.id) ? 'unpublished_changes' : 'published',
+      publication: lesson.publishedAt === null
+        ? 'draft'
+        : ahead.has(lesson.id) ? 'unpublished_changes' : 'published',
     })),
   };
+}
+
+export type RosterEntry = {
+  student: StudentRow;
+  enrolled: boolean;
+};
+
+/**
+ * Every Student, and whether they are enrolled in this Course.
+ *
+ * Everyone rather than only those enrolled, because the screen this feeds is
+ * where an Admin enrolls someone — a list of the already-enrolled would be a
+ * list with no way to add to it. With two accounts there is no paging question
+ * to answer, and if there ever is, it is a question about this function.
+ */
+export function courseRoster(db: Db, courseId: number): RosterEntry[] {
+  const everyone = db.select().from(students).orderBy(asc(students.id)).all();
+  if (everyone.length === 0) return [];
+
+  const enrolled = new Set(
+    db.select({ studentId: enrollments.studentId }).from(enrollments)
+      .where(eq(enrollments.courseId, courseId)).all().map((row) => row.studentId),
+  );
+
+  return everyone.map((student) => ({ student, enrolled: enrolled.has(student.id) }));
 }
