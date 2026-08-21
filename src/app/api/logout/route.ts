@@ -11,7 +11,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   // and it must stop authenticating the moment this returns.
   if (match?.[1]) deleteSession(getDatabase().db, decodeURIComponent(match[1]));
 
-  const response = NextResponse.redirect(new URL('/login', request.url), 303);
+  // Relative, for the reason the login route sets out: `request.url` names the
+  // address this process bound to, not the one the browser is looking at.
+  const response = new NextResponse(null, { status: 303, headers: { location: '/login' } });
   response.cookies.set({
     name: config.session.cookieName,
     value: '',

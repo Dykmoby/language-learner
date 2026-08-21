@@ -7,9 +7,21 @@ import { createSession, deleteExpiredSessions } from '../../../auth/session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from '../../../auth/throttle.ts';
 import { config } from '../../../config.ts';
 
-function redirect(request: Request, path: string): NextResponse {
+function redirect(path: string): NextResponse {
   // 303 so the browser follows with GET rather than re-posting the credentials.
-  return NextResponse.redirect(new URL(path, request.url), 303);
+  //
+  // The Location is **relative**, and that is the whole point. `request.url`
+  // inside a Route Handler is built from the address this process bound to —
+  // 127.0.0.1:4100 — and not from the host the browser actually asked for. It is
+  // not a proxy misconfiguration and no Caddy setting fixes it: measured on
+  // 2026-08-21, a request arriving with `Host: language-learner.duckdns.org`
+  // still produced `http://localhost:4100/`. So `new URL(path, request.url)`
+  // sent every signed-in Student to an address that exists only on the Pi.
+  //
+  // A redirect to a path needs no origin at all. RFC 7231 has allowed a relative
+  // Location for a decade, every browser follows it against the address bar, and
+  // the middleware's own redirect has always been one.
+  return new NextResponse(null, { status: 303, headers: { location: path } });
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -25,8 +37,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   const decision = checkThrottle(db, username);
   if (!decision.allowed) {
     return decision.kind === 'locked'
-      ? redirect(request, `/login?error=locked&minutes=${Math.ceil(decision.secondsRemaining / 60)}`)
-      : redirect(request, `/login?error=slow&seconds=${decision.secondsRemaining}`);
+      ? redirect(`/login?error=locked&minutes=${Math.ceil(decision.secondsRemaining / 60)}`)
+      : redirect(`/login?error=slow&seconds=${decision.secondsRemaining}`);
   }
 
   const student = db.select().from(students).where(eq(students.username, username)).get();
@@ -41,16 +53,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       // The failure that locks says so itself. Answering "wrong password" here
       // would leave the Student to discover the lockout on their next attempt.
       const seconds = Math.max(1, Math.ceil((failure.lockedUntil.getTime() - Date.now()) / 1000));
-      return redirect(request, `/login?error=locked&minutes=${Math.ceil(seconds / 60)}`);
+      return redirect(`/login?error=locked&minutes=${Math.ceil(seconds / 60)}`);
     }
-    return redirect(request, '/login?error=invalid');
+    return redirect('/login?error=invalid');
   }
 
   recordSuccess(db, username);
   deleteExpiredSessions(db);
   const session = createSession(db, student.id, config.session.ttlDays);
 
-  const response = redirect(request, '/');
+  const response = redirect('/');
   response.cookies.set({
     name: config.session.cookieName,
     value: session.id,
