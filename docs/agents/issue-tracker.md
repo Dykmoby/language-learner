@@ -13,6 +13,26 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
+## Closing issues from a commit or a PR
+
+**Repeat the keyword before every issue number.** GitHub binds a closing keyword to the one reference that follows it. In a comma list the rest are parsed as plain mentions: they get linked, and they stay open.
+
+```
+Closes #14, #15, #16          ← closes #14 only
+Closes #14, closes #15, closes #16
+```
+
+One per line is easier to read in a long message, and easier to check before committing:
+
+```
+Closes #14
+Closes #15
+```
+
+Auto-closing fires only when the commits land on the **default branch**, so a PR merged into anything else closes nothing.
+
+This is worth checking rather than trusting: after merging, confirm with `gh issue list --state open` and close whatever was missed with `gh issue close <number> --comment "..."`. It has already gone wrong here once — a comma list in the step-3 commit closed one issue of eight.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
