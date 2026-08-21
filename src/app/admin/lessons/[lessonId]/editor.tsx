@@ -88,9 +88,13 @@ export function DraftEditor({
 
       if (!response.ok || body?.ok !== true || typeof body.draftId !== 'number') {
         // An incoherent Exercise is refused before it reaches the Draft, and the
-        // Admin is told which one and why — never a generic failure.
-        setFaults(body?.faults ?? []);
-        setProblem(ru.draft.saveRefused);
+        // Admin is told which one and why. Everything else — a 404, a 500, a
+        // body that is not what this expects — is a failure rather than a
+        // refusal, and must not be reported as «исправьте упражнения ниже»:
+        // that sends an Admin hunting through Exercises that are all fine.
+        const refused = body?.faults ?? [];
+        setFaults(refused);
+        setProblem(refused.length > 0 ? ru.draft.saveRefused : ru.draft.saveFailed);
         return;
       }
       setSavedDraftId(body.draftId);

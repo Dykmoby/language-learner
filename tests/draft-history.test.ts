@@ -2,7 +2,7 @@
 //
 // The rule the whole surface rests on is that restoring appends. A restore that
 // truncated would let an Admin destroy work by browsing, and the point of
-// keeping every turn is that Generation will soon be producing versions nobody
+// keeping every turn is that Generation will soon be producing Drafts nobody
 // chose. So: the history only grows, and restoring is itself undoable.
 
 import { test } from 'node:test';
@@ -132,7 +132,7 @@ test('restoring appends a new Draft and deletes nothing', () => {
       assert.ok(after.some((row) => row.id === draft.id), `Draft ${draft.id} is still there`);
     }
 
-    // Restoring is itself an undoable act: the version that was newest before
+    // Restoring is itself an undoable act: the Draft that was newest before
     // the restore is still there to be restored in turn.
     const undone = restoreDraft(db, { lessonId: lesson.id, draftId: before[1]!.id, studentId: admin(db).id });
     assert.equal(undone.ok, true);

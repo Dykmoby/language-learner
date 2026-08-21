@@ -96,7 +96,7 @@ test('the history and the upload are closed to a visitor with no session', async
 
 // --- The history -------------------------------------------------------------
 
-test('an Admin sees every version, newest first, with its origin, and restoring appends', async () => {
+test('an Admin sees every Draft, newest first, with its origin, and restoring appends', async () => {
   const admin = await signedIn(ADMIN);
   const student = await signedIn(STUDENT);
   const id = lessonId();
@@ -107,11 +107,11 @@ test('an Admin sees every version, newest first, with its origin, and restoring 
   const page = await admin.fetch(`/admin/lessons/${id}/history`);
   assert.equal(page.status, 200);
   const html = await page.text();
-  assert.match(html, new RegExp(ru.draftOrigins.manual!), 'each version says what made it');
+  assert.match(html, new RegExp(ru.draftOrigins.manual!), 'each Draft says what made it');
   assert.match(html, new RegExp(ru.draft.historyEntry(2)), 'and both are listed');
   assert.match(html, /Вторая правка/, 'the newest is shown by default');
 
-  // Selecting an earlier version shows what it held.
+  // Selecting an earlier Draft shows what it held.
   const earlier = await admin.fetch(`/admin/lessons/${id}/history?draft=${first}`);
   assert.match(await earlier.text(), /Самая ранняя версия/);
 
@@ -123,9 +123,9 @@ test('an Admin sees every version, newest first, with its origin, and restoring 
   assert.equal(restored.status, 200);
 
   const after = await (await admin.fetch(`/admin/lessons/${id}/history`)).text();
-  assert.match(after, new RegExp(ru.draft.historyEntry(3)), 'a third version, rather than two');
+  assert.match(after, new RegExp(ru.draft.historyEntry(3)), 'a third Draft, rather than two');
   assert.match(after, new RegExp(ru.draftOrigins.restore!), 'and it says it came from a restore');
-  assert.match(after, /Самая ранняя версия/, 'holding what the restored version held');
+  assert.match(after, /Самая ранняя версия/, 'holding what the restored Draft held');
 
   // Restoring does not publish: what a Student reads is still the seeded Lesson.
   const read = await student.fetch(`/lessons/${id}`);
@@ -135,7 +135,7 @@ test('an Admin sees every version, newest first, with its origin, and restoring 
   assert.match(theory, /Артикль/, 'which is the one the fixture seeded');
 });
 
-test('restoring a version of another Lesson is a 404, whatever id arrives', async () => {
+test('restoring a Draft of another Lesson is a 404, whatever id arrives', async () => {
   const admin = await signedIn(ADMIN);
   const lessons = lessonsOf(app.databasePath, DETERMINISTIC_COURSE.title);
   const elsewhere = await saveTheory(admin, '# Правка первого урока');
@@ -219,6 +219,23 @@ test('a file over the cap is refused before it is written', async () => {
   assert.equal(refused.status, 413);
   assert.deepEqual(await refused.json(), { ok: false, reason: 'too_large' });
   assert.equal(readdirSync(app.uploadDir).length, before, 'nothing reached the folder');
+});
+
+test('a file just under the cap is accepted, not eaten by the multipart envelope', async () => {
+  const admin = await signedIn(ADMIN);
+
+  // `content-length` measures the whole multipart body, not the file: boundary
+  // lines, part headers and the filename are all in it. A cap compared against
+  // that number directly refuses a legal file for bytes the browser added, and
+  // the effective cap silently drops a few hundred bytes below the configured
+  // one.
+  const justUnder = Buffer.concat([PNG, Buffer.alloc(2 * 1024 * 1024 - PNG.length - 64)]);
+  assert.equal(justUnder.length, 2 * 1024 * 1024 - 64, 'a hair under the 2 MB default');
+
+  const accepted = await uploadPng(admin, justUnder, 'почти-предельный.png');
+  assert.equal(accepted.status, 200);
+  const { url } = (await accepted.json()) as { url: string };
+  assert.equal((await admin.fetch(url)).status, 200, 'and it serves back');
 });
 
 test('a name the application did not generate is a 404, not a path', async () => {

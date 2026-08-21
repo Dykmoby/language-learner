@@ -98,6 +98,14 @@ test('the Grader model defaults from the Language per ADR 0002, and is overridab
     assert.equal(DEFAULT_GRADER_MODEL.en, 'claude-sonnet-5', 'English takes the faster model');
     assert.equal(DEFAULT_GRADER_MODEL.tj, 'claude-opus-5', 'Tajik takes the better one');
 
+    // Defaulted by the write path, not only by the form: a Course created by
+    // anything else still grades on the model the ADR says it should.
+    const english = newCourse(handle.db, { title: 'Английский', graderModel: undefined });
+    assert.equal(english.graderModel, 'claude-sonnet-5');
+
+    const tajik = newCourse(handle.db, { title: 'Таджикский', language: 'tj', graderModel: undefined });
+    assert.equal(tajik.graderModel, 'claude-opus-5');
+
     // The override is the point of the column: a Course whose Language says
     // Sonnet can still be set to Opus without a code change.
     const overridden = newCourse(handle.db, {

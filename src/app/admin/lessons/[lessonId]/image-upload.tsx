@@ -9,7 +9,7 @@
 // Draft, a restore, and a publish without anything knowing it is special.
 
 import { useRef, useState } from 'react';
-import { ru } from '../../../../ru.ts';
+import { ru, faultMessage } from '../../../../ru.ts';
 
 type Props = {
   /** The cap the endpoint enforces, so the hint states the real number. */
@@ -36,11 +36,13 @@ export function ImageUpload({ maxBytes, disabled, onInsert }: Props) {
         { ok?: boolean; url?: string; reason?: string } | null;
 
       if (!response.ok || parsed?.ok !== true || typeof parsed.url !== 'string') {
-        setProblem(
-          parsed?.reason === 'too_large' ? ru.draft.imageTooLarge
-            : parsed?.reason === 'wrong_type' ? ru.draft.imageWrongType
-              : ru.draft.imageUploadFailed,
-        );
+        // A named refusal is resolved through the dictionary; anything else —
+        // a 404, a 500, a body that is not what this expects — is the generic
+        // failure, and saying "уменьшите файл" for one of those would send the
+        // Admin after a problem that is not theirs.
+        setProblem(parsed?.reason === undefined
+          ? ru.draft.imageUploadFailed
+          : faultMessage(parsed.reason));
         return;
       }
       onInsert(`\n\n![${ru.draft.imageAlt}](${parsed.url})\n\n`);

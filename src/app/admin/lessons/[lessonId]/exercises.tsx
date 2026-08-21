@@ -21,6 +21,7 @@ import {
 import {
   blankExercise, removeChoice, renameChoice, withKind, type DocumentExercise,
 } from '../../../../content/lesson-document.ts';
+import { movedWithin } from '../../../../content/ordering.ts';
 
 type Props = {
   exercises: DocumentExercise[];
@@ -55,12 +56,7 @@ export function ExerciseList({ exercises, submissionCounts, disabled, onChange }
   }
 
   function move(index: number, by: -1 | 1) {
-    const target = index + by;
-    if (target < 0 || target >= exercises.length) return;
-    const next = [...exercises];
-    const [moved] = next.splice(index, 1);
-    next.splice(target, 0, moved!);
-    onChange(next);
+    onChange(movedWithin(exercises, index, by));
   }
 
   function remove(index: number) {
@@ -185,10 +181,10 @@ export function ExerciseList({ exercises, submissionCounts, disabled, onChange }
               ) : (
                 <p className="actions">
                   <button type="button" className="secondary" onClick={() => move(index, -1)} disabled={disabled || index === 0}>
-                    {ru.draft.moveUp}
+                    {ru.common.moveUp}
                   </button>
                   <button type="button" className="secondary" onClick={() => move(index, 1)} disabled={disabled || index === exercises.length - 1}>
-                    {ru.draft.moveDown}
+                    {ru.common.moveDown}
                   </button>
                   <button type="button" className="secondary" onClick={() => askToRemove(index)} disabled={disabled}>
                     {ru.draft.removeExercise}

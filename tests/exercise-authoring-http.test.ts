@@ -102,7 +102,7 @@ test('the editor offers a form for the Exercises, not a note that it cannot', as
   assert.match(html, new RegExp(ru.draft.exercisesTitle), 'the Practice is on the page');
   assert.match(html, new RegExp(ru.draft.addExercise), 'and another Exercise can be added');
   assert.match(html, new RegExp(ru.exerciseKinds.fill_gap!), 'with the Kinds named in Russian');
-  assert.match(html, new RegExp(ru.draft.historyLink), 'and the history is linked');
+  assert.match(html, new RegExp(ru.draft.historyTitle), 'and the history is linked');
 });
 
 test('an incoherent Exercise is refused with the Russian message for its rule, and never stored', async () => {

@@ -25,6 +25,13 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+// Why an upload was refused. A stable code with a Russian message resolved at
+// display time, like every other fault family in this codebase — the alternative
+// is an inline cascade of string comparisons in a component, which is where a
+// new reason gets added and silently rendered as nothing.
+export const UPLOAD_REFUSALS = ['too_large', 'wrong_type'] as const;
+export type UploadRefusal = (typeof UPLOAD_REFUSALS)[number];
+
 export type ImageType = {
   /** The stored content type, set explicitly by the serving route. */
   mime: string;

@@ -3,9 +3,9 @@
 // Making good on the Draft's promise: "every Generation turn and every manual
 // edit produces a new one, and all of them are restorable" (design.md
 // § Authoring). Saving has appended rather than overwritten since the Draft
-// existed, so the versions were always here; this is the surface that admits it.
+// existed, so they were always here; this is the surface that admits it.
 //
-// A diff between versions is deliberately out of scope. Showing what changed
+// A diff between two Drafts is deliberately out of scope. Showing what changed
 // between two whole-document Drafts is its own piece of work with its own design
 // questions, and the history is useful without it.
 
@@ -35,7 +35,7 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
 
   const history = draftHistory(db, lessonId);
   // Newest by default, so opening the history shows something rather than an
-  // instruction to click. A `?draft=` naming another Lesson's version is ignored
+  // instruction to click. A `?draft=` naming another Lesson's Draft is ignored
   // rather than honoured: which Drafts exist elsewhere is not this page's
   // business.
   const asked = Number((await searchParams).draft);
@@ -54,7 +54,7 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
         <ul className="cards">
           {history.map((entry, index) => (
             <li key={entry.id}>
-              {/* Numbered from the oldest, so a version's number never changes
+              {/* Numbered from the oldest, so a Draft's number never changes
                   when a newer one is appended — including by a restore. */}
               <strong>{ru.draft.historyEntry(history.length - index)}</strong>
               <span className="muted">
@@ -107,6 +107,35 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
                   {exercise.prompt}
                   <br />
                   <span className="muted">{ru.draft.referenceAnswer}: {exercise.referenceAnswer}</span>
+                  {/* Everything the Exercise held, not merely its prompt. An
+                      Admin deciding whether to restore a Draft has to be able
+                      to see what it would bring back — and for a multiple choice
+                      or a word order, the options and the accepted answers are
+                      most of what it is. */}
+                  {(exercise.choices ?? []).length === 0 ? null : (
+                    <>
+                      <br />
+                      <span className="muted">
+                        {exercise.kind === 'word_order' ? ru.draft.fragments : ru.draft.choices}
+                        : {(exercise.choices ?? []).join(' · ')}
+                      </span>
+                    </>
+                  )}
+                  {(exercise.acceptedAnswers ?? []).length === 0 ? null : (
+                    <>
+                      <br />
+                      <span className="muted">
+                        {exercise.kind === 'word_order' ? ru.draft.acceptedOrders : ru.draft.acceptedAnswers}
+                        : {(exercise.acceptedAnswers ?? []).join(' · ')}
+                      </span>
+                    </>
+                  )}
+                  {exercise.caseSensitive !== true ? null : (
+                    <>
+                      <br />
+                      <span className="muted">{ru.draft.caseSensitive}</span>
+                    </>
+                  )}
                 </li>
               ))}
             </ol>

@@ -10,9 +10,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  ALLOWED_IMAGE_TYPES, isStoredImageName, newImageName, readImage,
+  ALLOWED_IMAGE_TYPES, UPLOAD_REFUSALS, isStoredImageName, newImageName, readImage,
   sniffImageType, storeImage, storedImageType, imageUrl,
 } from '../src/content/uploads.ts';
+import { ru } from '../src/ru.ts';
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46]);
@@ -102,4 +103,14 @@ test('an image is written to the folder and read back with its stored type', () 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('every upload refusal has a Russian message, and the dictionary invents none', () => {
+  // The same split every other fault family makes: the code is what the endpoint
+  // reports and what a test can assert, the sentence is only what is read. A
+  // refusal added without a message reaches an Admin as `too_large`.
+  assert.deepEqual(
+    Object.keys(ru.uploadRefusals).sort(),
+    [...UPLOAD_REFUSALS].sort(),
+  );
 });

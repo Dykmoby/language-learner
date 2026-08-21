@@ -11,7 +11,9 @@ import {
   blankExercise, exerciseLevelFaults, parseLessonDocument, removeChoice, renameChoice, withKind,
   documentFaults, type DocumentExercise, type LessonDocument,
 } from '../src/content/lesson-document.ts';
-import { EXERCISE_KINDS, type ExerciseKind } from '../src/content/exercise-validity.ts';
+import {
+  EXERCISE_KINDS, exerciseFaults, type ExerciseFaultCode, type ExerciseKind,
+} from '../src/content/exercise-validity.ts';
 
 const A_MULTIPLE_CHOICE: DocumentExercise = {
   id: 7,
@@ -34,6 +36,13 @@ const A_TRANSLATION: DocumentExercise = {
 
 // --- Changing the Kind -------------------------------------------------------
 
+// The faults that mean "you have not filled this in yet". Every other fault is a
+// leftover — a field carried across from a Kind that no longer uses it — and a
+// Kind change must never produce one.
+const NOT_FILLED_IN_YET: ExerciseFaultCode[] = [
+  'prompt_empty', 'reference_answer_empty', 'accepted_answers_required', 'choices_required',
+];
+
 test('changing an Exercise\'s Kind leaves no field from the previous Kind behind', () => {
   // The mistake the validity rules were written for: a composition still
   // carrying the options of the multiple choice it used to be.
@@ -44,21 +53,67 @@ test('changing an Exercise\'s Kind leaves no field from the previous Kind behind
   assert.deepEqual(asComposition.acceptedAnswers, [], 'and so are the accepted answers');
   assert.equal(asComposition.prompt, A_MULTIPLE_CHOICE.prompt, 'the prompt is the author\'s work, and stays');
   assert.equal(asComposition.id, 7, 'and it is still the same Exercise');
+});
 
-  // Whatever it becomes, it is coherent for what it became — for every Kind, so
-  // that a Kind added later cannot quietly leave a hole here.
-  for (const kind of EXERCISE_KINDS) {
-    const changed = withKind(A_MULTIPLE_CHOICE, kind);
-    assert.equal(changed.kind, kind);
-    assert.deepEqual(
-      documentFaults({
-        title: 'Урок', grammarFocus: 'Focus.', theoryMarkdown: 'Теория.',
-        exercises: [changed],
-      }).map((f) => f.code).filter((code) => code === 'accepted_answers_not_allowed' || code === 'choices_not_allowed'),
-      [],
-      `${kind} carries nothing it cannot use`,
-    );
+test('no Kind change leaves behind a field that breaks the Exercise', () => {
+  // Every pair of Kinds, in both directions, starting from a filled-in Exercise
+  // of each. An earlier version of this test filtered the faults down to two
+  // codes and so passed while `multiple_choice → word_order` carried three
+  // options across as fragments — which raised `fragments_do_not_build_answer`
+  // and blocked the save, on fields the form had stopped showing. Nothing is
+  // filtered here: the only faults allowed are the ones that say a field is
+  // waiting to be written.
+  const filledIn: Record<ExerciseKind, DocumentExercise> = {
+    composition: { kind: 'composition', prompt: 'Напишите о своём дне.', referenceAnswer: 'I woke up early.' },
+    translation: A_TRANSLATION,
+    open_writing: { kind: 'open_writing', prompt: 'Свободное письмо.', referenceAnswer: 'Anything goes.' },
+    fill_gap: {
+      kind: 'fill_gap', prompt: 'Поставьте форму: She ___ (work).',
+      referenceAnswer: 'works', acceptedAnswers: ['works'], caseSensitive: true, choices: [],
+    },
+    multiple_choice: A_MULTIPLE_CHOICE,
+    word_order: {
+      kind: 'word_order', prompt: 'Составьте предложение.',
+      referenceAnswer: 'This is a cat', acceptedAnswers: ['This is a cat'],
+      choices: ['is', 'a', 'this', 'cat'],
+    },
+  };
+
+  for (const from of EXERCISE_KINDS) {
+    for (const to of EXERCISE_KINDS) {
+      const changed = withKind(filledIn[from], to);
+      assert.equal(changed.kind, to);
+
+      const leftovers = exerciseFaults(changed)
+        .filter((fault) => !NOT_FILLED_IN_YET.includes(fault.code));
+      assert.deepEqual(
+        leftovers.map((fault) => fault.code),
+        [],
+        `${from} → ${to} carries nothing it cannot use`,
+      );
+    }
   }
+});
+
+test('a multiple choice\'s answers never cross into another Kind, or back', () => {
+  // A word order has options too, but its accepted answers are whole orderings
+  // that tile every fragment — not the fragments themselves. So "has options"
+  // and "answers are options" are different properties, and only the second
+  // decides what may be carried.
+  const asWordOrder = withKind(A_MULTIPLE_CHOICE, 'word_order');
+  assert.deepEqual(asWordOrder.choices, [], 'options are not fragments');
+  assert.deepEqual(asWordOrder.acceptedAnswers, [], 'and an option is not an ordering');
+  assert.equal(asWordOrder.referenceAnswer, '');
+
+  const wordOrder: DocumentExercise = {
+    kind: 'word_order', prompt: 'Составьте предложение.',
+    referenceAnswer: 'This is a cat', acceptedAnswers: ['This is a cat'],
+    choices: ['is', 'a', 'this', 'cat'],
+  };
+  const asMultipleChoice = withKind(wordOrder, 'multiple_choice');
+  assert.deepEqual(asMultipleChoice.choices, [], 'fragments are not options');
+  assert.deepEqual(asMultipleChoice.acceptedAnswers, []);
+  assert.equal(asMultipleChoice.referenceAnswer, '');
 });
 
 test('what both Kinds use is carried across, and what only one of them does is not', () => {

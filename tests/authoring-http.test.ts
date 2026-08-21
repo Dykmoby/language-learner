@@ -82,6 +82,18 @@ test('Haiku is refused as a Grader model, with the rule in Russian', async () =>
   assert.match(ru.authoringFaults.grader_model_forbidden, /Haiku/);
 });
 
+test('a Course created without naming a model takes its Language\'s, per ADR 0002', async () => {
+  const admin = await signedIn(ADMIN);
+
+  const created = await postJson(admin, '/api/admin/courses', {
+    language: 'tj', level: 'A1', title: 'Таджикский по умолчанию',
+  });
+  assert.equal(created.status, 200, 'the model is optional, not required');
+
+  const page = await admin.fetch(`/admin/courses/${(await json(created)).courseId as number}`);
+  assert.match(await page.text(), /claude-opus-5/, 'Tajik takes the better model');
+});
+
 test('an Admin creates a Course, a Lesson and an Enrollment, and the Student gets the Course', async () => {
   const admin = await signedIn(ADMIN);
   const student = await signedIn(STUDENT);

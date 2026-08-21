@@ -1,6 +1,6 @@
 'use client';
 
-// Restoring a version.
+// Restoring a Draft.
 //
 // It appends rather than truncates, and it does not publish — both of which the
 // button says out loud afterwards, because "restored" on its own would let an

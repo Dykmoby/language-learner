@@ -21,11 +21,13 @@ export async function POST(request: Request): Promise<Response> {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const language = asString(body?.language);
   const level = asString(body?.level);
-  const graderModel = asString(body?.graderModel);
   const title = asString(body?.title);
-  if (language === null || level === null || graderModel === null || title === null) {
+  if (language === null || level === null || title === null) {
     return NextResponse.json({ error: 'malformed' }, { status: 400 });
   }
+  // Optional: left out, the Course takes its Language's model per ADR 0002.
+  const graderModel = body?.graderModel === undefined ? undefined : asString(body.graderModel);
+  if (graderModel === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
   const { db } = getDatabase();
   const created = createCourse(db, { language, level, graderModel, title });

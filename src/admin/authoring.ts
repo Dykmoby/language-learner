@@ -27,7 +27,7 @@ import { isBlank } from '../content/exercise-validity.ts';
 // The offerable choices and the Haiku rule live in a module the browser can
 // import: the form that offers them runs there, and a constant shared with this
 // module would drag SQLite into the bundle with it.
-import { graderModelFault, isCefrLevel } from '../content/course-options.ts';
+import { DEFAULT_GRADER_MODEL, graderModelFault, isCefrLevel } from '../content/course-options.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -55,7 +55,13 @@ function isLanguage(value: string): value is Language {
 export type CourseInput = {
   language: string;
   level: string;
-  graderModel: string;
+  /**
+   * Left out to take the Language's default — ADR 0002's Sonnet 5 for English
+   * and Opus 5 for Tajik. The default lives on this side rather than only in the
+   * form, so a Course created by anything but that form still gets the model the
+   * ADR says it should have.
+   */
+  graderModel?: string;
   title: string;
 };
 
@@ -68,7 +74,13 @@ export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
   if (!isLanguage(input.language)) faults.push('language_unknown');
   if (!isCefrLevel(input.level)) faults.push('level_unknown');
 
-  const modelFault = graderModelFault(input.graderModel);
+  // Defaulted only where the Language is known — there is nothing to default
+  // from otherwise, and `language_unknown` is already the answer.
+  const graderModel = isBlank(input.graderModel ?? '') && isLanguage(input.language)
+    ? DEFAULT_GRADER_MODEL[input.language]
+    : input.graderModel ?? '';
+
+  const modelFault = graderModelFault(graderModel);
   if (modelFault !== null) faults.push(modelFault);
 
   if (faults.length > 0) return { ok: false, faults };
@@ -76,7 +88,7 @@ export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
   const course = db.insert(courses).values({
     language: input.language as Language,
     level: input.level,
-    graderModel: input.graderModel,
+    graderModel,
     title: input.title.trim(),
     createdAt: new Date(),
   }).returning().get();

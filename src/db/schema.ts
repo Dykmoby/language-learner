@@ -150,10 +150,10 @@ export type ExerciseRow = typeof exercises.$inferSelect;
 // document that held only some of the Lesson would have to be reshaped, and every
 // stored Draft migrated, as soon as anything else became editable.
 // Where a Draft came from. Recorded rather than inferred, because the history
-// screen has to say what a version *was*, and by step 5 most of them will not
+// screen has to say what each Draft *was*, and by step 5 most of them will not
 // have been typed by a person. `restore` is in use from the moment the history
-// exists: a restored version is a new Draft, and calling it a manual edit would
-// be the one thing the history must never do — misreport what happened.
+// exists: restoring appends a new Draft, and calling that one a manual edit
+// would be the one thing a history must never do — misreport what happened.
 export const DRAFT_ORIGINS = ['manual', 'restore', 'generation', 'refinement'] as const;
 export type DraftOrigin = (typeof DRAFT_ORIGINS)[number];
 

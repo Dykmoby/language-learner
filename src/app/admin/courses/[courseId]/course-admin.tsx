@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { ru, faultMessage } from '../../../../ru.ts';
 import type { LessonPublication } from '../../../../admin/catalogue.ts';
+import { movedWithin } from '../../../../content/ordering.ts';
 
 export type LessonEntry = {
   id: number;
@@ -84,15 +85,11 @@ export function CourseAdmin({ courseId, initialLessons, initialRoster }: Props) 
   }
 
   async function move(index: number, by: -1 | 1) {
-    const target = index + by;
-    if (target < 0 || target >= lessons.length) return;
-
-    const reordered = [...lessons];
-    const [moved] = reordered.splice(index, 1);
-    reordered.splice(target, 0, moved!);
+    const reordered = movedWithin(lessons, index, by);
     // Shown immediately and put back if the write is refused — the alternative
     // is a list that jumps a second after every click.
     const before = lessons;
+    if (reordered.every((lesson, at) => lesson === before[at])) return;
     setLessons(reordered);
 
     setBusy(true);
@@ -151,14 +148,14 @@ export function CourseAdmin({ courseId, initialLessons, initialRoster }: Props) 
                   onClick={() => move(index, -1)}
                   disabled={busy || index === 0}
                 >
-                  {ru.admin.moveUp}
+                  {ru.common.moveUp}
                 </button>
                 <button
                   type="button" className="secondary"
                   onClick={() => move(index, 1)}
                   disabled={busy || index === lessons.length - 1}
                 >
-                  {ru.admin.moveDown}
+                  {ru.common.moveDown}
                 </button>
               </span>
             </li>

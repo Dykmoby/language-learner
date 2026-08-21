@@ -28,6 +28,11 @@ export const ru = {
   common: {
     signOut: 'Выйти',
     loading: 'Загрузка…',
+    // The same act on both things an Admin reorders — the Lessons of a Course
+    // and the Exercises of a Practice. One definition, so a translator sees it
+    // once and the two screens cannot end up saying different words for it.
+    moveUp: 'Выше',
+    moveDown: 'Ниже',
   },
 
   login: {
@@ -101,8 +106,6 @@ export const ru = {
     createLesson: 'Добавить урок',
     creatingLesson: 'Добавление урока…',
     lessonCreated: 'Урок добавлен. Откройте его, чтобы написать теорию и упражнения.',
-    moveUp: 'Выше',
-    moveDown: 'Ниже',
     reordering: 'Сохранение порядка…',
     orderSaved: 'Порядок уроков сохранён.',
 
@@ -339,30 +342,27 @@ export const ru = {
     imageUploading: 'Загрузка изображения…',
     imageUploadHint: (megabytes: number) =>
       `PNG, JPEG, GIF или WebP, не больше ${megabytes} МБ. Разметка вставится там, где стоит курсор.`,
-    imageTooLarge: 'Файл слишком большой. Уменьшите его и попробуйте снова.',
-    imageWrongType: 'Это не изображение из разрешённых: PNG, JPEG, GIF или WebP.',
     imageUploadFailed: 'Не удалось загрузить изображение. Попробуйте ещё раз.',
     imageAlt: 'изображение',
 
     // Draft history.
-    historyLink: 'История черновиков',
     historyTitle: 'История черновиков',
     historyExplanation:
-      'Каждое сохранение создаёт новую версию, и ни одна не удаляется. Восстановление добавляет копию выбранной версии в конец истории — предыдущие версии остаются на месте.',
+      'Каждое сохранение создаёт новый черновик, и ни один не удаляется. Восстановление добавляет копию выбранного черновика в конец истории — все предыдущие остаются на месте.',
     historyEmpty: 'Черновиков пока нет: урок ещё ни разу не сохраняли.',
-    historyEntry: (position: number) => `Версия ${position}`,
+    historyEntry: (position: number) => `Черновик ${position}`,
     historyAuthor: (username: string) => `автор: ${username}`,
     historyAuthorUnknown: 'автор неизвестен',
-    historyPublished: 'опубликована',
-    historySelected: 'Показана сейчас',
+    historyPublished: 'опубликован',
+    historySelected: 'Показан сейчас',
     historyShow: 'Показать',
-    restore: 'Восстановить эту версию',
+    restore: 'Восстановить этот черновик',
     restoring: 'Восстановление…',
-    restored: 'Версия восстановлена как новый черновик. Студенты по-прежнему видят опубликованный урок — опубликуйте отдельно.',
-    restoreFailed: 'Не удалось восстановить версию. Попробуйте ещё раз.',
-    historyTheory: 'Теория этой версии',
-    historyExercises: 'Упражнения этой версии',
-    historyNoExercises: 'В этой версии упражнений нет.',
+    restored: 'Черновик восстановлен — он добавлен в конец истории как новый. Студенты по-прежнему видят опубликованный урок: чтобы это изменить, опубликуйте отдельно.',
+    restoreFailed: 'Не удалось восстановить черновик. Попробуйте ещё раз.',
+    historyTheory: 'Теория этого черновика',
+    historyExercises: 'Упражнения этого черновика',
+    historyNoExercises: 'В этом черновике упражнений нет.',
     backToDraft: 'К черновику',
     nothingToPublish: 'Публиковать нечего: черновик совпадает с опубликованным уроком.',
     saveFirst: 'Сначала сохраните черновик — публикуется только сохранённое.',
@@ -407,11 +407,17 @@ export const ru = {
       `У этого упражнения уже есть ${n} ${plural(n, 'ответ', 'ответа', 'ответов')} студентов. Удаление упражнения удалит и их — это нельзя отменить.`,
     confirmRemove: 'Всё равно удалить',
     cancelRemove: 'Не удалять',
-    moveUp: 'Выше',
-    moveDown: 'Ниже',
     neverPublished: 'Этот урок ещё ни разу не опубликован — студенты его не видят.',
     faultAt: (position: number) => `Упражнение ${position}:`,
     backToCourse: 'К курсу',
+  },
+
+  // Why an upload was refused, keyed by the stable code the endpoint reports.
+  // Same split as everywhere else, and a test asserts every code has exactly one
+  // entry here.
+  uploadRefusals: {
+    too_large: 'Файл слишком большой. Уменьшите его и попробуйте снова.',
+    wrong_type: 'Это не изображение из разрешённых: PNG, JPEG, GIF или WebP.',
   },
 
   // What made a Draft, read on the history screen. Recorded when it is saved
@@ -419,7 +425,7 @@ export const ru = {
   // typed by a person.
   draftOrigins: {
     manual: 'ручная правка',
-    restore: 'восстановление версии',
+    restore: 'восстановление черновика',
     generation: 'генерация',
     refinement: 'доработка с Claude',
   } as Record<string, string>,
@@ -457,5 +463,6 @@ export function faultMessage(code: string): string {
   const lessonLevel: Record<string, string> = ru.documentFaults;
   const exerciseLevel: Record<string, string> = ru.exerciseFaults;
   const authoring: Record<string, string> = ru.authoringFaults;
-  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code] ?? code;
+  const uploads: Record<string, string> = ru.uploadRefusals;
+  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code] ?? uploads[code] ?? code;
 }

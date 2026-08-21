@@ -42,7 +42,7 @@ export default async function DraftPage({ params }: { params: Promise<{ lessonId
       />
 
       <p className="actions">
-        <a href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyLink}</a>
+        <a href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyTitle}</a>
       </p>
       <p><a href={`/admin/courses/${open.course.id}`}>{ru.draft.backToCourse}</a></p>
     </main>

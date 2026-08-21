@@ -10,7 +10,11 @@
 import { NextResponse } from 'next/server';
 import { adminOrRefusal } from '../../../../admin/guard.ts';
 import { config } from '../../../../config.ts';
-import { sniffImageType, storeImage } from '../../../../content/uploads.ts';
+import { sniffImageType, storeImage, type UploadRefusal } from '../../../../content/uploads.ts';
+
+function refuse(reason: UploadRefusal, status: number): Response {
+  return NextResponse.json({ ok: false, reason }, { status });
+}
 
 export async function POST(request: Request): Promise<Response> {
   const { refusal } = await adminOrRefusal();
@@ -18,33 +22,34 @@ export async function POST(request: Request): Promise<Response> {
 
   const { maxBytes, directory } = config.uploads;
 
-  // The declared length first, so an oversized upload is turned away before its
-  // body is read into memory at all. It is a claim rather than a fact, which is
-  // why the real length is checked again below — but a claim that already
-  // exceeds the cap needs no further reading.
+  // A cheap pre-filter, not the cap. `content-length` measures the whole
+  // multipart envelope — boundary lines, the part headers, the filename — so
+  // comparing it against the cap directly would refuse a file that is legally
+  // under it, for bytes the browser added. The allowance is what that envelope
+  // costs, generously: a part header with a long filename is well under it.
+  //
+  // The cap itself is enforced on the bytes in hand, below, and still before
+  // anything reaches disk.
+  const MULTIPART_ENVELOPE_ALLOWANCE = 4096;
   const declared = Number(request.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    return NextResponse.json({ ok: false, reason: 'too_large' }, { status: 413 });
+  if (Number.isFinite(declared) && declared > maxBytes + MULTIPART_ENVELOPE_ALLOWANCE) {
+    return refuse('too_large', 413);
   }
 
   const form = await request.formData().catch(() => null);
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ error: 'malformed' }, { status: 400 });
-  if (file.size > maxBytes) {
-    return NextResponse.json({ ok: false, reason: 'too_large' }, { status: 413 });
-  }
+  if (file.size > maxBytes) return refuse('too_large', 413);
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   // Belt and braces: `File.size` and the declared length are both reported
   // rather than measured, and this is the number of bytes actually in hand.
-  if (bytes.byteLength > maxBytes) {
-    return NextResponse.json({ ok: false, reason: 'too_large' }, { status: 413 });
-  }
+  if (bytes.byteLength > maxBytes) return refuse('too_large', 413);
 
   // The bytes, not `file.type` and not the extension: both of those are claims
   // by whoever is uploading.
   const type = sniffImageType(bytes);
-  if (type === null) return NextResponse.json({ ok: false, reason: 'wrong_type' }, { status: 415 });
+  if (type === null) return refuse('wrong_type', 415);
 
   const stored = storeImage(directory, bytes, type);
   return NextResponse.json({ ok: true, url: stored.url }, { headers: { 'cache-control': 'no-store' } });

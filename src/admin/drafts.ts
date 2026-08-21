@@ -159,7 +159,7 @@ export function saveDraft(
     lessonId: number;
     studentId: number;
     document: LessonDocument;
-    /** What made this version. Manual editing until Generation and Refinement land. */
+    /** What made this Draft. Manual editing until Generation and Refinement land. */
     origin?: DraftOrigin;
   },
 ): SaveDraftResult {
@@ -291,15 +291,15 @@ export function publishDraft(db: Db, draftId: number): PublishResult {
 //
 // Every Generation turn and every manual edit produces a new Draft, and all of
 // them are restorable (design.md § Authoring). Saving has appended rather than
-// overwritten since the Draft existed, so the versions were always there; this
-// is the surface that admits it.
+// overwritten since the Draft existed, so they were always there; this is the
+// surface that admits it.
 
 export type DraftSummary = {
   id: number;
   createdAt: Date;
-  /** What made this version — recorded when it was saved, never inferred later. */
+  /** What made this Draft — recorded when it was saved, never inferred later. */
   origin: DraftOrigin;
-  /** When this version went live, or null on one that never did. */
+  /** When this Draft went live, or null on one that never did. */
   publishedAt: Date | null;
   /** Null where the account that wrote it is gone; a Draft outlives its author. */
   authorUsername: string | null;
@@ -332,16 +332,16 @@ export type RestoreResult =
  * Brings an earlier Draft back by appending it as a new one.
  *
  * Appending rather than truncating is what makes the history trustworthy: a
- * restore that deleted the versions after it would let an Admin destroy work by
+ * restore that deleted the Drafts after it would let an Admin destroy work by
  * browsing, and the whole point of keeping every turn is that Generation will
- * soon be producing versions nobody chose. So restoring is itself an undoable
- * act, and the history only ever grows.
+ * soon be producing Drafts nobody chose. So restoring is itself an undoable act,
+ * and the history only ever grows.
  *
  * It does not publish. What a Student reads changes only through the deliberate
  * Publish, whatever an Admin does in here.
  *
- * The document is copied verbatim, without re-checking it. A version that is in
- * the history is a version that was allowed in, and refusing to restore one
+ * The document is copied verbatim, without re-checking it. A Draft that is in
+ * the history is one that was allowed in, and refusing to restore it
  * would make the history a promise the application does not keep — publishing is
  * still where every rule is enforced.
  */

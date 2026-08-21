@@ -15,7 +15,7 @@
 // is published into the tables a Student reads.
 
 import {
-  EXERCISE_KINDS, exerciseFaults, isBlank, isDeterministic, offersChoices,
+  EXERCISE_KINDS, answersAreChoices, exerciseFaults, isBlank, isDeterministic, offersChoices,
   type AuthoredExercise, type ExerciseFaultCode, type ExerciseKind,
 } from './exercise-validity.ts';
 
@@ -114,21 +114,28 @@ export function exerciseLevelFaults(faults: readonly DocumentFault[]): DocumentF
  * over a field the author cannot see any more.
  */
 export function withKind(exercise: DocumentExercise, kind: ExerciseKind): DocumentExercise {
-  const keepsAcceptedAnswers = isDeterministic(kind) && isDeterministic(exercise.kind);
-  const keepsChoices = offersChoices(kind) && offersChoices(exercise.kind);
+  // A multiple choice's answers *are* its options; every other Kind's are typed
+  // out. Nothing crosses that line in either direction, because nothing means
+  // the same on both sides of it: an option label is not a word-order sentence,
+  // and a typed answer is not among options nobody has written yet.
+  //
+  // Getting this wrong is not a tidiness matter. Carrying a multiple choice's
+  // options into a word order hands it three fragments its accepted answer
+  // cannot tile, which raises `fragments_do_not_build_answer` and blocks the
+  // save — leaving an Admin stuck on fields the form never showed them.
+  const answersMeanTheSame = answersAreChoices(kind) === answersAreChoices(exercise.kind);
 
-  // A multiple choice's answers are its options: whatever was accepted under the
-  // previous Kind is not among the options until an author says it is, and
-  // carrying it across would produce exactly the `accepted_answer_not_a_choice`
-  // fault this is meant to prevent.
-  const becameMultipleChoice = kind === 'multiple_choice' && exercise.kind !== 'multiple_choice';
+  const keepsAcceptedAnswers = answersMeanTheSame
+    && isDeterministic(kind) && isDeterministic(exercise.kind);
+  const keepsChoices = answersMeanTheSame
+    && offersChoices(kind) && offersChoices(exercise.kind);
 
   return {
     ...(exercise.id === undefined ? {} : { id: exercise.id }),
     kind,
     prompt: exercise.prompt,
-    referenceAnswer: becameMultipleChoice ? '' : exercise.referenceAnswer,
-    acceptedAnswers: keepsAcceptedAnswers && !becameMultipleChoice ? [...(exercise.acceptedAnswers ?? [])] : [],
+    referenceAnswer: answersMeanTheSame ? exercise.referenceAnswer : '',
+    acceptedAnswers: keepsAcceptedAnswers ? [...(exercise.acceptedAnswers ?? [])] : [],
     caseSensitive: isDeterministic(kind) ? exercise.caseSensitive ?? false : false,
     choices: keepsChoices ? [...(exercise.choices ?? [])] : [],
   };
@@ -147,11 +154,11 @@ export function blankExercise(kind: ExerciseKind): DocumentExercise {
 }
 
 // What the Student is offered and what is judged correct are stored apart, and
-// for the Kinds that offer choices the second is drawn from the first: an
-// accepted answer is one of the options, by value. Editing an option therefore
-// has to carry the answers with it, or renaming «an» to «an apple» would leave
-// an Exercise whose correct answer is not among its options — the exact fault
-// the validity rules exist to catch, produced by the form meant to prevent it.
+// for a multiple choice the second is drawn from the first: an accepted answer
+// is one of the options, by value. Editing an option therefore has to carry the
+// answers with it, or renaming «an» to «an apple» would leave an Exercise whose
+// correct answer is not among its options — the exact fault the validity rules
+// exist to catch, produced by the form meant to prevent it.
 function rewriteAnswers(exercise: DocumentExercise, from: string, to: string): Partial<DocumentExercise> {
   return {
     referenceAnswer: exercise.referenceAnswer === from ? to : exercise.referenceAnswer,
