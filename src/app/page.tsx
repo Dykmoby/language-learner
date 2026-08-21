@@ -43,7 +43,7 @@ export default async function HomePage() {
         </ul>
       )}
 
-      {student.isAdmin ? <p><a href="/admin/health">{ru.home.healthLink}</a></p> : null}
+      {student.isAdmin ? <p><a href="/admin">{ru.home.adminLink}</a></p> : null}
       <form method="post" action="/api/logout">
         <button type="submit">{ru.common.signOut}</button>
       </form>

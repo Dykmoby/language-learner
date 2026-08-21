@@ -49,7 +49,32 @@ export const ru = {
   home: {
     signedInAs: (username: string) => `Вы вошли как ${username}.`,
     adminBadge: 'Администратор',
+    adminLink: 'Управление курсами',
+  },
+
+  // The two Languages taught. Russian is the interface and is never one of them,
+  // which is why it is not here.
+  languages: {
+    en: 'Английский',
+    tj: 'Таджикский',
+  } as Record<string, string>,
+
+  admin: {
+    title: 'Управление курсами',
+    coursesTitle: 'Все курсы',
+    // Reachable before any Course exists, and says so rather than showing an
+    // empty list that reads like a fault.
+    noCourses: 'Курсов пока нет.',
+    lessonsTitle: 'Уроки',
+    noLessons: 'В этом курсе пока нет уроков.',
+    exerciseCount: (n: number) => `${n} ${plural(n, 'упражнение', 'упражнения', 'упражнений')}`,
+    graderModel: (model: string) => `Проверяющий: ${model}`,
+    published: 'Опубликован',
+    unpublishedChanges: 'Есть неопубликованные изменения',
+    edit: 'Редактировать',
     healthLink: 'Проверка Проверяющего',
+    back: 'К управлению курсами',
+    home: 'На главную',
   },
 
   health: {
@@ -179,6 +204,71 @@ export const ru = {
     tense_tj: 'Время глагола',
   } as Record<string, string>,
 
+  // design.md § Exercise Kinds, read by an Admin filling in an authoring form.
+  // Keyed by the stable fault code the validity rules report — the code is what
+  // is checked and stored, this is only what is read, and a test asserts every
+  // code has exactly one entry here.
+  exerciseFaults: {
+    prompt_empty: 'Заполните формулировку задания.',
+    reference_answer_empty: 'Заполните эталонный ответ.',
+    accepted_answers_required:
+      'Это упражнение проверяется без Проверяющего, поэтому нужен хотя бы один принимаемый ответ.',
+    accepted_answers_not_allowed:
+      'Этот ответ проверяет Проверяющий — список принимаемых ответов здесь не используется. Удалите его.',
+    choices_required: 'Нужно не меньше двух вариантов: из одного выбирать нечего.',
+    choices_not_allowed: 'У этого типа упражнения нет вариантов для показа. Удалите их.',
+    accepted_answer_not_a_choice:
+      'Такого варианта нет среди предложенных — студент не сможет его выбрать.',
+    reference_answer_not_a_choice:
+      'Эталонного ответа нет среди вариантов: при показе ответа студент увидит то, чего ему не предлагали.',
+    fragments_do_not_build_answer:
+      'Из предложенных фрагментов такой порядок не собирается: каждый фрагмент должен быть использован ровно один раз.',
+    duplicate_accepted_answers:
+      'Этот ответ не отличается от другого принимаемого: при проверке они совпадают.',
+  },
+
+  draft: {
+    title: 'Черновик урока',
+    // Says plainly what the two buttons do, because the whole design rests on
+    // them being different acts.
+    explanation:
+      'Сохранение создаёт новую версию черновика — студент по-прежнему видит опубликованный урок. Опубликовать нужно отдельно.',
+    lessonTitle: 'Название урока',
+    grammarFocus: 'Тема урока',
+    grammarFocusHint: 'Эту строку получает Проверяющий при каждой проверке ответа.',
+    theory: 'Теория (Markdown)',
+    preview: 'Предпросмотр',
+    save: 'Сохранить черновик',
+    saving: 'Сохранение…',
+    saved: 'Черновик сохранён. Студент пока видит опубликованную версию.',
+    publish: 'Опубликовать',
+    publishing: 'Публикация…',
+    publishedNow: 'Урок опубликован. Студенты видят новую версию.',
+    // The Draft is saved; only the publish was refused, and saying so is the
+    // difference between "your work is safe" and "your work is gone".
+    publishRefused: 'Опубликовать нельзя. Черновик сохранён — исправьте и попробуйте снова.',
+    saveFailed: 'Не удалось сохранить черновик. Попробуйте ещё раз.',
+    nothingToPublish: 'Нет несохранённых изменений для публикации.',
+    unpublishedChanges: 'Черновик новее опубликованного урока.',
+    upToDate: 'Опубликованный урок совпадает с черновиком.',
+    exerciseCount: (n: number) => `${n} ${plural(n, 'упражнение', 'упражнения', 'упражнений')} в практике`,
+    // The Exercise forms are not built yet; saying so is better than an Admin
+    // concluding the Exercises were lost.
+    exercisesNotEditable: 'Упражнения пока редактируются только через сид-скрипт.',
+    faultAt: (position: number) => `Упражнение ${position}:`,
+    backToCourse: 'К курсу',
+  },
+
+  // The faults that are about the Lesson rather than one of its Exercises.
+  // Split from exerciseFaults because they are reported in different places on
+  // the form, and joined again by faultMessage below.
+  documentFaults: {
+    title_empty: 'Заполните название урока.',
+    grammar_focus_empty:
+      'Заполните тему урока: её получает Проверяющий при каждой проверке ответа.',
+    theory_empty: 'Заполните теорию урока.',
+  },
+
   errors: {
     notFound: 'Страница не найдена.',
     serverError: 'Что-то пошло не так.',
@@ -190,4 +280,14 @@ export const ru = {
 // the Error entirely would hide a real fault from the Student.
 export function errorTypeLabel(type: string): string {
   return ru.errorTypes[type] ?? type;
+}
+
+// A fault code is either about the Lesson or about one of its Exercises, and the
+// form that shows it does not care which. An unknown code is shown as it came,
+// for the same reason an unknown Error Type is: dropping it would hide a real
+// fault from the person who has to fix it.
+export function faultMessage(code: string): string {
+  const documented: Record<string, string> = ru.documentFaults;
+  const exercise: Record<string, string> = ru.exerciseFaults;
+  return documented[code] ?? exercise[code] ?? code;
 }

@@ -11,7 +11,7 @@ import { openDatabase } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
 import { seedStudents } from '../src/db/seed.ts';
 import { seedCourseContent } from '../src/content/seed-content.ts';
-import { ENGLISH_A1 } from '../src/content/english-a1.ts';
+import { ENGLISH_A1, type CourseFixture } from '../src/content/english-a1.ts';
 import { courses, lessons, exercises, exerciseSets, students, submissions, isDeterministic } from '../src/db/schema.ts';
 import { enrolledCourses, openLesson, courseOutline } from '../src/practice/lessons.ts';
 
@@ -209,3 +209,79 @@ test('the content seed is separate from the account seed and enrols whoever exis
     assert.deepEqual(seedCourseContent(dbh.db).enrolled, [], 'and does not enrol twice');
   } finally { dbh.cleanup(); }
 });
+
+// --- the validity rules, at the seam where content actually enters the system --
+
+// design.md § Exercise Kinds. The rules themselves are covered exhaustively as a
+// pure table in exercise-validity.test.ts; what is asserted here is only that the
+// seed consults them, and that it does so before it writes anything.
+
+function fixtureWithABrokenExercise(): CourseFixture {
+  const copy = structuredClone(ENGLISH_A1) as CourseFixture;
+  const lesson = copy.lessons[1]!;
+  // A multiple choice whose Reference Answer is not among the options it offers.
+  // Seeded, it would show the Student four options and, on Reveal, a fifth.
+  const exercise = lesson.practice.find((e) => e.kind === 'multiple_choice')!;
+  exercise.referenceAnswer = 'never offered';
+  return copy;
+}
+
+test('a fixture with an incoherent Exercise is refused, naming the Lesson and the position', () => {
+  const handle = freshDatabase();
+  try {
+    const broken = fixtureWithABrokenExercise();
+    const lesson = broken.lessons[1]!;
+    const position = lesson.practice.findIndex((e) => e.kind === 'multiple_choice') + 1;
+
+    assert.throws(
+      () => seedCourseContent(handle.db, broken),
+      (error: Error) => {
+        assert.match(error.message, /reference_answer_not_a_choice/, 'names the rule broken');
+        assert.match(error.message, new RegExp(`lesson 2 `), 'names the Lesson by position');
+        assert.match(error.message, new RegExp(escapeForRegExp(lesson.title)), 'names the Lesson by title');
+        assert.match(error.message, new RegExp(`exercise ${position}\\b`), 'names the Exercise position');
+        assert.match(error.message, /never offered/, 'names the offending value');
+        return true;
+      },
+    );
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('a fixture that is wrong anywhere writes nothing at all', () => {
+  const handle = freshDatabase();
+  try {
+    // The broken Exercise is in the second Lesson, so a seed that validated as it
+    // went would already have written the first one by the time it noticed.
+    assert.throws(() => seedCourseContent(handle.db, fixtureWithABrokenExercise()));
+
+    assert.deepEqual(handle.db.select().from(courses).all(), [], 'no Course');
+    assert.deepEqual(handle.db.select().from(lessons).all(), [], 'no Lesson');
+    assert.deepEqual(handle.db.select().from(exercises).all(), [], 'no Exercise');
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('re-seeding an already seeded Course is still refused before it overwrites anything', () => {
+  const handle = freshDatabase();
+  try {
+    seedCourseContent(handle.db, ENGLISH_A1);
+    const before = handle.db.select().from(exercises).all();
+
+    assert.throws(() => seedCourseContent(handle.db, fixtureWithABrokenExercise()));
+
+    assert.deepEqual(
+      handle.db.select().from(exercises).all(),
+      before,
+      'the Exercises already seeded are untouched',
+    );
+  } finally {
+    handle.cleanup();
+  }
+});
+
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

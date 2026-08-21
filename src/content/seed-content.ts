@@ -18,6 +18,7 @@ import { openDatabase } from '../db/client.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { config } from '../config.ts';
 import { ENGLISH_A1, type CourseFixture } from './english-a1.ts';
+import { exerciseFaults, type ExerciseFault } from './exercise-validity.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -29,7 +30,42 @@ export type SeedContentResult = {
   enrolled: string[];
 };
 
+/** Where a fault was found, so a report can point at the Exercise rather than the file. */
+export type FixtureFault = ExerciseFault & {
+  lessonPosition: number;
+  lessonTitle: string;
+  exercisePosition: number;
+};
+
+/** Every incoherent Exercise in a fixture — design.md § Exercise Kinds. */
+export function fixtureFaults(fixture: CourseFixture): FixtureFault[] {
+  return fixture.lessons.flatMap((lesson, lessonIndex) =>
+    lesson.practice.flatMap((exercise, exerciseIndex) =>
+      exerciseFaults(exercise).map((fault) => ({
+        ...fault,
+        lessonPosition: lessonIndex + 1,
+        lessonTitle: lesson.title,
+        exercisePosition: exerciseIndex + 1,
+      }))));
+}
+
+function describeFaults(fixture: CourseFixture, faults: readonly FixtureFault[]): string {
+  const lines = faults.map((fault) => {
+    const offending = fault.offending === undefined ? '' : ` (${JSON.stringify(fault.offending)})`;
+    return `  lesson ${fault.lessonPosition} ${JSON.stringify(fault.lessonTitle)}`
+      + `, exercise ${fault.exercisePosition}: ${fault.code}${offending}`;
+  });
+  return `${fixture.title}: ${faults.length} incoherent exercise(s), nothing was seeded\n${lines.join('\n')}`;
+}
+
 export function seedCourseContent(db: Db, fixture: CourseFixture = ENGLISH_A1): SeedContentResult {
+  // Before the transaction, not inside it. A fixture that is wrong in its ninth
+  // Exercise should write none of the first eight — and a rollback is a weaker
+  // promise than never having started, because the seed is also what the tests
+  // and the Pi run by hand.
+  const faults = fixtureFaults(fixture);
+  if (faults.length > 0) throw new Error(describeFaults(fixture, faults));
+
   return db.transaction((tx) => {
     const existing = tx.select().from(courses)
       .where(and(eq(courses.language, fixture.language), eq(courses.title, fixture.title)))

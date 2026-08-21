@@ -9,6 +9,13 @@ import { sql } from 'drizzle-orm';
 // The Grader's pure contract module owns these: it imports nothing, so it is the
 // safe place for the single definition both it and the schema depend on.
 import { LANGUAGES, VERDICTS } from '../grader/contract.ts';
+// The validity rules own the Exercise Kinds for the same reason: that module
+// imports nothing but the normalisation, so it is the safe place for the single
+// definition the schema, the forms and the seed all depend on.
+import {
+  EXERCISE_KINDS, DETERMINISTIC_KINDS, isDeterministic, type ExerciseKind,
+} from '../content/exercise-validity.ts';
+import type { LessonDocument } from '../content/lesson-document.ts';
 
 // A Student is every account. Admin is a role a Student additionally holds —
 // a flag, not a separate table and not a separate account, because the Admin
@@ -31,23 +38,10 @@ export type StudentRow = typeof students.$inferSelect;
 
 // design.md § Exercise Kinds. The Kind is what decides whether an Exercise goes
 // to the Grader or to a Deterministic Check, so it is recorded rather than
-// inferred from the content.
-export const EXERCISE_KINDS = [
-  'composition', 'translation', 'open_writing',
-  'fill_gap', 'multiple_choice', 'word_order',
-] as const;
-export type ExerciseKind = (typeof EXERCISE_KINDS)[number];
-
-// design.md § Exercise Kinds — which Kinds are settled in code and which go to
-// the Grader. A property of the Kind itself, so it lives beside the Kind rather
-// than as a branch in whichever module happens to need it first.
-export const DETERMINISTIC_KINDS = [
-  'fill_gap', 'multiple_choice', 'word_order',
-] as const satisfies readonly ExerciseKind[];
-
-export function isDeterministic(kind: ExerciseKind): boolean {
-  return (DETERMINISTIC_KINDS as readonly ExerciseKind[]).includes(kind);
-}
+// inferred from the content. Defined in the validity rules and re-exported here,
+// so the columns and the rules can never drift apart.
+export { EXERCISE_KINDS, DETERMINISTIC_KINDS, isDeterministic };
+export type { ExerciseKind };
 
 // A Course sits inside one Language and is fixed at a single CEFR level for its
 // whole duration, so the level never has to be resolved per Lesson.
@@ -131,6 +125,39 @@ export const acceptedVariants = sqliteTable('accepted_variants', {
 export type CourseRow = typeof courses.$inferSelect;
 export type LessonRow = typeof lessons.$inferSelect;
 export type ExerciseRow = typeof exercises.$inferSelect;
+
+// --- Authoring ---------------------------------------------------------------
+
+// A Draft: an unpublished version of a Lesson. What the Student reads lives in
+// `lessons` and `exercises`; this is what an Admin is working on, and the two
+// only meet when a Draft is deliberately published.
+//
+// Append-only. Every save writes a new row rather than overwriting the last, so
+// the history exists from the first edit — restoring an earlier version is then
+// another append rather than a deletion, and browsing the history can never
+// destroy work.
+//
+// The whole Lesson is one JSON document rather than a column per field, per
+// ADR 0004: full-document exchange is what Refinement will do every turn, and a
+// document that held only some of the Lesson would have to be reshaped, and every
+// stored Draft migrated, as soon as anything else became editable.
+export const lessonDrafts = sqliteTable('lesson_drafts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  lessonId: integer('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+  document: text('document', { mode: 'json' }).$type<LessonDocument>().notNull(),
+  // Set on the Draft that was published, null on every Draft that was not. The
+  // same fact could be a pointer on the Lesson instead; it is here because that
+  // would make `lessons` and `lesson_drafts` reference each other in a cycle for
+  // no gain, and because "this version went live at T" is a fact about the
+  // version rather than about the Lesson.
+  publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+  // Nullable: losing the account that wrote a Draft must not take the Draft with
+  // it, and a two-person application will outlive at least one re-seed.
+  createdBy: integer('created_by').references(() => students.id, { onDelete: 'set null' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [index('lesson_drafts_lesson_idx').on(t.lessonId)]);
+
+export type LessonDraftRow = typeof lessonDrafts.$inferSelect;
 
 // --- Progress ----------------------------------------------------------------
 
