@@ -46,7 +46,8 @@ export function isDeterministic(kind: ExerciseKind): boolean {
 // Student types their answer rather than choosing it.
 const KINDS_WITH_CHOICES = ['multiple_choice', 'word_order'] as const satisfies readonly ExerciseKind[];
 
-function offersChoices(kind: ExerciseKind): boolean {
+/** Whether this Kind shows the Student something to pick from or arrange. */
+export function offersChoices(kind: ExerciseKind): boolean {
   return (KINDS_WITH_CHOICES as readonly ExerciseKind[]).includes(kind);
 }
 

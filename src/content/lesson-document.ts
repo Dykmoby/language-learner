@@ -14,7 +14,10 @@
 // Pure: this is what is checked before a document is stored, and again before it
 // is published into the tables a Student reads.
 
-import { exerciseFaults, isBlank, type AuthoredExercise, type ExerciseFaultCode } from './exercise-validity.ts';
+import {
+  EXERCISE_KINDS, exerciseFaults, isBlank, isDeterministic, offersChoices,
+  type AuthoredExercise, type ExerciseFaultCode, type ExerciseKind,
+} from './exercise-validity.ts';
 
 export type DocumentExercise = AuthoredExercise & {
   /**
@@ -86,8 +89,175 @@ export function documentFaults(document: LessonDocument): DocumentFault[] {
   return faults;
 }
 
+/**
+ * The faults that are about one Exercise rather than about the Lesson itself.
+ *
+ * The two are treated differently on the way in: a Lesson missing its Theory is
+ * an ordinary state halfway through writing one and is refused only at publish,
+ * while an incoherent Exercise never reaches a Draft at all. An Exercise is a
+ * thing an author finishes before moving on, and a Draft full of half-Exercises
+ * is a Draft that cannot be published and cannot say why without being read
+ * whole.
+ */
+export function exerciseLevelFaults(faults: readonly DocumentFault[]): DocumentFault[] {
+  return faults.filter((fault) => fault.exercisePosition !== undefined);
+}
+
+/**
+ * The same Exercise under a different Kind, carrying across only what the new
+ * Kind uses.
+ *
+ * Changing a Kind and leaving the old fields behind is the mistake the validity
+ * rules were written for — a composition still holding the options of the
+ * multiple choice it used to be. The form could rely on being told off, but
+ * silently dropping what the new Kind cannot use is better than refusing a save
+ * over a field the author cannot see any more.
+ */
+export function withKind(exercise: DocumentExercise, kind: ExerciseKind): DocumentExercise {
+  const keepsAcceptedAnswers = isDeterministic(kind) && isDeterministic(exercise.kind);
+  const keepsChoices = offersChoices(kind) && offersChoices(exercise.kind);
+
+  // A multiple choice's answers are its options: whatever was accepted under the
+  // previous Kind is not among the options until an author says it is, and
+  // carrying it across would produce exactly the `accepted_answer_not_a_choice`
+  // fault this is meant to prevent.
+  const becameMultipleChoice = kind === 'multiple_choice' && exercise.kind !== 'multiple_choice';
+
+  return {
+    ...(exercise.id === undefined ? {} : { id: exercise.id }),
+    kind,
+    prompt: exercise.prompt,
+    referenceAnswer: becameMultipleChoice ? '' : exercise.referenceAnswer,
+    acceptedAnswers: keepsAcceptedAnswers && !becameMultipleChoice ? [...(exercise.acceptedAnswers ?? [])] : [],
+    caseSensitive: isDeterministic(kind) ? exercise.caseSensitive ?? false : false,
+    choices: keepsChoices ? [...(exercise.choices ?? [])] : [],
+  };
+}
+
+/** An empty Exercise of a Kind, as a form hands one to an author. */
+export function blankExercise(kind: ExerciseKind): DocumentExercise {
+  return {
+    kind,
+    prompt: '',
+    referenceAnswer: '',
+    acceptedAnswers: [],
+    caseSensitive: false,
+    choices: [],
+  };
+}
+
+// What the Student is offered and what is judged correct are stored apart, and
+// for the Kinds that offer choices the second is drawn from the first: an
+// accepted answer is one of the options, by value. Editing an option therefore
+// has to carry the answers with it, or renaming «an» to «an apple» would leave
+// an Exercise whose correct answer is not among its options — the exact fault
+// the validity rules exist to catch, produced by the form meant to prevent it.
+function rewriteAnswers(exercise: DocumentExercise, from: string, to: string): Partial<DocumentExercise> {
+  return {
+    referenceAnswer: exercise.referenceAnswer === from ? to : exercise.referenceAnswer,
+    acceptedAnswers: (exercise.acceptedAnswers ?? []).map((answer) => (answer === from ? to : answer)),
+  };
+}
+
+/** One option or fragment rewritten, and any answer that named it rewritten with it. */
+export function renameChoice(exercise: DocumentExercise, index: number, value: string): DocumentExercise {
+  const choices = [...(exercise.choices ?? [])];
+  const previous = choices[index];
+  if (previous === undefined) return exercise;
+  choices[index] = value;
+
+  return { ...exercise, choices, ...rewriteAnswers(exercise, previous, value) };
+}
+
+/** One option or fragment removed, and any answer that named it removed with it. */
+export function removeChoice(exercise: DocumentExercise, index: number): DocumentExercise {
+  const choices = [...(exercise.choices ?? [])];
+  const [removed] = choices.splice(index, 1);
+  if (removed === undefined) return exercise;
+
+  return {
+    ...exercise,
+    choices,
+    referenceAnswer: exercise.referenceAnswer === removed ? '' : exercise.referenceAnswer,
+    acceptedAnswers: (exercise.acceptedAnswers ?? []).filter((answer) => answer !== removed),
+  };
+}
+
 function asString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
+}
+
+/**
+ * A list of short strings as a form sends it.
+ *
+ * Blank entries are dropped, because a value that normalises away is absent —
+ * the same rule the validity checks already apply when they judge one. It is
+ * applied here so the form does not have to apply it while someone is typing: a
+ * trailing newline is how a second answer gets started, and an empty option is
+ * how one gets added before it is written.
+ */
+function asStringArray(value: unknown): string[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) return null;
+  if (!value.every((item) => typeof item === 'string')) return null;
+  return (value as string[]).filter((item) => item.trim() !== '');
+}
+
+function parseDocumentExercise(value: unknown): DocumentExercise | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const body = value as Record<string, unknown>;
+
+  const kind = body.kind;
+  if (typeof kind !== 'string' || !(EXERCISE_KINDS as readonly string[]).includes(kind)) return null;
+
+  const prompt = asString(body.prompt);
+  const referenceAnswer = asString(body.referenceAnswer);
+  const acceptedAnswers = asStringArray(body.acceptedAnswers);
+  const choices = asStringArray(body.choices);
+  if (prompt === null || referenceAnswer === null || acceptedAnswers === null || choices === null) return null;
+
+  if (body.caseSensitive !== undefined && typeof body.caseSensitive !== 'boolean') return null;
+  // An id that is not a whole number never named a row. Refused as a shape
+  // failure rather than dropped, because dropping it would turn an edit of an
+  // existing Exercise into a delete-and-reinsert, taking its Submissions with it.
+  if (body.id !== undefined && !Number.isInteger(body.id)) return null;
+
+  return {
+    ...(body.id === undefined ? {} : { id: body.id as number }),
+    kind: kind as ExerciseKind,
+    prompt,
+    referenceAnswer,
+    acceptedAnswers,
+    caseSensitive: (body.caseSensitive as boolean | undefined) ?? false,
+    choices,
+  };
+}
+
+/**
+ * A whole Lesson document as it arrives over the wire, or null if the body is
+ * not that shape at all.
+ *
+ * Shaping, not judging — the same split `parseLessonTheory` makes. An Exercise
+ * with an empty prompt parses fine and is then reported as a fault the Admin can
+ * read; an Exercise whose Kind is a word nobody has heard of is a shape failure,
+ * because there is no form to show it in.
+ */
+export function parseLessonDocument(value: unknown): LessonDocument | null {
+  const theory = parseLessonTheory(value);
+  if (theory === null) return null;
+
+  const body = value as Record<string, unknown>;
+  const raw = body.exercises;
+  if (raw !== undefined && !Array.isArray(raw)) return null;
+
+  const exercises: DocumentExercise[] = [];
+  for (const entry of (raw ?? []) as unknown[]) {
+    const exercise = parseDocumentExercise(entry);
+    if (exercise === null) return null;
+    exercises.push(exercise);
+  }
+
+  return { ...theory, exercises };
 }
 
 /**

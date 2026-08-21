@@ -9,6 +9,7 @@ import { ru } from '../../../../ru.ts';
 import { requireAdmin } from '../../../../admin/guard.ts';
 import { getDatabase } from '../../../../db/index.ts';
 import { openDraft } from '../../../../admin/drafts.ts';
+import { config } from '../../../../config.ts';
 import { DraftEditor } from './editor.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -32,15 +33,17 @@ export default async function DraftPage({ params }: { params: Promise<{ lessonId
 
       <DraftEditor
         lessonId={lessonId}
-        initial={{
-          title: open.document.title,
-          grammarFocus: open.document.grammarFocus,
-          theoryMarkdown: open.document.theoryMarkdown,
-        }}
+        initial={open.document}
         draftId={open.draftId}
         hasUnpublishedChanges={open.hasUnpublishedChanges}
+        neverPublished={open.neverPublished}
+        submissionCounts={open.submissionCounts}
+        maxUploadBytes={config.uploads.maxBytes}
       />
 
+      <p className="actions">
+        <a href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyLink}</a>
+      </p>
       <p><a href={`/admin/courses/${open.course.id}`}>{ru.draft.backToCourse}</a></p>
     </main>
   );

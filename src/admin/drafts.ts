@@ -8,15 +8,15 @@
 // silently poison grading for that Exercise — and it is built now, while a human
 // is still typing every character, so that Generation inherits it.
 
-import { and, asc, desc, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, notInArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
-  courses, lessons, exerciseSets, exercises, lessonDrafts,
-  type CourseRow, type LessonRow, type LessonDraftRow,
+  courses, lessons, exerciseSets, exercises, lessonDrafts, students, submissions,
+  type CourseRow, type LessonRow, type LessonDraftRow, type DraftOrigin,
 } from '../db/schema.ts';
 import {
-  documentFaults,
+  documentFaults, exerciseLevelFaults,
   type DocumentExercise, type DocumentFault, type LessonDocument,
 } from '../content/lesson-document.ts';
 
@@ -72,6 +72,32 @@ export function latestDraft(db: Db, lessonId: number): LessonDraftRow | null {
     .get() ?? null;
 }
 
+/**
+ * How many Submissions have been made against each Exercise of a Lesson's
+ * Practice, keyed by Exercise id.
+ *
+ * Removing an Exercise cascades to every Submission made against it, which is a
+ * Student's work. The count is what lets the form say what is about to be
+ * destroyed instead of destroying it quietly — an Admin who is told "three
+ * answers will be deleted" is making a decision, and one who is not is having
+ * one made for them.
+ */
+export function submissionCounts(db: Db, lessonId: number): Record<number, number> {
+  const setId = practiceSetId(db, lessonId);
+  if (setId === null) return {};
+
+  const rows = db.select({ exerciseId: submissions.exerciseId, made: count() })
+    .from(submissions)
+    .innerJoin(exercises, eq(exercises.id, submissions.exerciseId))
+    .where(eq(exercises.exerciseSetId, setId))
+    .groupBy(submissions.exerciseId)
+    .all();
+
+  const counts: Record<number, number> = {};
+  for (const row of rows) counts[row.exerciseId] = row.made;
+  return counts;
+}
+
 export type OpenDraft = {
   course: CourseRow;
   lesson: LessonRow;
@@ -80,6 +106,10 @@ export type OpenDraft = {
   draftId: number | null;
   /** The newest Draft has not been published — what the Admin has is ahead of what the Student reads. */
   hasUnpublishedChanges: boolean;
+  /** This Lesson has never been published: no Student has ever read it. */
+  neverPublished: boolean;
+  /** Submissions made against each published Exercise, by Exercise id. */
+  submissionCounts: Record<number, number>;
 };
 
 export function openDraft(db: Db, lessonId: number): OpenDraft | null {
@@ -101,25 +131,51 @@ export function openDraft(db: Db, lessonId: number): OpenDraft | null {
     document: draft?.document ?? published,
     draftId: draft?.id ?? null,
     hasUnpublishedChanges: draft !== null && draft.publishedAt === null,
+    neverPublished: found.lesson.publishedAt === null,
+    submissionCounts: submissionCounts(db, lessonId),
   };
 }
 
+export type SaveDraftResult =
+  | { ok: true; draft: LessonDraftRow }
+  // Refused before it was written, rather than stored and complained about
+  // later: an incoherent Exercise must never reach a Draft, because a Draft is
+  // what Generation will refine and what a restore will bring back.
+  | { ok: false; reason: 'invalid'; faults: DocumentFault[] };
+
 /**
  * Appends a Draft. Never overwrites the last one — that is what makes the
- * history in the ticket this one blocks a matter of reading rows rather than of
- * a schema change.
+ * history a matter of reading rows rather than of a schema change.
+ *
+ * Faults about an Exercise refuse the save. Faults about the Lesson — no title,
+ * no Theory yet — do not: those are ordinary states halfway through writing a
+ * Lesson, and refusing to save over them would lose the work an Admin has done
+ * so far. Publishing checks everything, which is where the line actually
+ * matters.
  */
 export function saveDraft(
   db: Db,
-  input: { lessonId: number; studentId: number; document: LessonDocument },
-): LessonDraftRow {
-  return db.insert(lessonDrafts).values({
+  input: {
+    lessonId: number;
+    studentId: number;
+    document: LessonDocument;
+    /** What made this version. Manual editing until Generation and Refinement land. */
+    origin?: DraftOrigin;
+  },
+): SaveDraftResult {
+  const faults = exerciseLevelFaults(documentFaults(input.document));
+  if (faults.length > 0) return { ok: false, reason: 'invalid', faults };
+
+  const draft = db.insert(lessonDrafts).values({
     lessonId: input.lessonId,
     document: input.document,
+    origin: input.origin ?? 'manual',
     publishedAt: null,
     createdBy: input.studentId,
     createdAt: new Date(),
   }).returning().get();
+
+  return { ok: true, draft };
 }
 
 export type PublishResult =
@@ -156,6 +212,11 @@ export function publishDraft(db: Db, draftId: number): PublishResult {
       title: draft.document.title,
       grammarFocus: draft.document.grammarFocus,
       theoryMarkdown: draft.document.theoryMarkdown,
+      // The moment this Lesson became something a Student reads, and only that
+      // moment: a Lesson that is already live does not become live again, and
+      // overwriting the timestamp on every publish would lose the one fact the
+      // column exists to record.
+      publishedAt: lesson.publishedAt ?? new Date(),
     }).where(eq(lessons.id, lesson.id)).run();
 
     const setId = tx.select().from(exerciseSets).where(eq(exerciseSets.lessonId, lesson.id)).get()?.id
@@ -224,6 +285,85 @@ export function publishDraft(db: Db, draftId: number): PublishResult {
 
     return { ok: true, document } as const;
   });
+}
+
+// --- History -----------------------------------------------------------------
+//
+// Every Generation turn and every manual edit produces a new Draft, and all of
+// them are restorable (design.md § Authoring). Saving has appended rather than
+// overwritten since the Draft existed, so the versions were always there; this
+// is the surface that admits it.
+
+export type DraftSummary = {
+  id: number;
+  createdAt: Date;
+  /** What made this version — recorded when it was saved, never inferred later. */
+  origin: DraftOrigin;
+  /** When this version went live, or null on one that never did. */
+  publishedAt: Date | null;
+  /** Null where the account that wrote it is gone; a Draft outlives its author. */
+  authorUsername: string | null;
+  exerciseCount: number;
+};
+
+/** Every Draft of a Lesson, newest first. */
+export function draftHistory(db: Db, lessonId: number): DraftSummary[] {
+  return db.select({ draft: lessonDrafts, username: students.username })
+    .from(lessonDrafts)
+    .leftJoin(students, eq(students.id, lessonDrafts.createdBy))
+    .where(eq(lessonDrafts.lessonId, lessonId))
+    .orderBy(desc(lessonDrafts.id))
+    .all()
+    .map(({ draft, username }) => ({
+      id: draft.id,
+      createdAt: draft.createdAt,
+      origin: draft.origin,
+      publishedAt: draft.publishedAt,
+      authorUsername: username,
+      exerciseCount: draft.document.exercises.length,
+    }));
+}
+
+export type RestoreResult =
+  | { ok: true; draft: LessonDraftRow }
+  | { ok: false; reason: 'not_found' };
+
+/**
+ * Brings an earlier Draft back by appending it as a new one.
+ *
+ * Appending rather than truncating is what makes the history trustworthy: a
+ * restore that deleted the versions after it would let an Admin destroy work by
+ * browsing, and the whole point of keeping every turn is that Generation will
+ * soon be producing versions nobody chose. So restoring is itself an undoable
+ * act, and the history only ever grows.
+ *
+ * It does not publish. What a Student reads changes only through the deliberate
+ * Publish, whatever an Admin does in here.
+ *
+ * The document is copied verbatim, without re-checking it. A version that is in
+ * the history is a version that was allowed in, and refusing to restore one
+ * would make the history a promise the application does not keep — publishing is
+ * still where every rule is enforced.
+ */
+export function restoreDraft(
+  db: Db,
+  input: { lessonId: number; draftId: number; studentId: number },
+): RestoreResult {
+  const draft = findDraft(db, input.draftId);
+  // A Draft belonging to another Lesson is not restorable through this one,
+  // whatever id arrived.
+  if (draft === null || draft.lessonId !== input.lessonId) return { ok: false, reason: 'not_found' };
+
+  const appended = db.insert(lessonDrafts).values({
+    lessonId: draft.lessonId,
+    document: draft.document,
+    origin: 'restore',
+    publishedAt: null,
+    createdBy: input.studentId,
+    createdAt: new Date(),
+  }).returning().get();
+
+  return { ok: true, draft: appended };
 }
 
 /** Every Lesson id in a Course whose newest Draft has not been published. */

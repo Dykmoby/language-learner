@@ -8,7 +8,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import { statSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase } from '../../src/db/client.ts';
 import { runMigrations } from '../../src/db/migrate.ts';
@@ -64,6 +64,8 @@ function freePort(): Promise<number> {
 export type BootedApp = {
   baseUrl: string;
   databasePath: string;
+  /** Where uploaded images land. Beside the throwaway database, never in the repo. */
+  uploadDir: string;
   /** Restarts the process against the same database file — throttle state must survive it. */
   restart: () => Promise<void>;
   stop: () => Promise<void>;
@@ -100,6 +102,10 @@ export async function bootApp(options: BootOptions = {}): Promise<BootedApp> {
   assertBuildIsFresh();
 
   const { path: databasePath, cleanup } = tempDatabasePath();
+  // Uploads default to `data/uploads` under the working directory, which for a
+  // booted test is the repo itself. Pointed at the throwaway directory instead,
+  // so a suite that uploads an image leaves nothing behind.
+  const uploadDir = join(dirname(databasePath), 'uploads');
 
   // Seeded through the same modules the application uses, never hand-written SQL.
   const handle = openDatabase(databasePath);
@@ -123,6 +129,7 @@ export async function bootApp(options: BootOptions = {}): Promise<BootedApp> {
           ...process.env,
           NODE_ENV: 'production',
           DATABASE_PATH: databasePath,
+          UPLOAD_DIR: uploadDir,
           // The tests speak plain HTTP to localhost, but the cookie's Secure flag
           // is an acceptance criterion, so it stays on and is asserted.
           SESSION_COOKIE_SECURE: 'true',
@@ -149,6 +156,7 @@ export async function bootApp(options: BootOptions = {}): Promise<BootedApp> {
   return {
     get baseUrl() { return baseUrl; },
     databasePath,
+    uploadDir,
     restart: async () => { await stopChild(); await start(); },
     stop: async () => { await stopChild(); cleanup(); },
   };

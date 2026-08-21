@@ -86,17 +86,23 @@ export function seedCourseContent(db: Db, fixture: CourseFixture = ENGLISH_A1): 
         .where(and(eq(lessons.courseId, course.id), eq(lessons.position, position)))
         .get();
 
+      // A seeded Lesson is published by definition — the fixture is the content
+      // a Student is meant to be reading. Only Lessons authored through the
+      // Admin screens start unpublished, and re-seeding one that is already live
+      // must not change when it went live.
       const lesson = found
         ? (tx.update(lessons).set({
             title: lessonFixture.title,
             theoryMarkdown: lessonFixture.theoryMarkdown,
             grammarFocus: lessonFixture.grammarFocus,
+            publishedAt: found.publishedAt ?? new Date(),
           }).where(eq(lessons.id, found.id)).returning().get())
         : (tx.insert(lessons).values({
             courseId: course.id, position,
             title: lessonFixture.title,
             theoryMarkdown: lessonFixture.theoryMarkdown,
             grammarFocus: lessonFixture.grammarFocus,
+            publishedAt: new Date(),
           }).returning().get());
 
       // The Practice's Exercise Set, owned by the Lesson and never by a Test —
