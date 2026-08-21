@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '../../../../../../db/index.ts';
 import { adminOrRefusal, idFromParam } from '../../../../../../admin/guard.ts';
-import { findDraft, latestDraft, publishDraft } from '../../../../../../admin/drafts.ts';
+import { findDraft, latestDraft, publishDraft, publishReview } from '../../../../../../admin/drafts.ts';
 
 export async function POST(
   request: Request,
@@ -21,7 +21,8 @@ export async function POST(
   const lessonId = idFromParam((await params).lessonId);
   if (lessonId === null) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-  const body = (await request.json().catch(() => null)) as { draftId?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as
+    { draftId?: unknown; confirmed?: unknown } | null;
   const { db } = getDatabase();
 
   // A named Draft is published; without one, the newest. Naming it is what lets
@@ -36,6 +37,21 @@ export async function POST(
   // 403: which Drafts exist elsewhere is not this request's business.
   if (draft === null || draft.lessonId !== lessonId) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  // design.md § Authoring: a generated Draft never publishes unreviewed. The
+  // check is here rather than in the browser because this is the last point
+  // before a Student reads it, and because a tab that has been open since before
+  // a Refinement landed would be asking about a Draft that no longer exists.
+  //
+  // 409 rather than 422: nothing is wrong with the Draft. It is a question, and
+  // the answer is the same request with `confirmed`.
+  const review = publishReview(db, draft.id);
+  if (review.fromClaude && review.unreviewed > 0 && body?.confirmed !== true) {
+    return NextResponse.json(
+      { ok: false, reason: 'unreviewed', unreviewed: review.unreviewed, faults: [] },
+      { status: 409 },
+    );
   }
 
   const result = publishDraft(db, draft.id);

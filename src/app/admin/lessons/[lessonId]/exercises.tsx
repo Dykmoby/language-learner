@@ -13,21 +13,28 @@
 // again on the way into a published Lesson; this only makes the incoherent
 // shapes harder to type in the first place.
 
-import { useState } from 'react';
 import { ru } from '../../../../ru.ts';
 import {
   EXERCISE_KINDS, isDeterministic, offersChoices, type ExerciseKind,
 } from '../../../../content/exercise-validity.ts';
 import {
-  blankExercise, removeChoice, renameChoice, withKind, type DocumentExercise,
+  blankExercise, discardedByKindChange, removeChoice, renameChoice, withKind,
+  type DocumentExercise,
 } from '../../../../content/lesson-document.ts';
 import { movedWithin } from '../../../../content/ordering.ts';
+import type { Pending } from './pending.ts';
 
 type Props = {
   exercises: DocumentExercise[];
   /** Submissions already made against each published Exercise, by Exercise id. */
   submissionCounts: Record<number, number>;
   disabled: boolean;
+  /**
+   * The form's one pending confirmation, held by the editor so that this list, a
+   * Kind change and a Publish can never be waiting on the author at once.
+   */
+  pending: Pending | null;
+  setPending: (pending: Pending | null) => void;
   onChange: (next: DocumentExercise[]) => void;
 };
 
@@ -45,11 +52,9 @@ function toLines(raw: string): string[] {
   return raw.split('\n');
 }
 
-export function ExerciseList({ exercises, submissionCounts, disabled, onChange }: Props) {
-  // The Exercise whose removal has been asked for and not yet confirmed. Only
-  // one at a time, because a confirmation the author has forgotten about is a
-  // confirmation that confirms nothing.
-  const [confirming, setConfirming] = useState<number | null>(null);
+export function ExerciseList({
+  exercises, submissionCounts, disabled, pending, setPending, onChange,
+}: Props) {
 
   function replace(index: number, exercise: DocumentExercise) {
     onChange(exercises.map((current, at) => (at === index ? exercise : current)));
@@ -60,7 +65,7 @@ export function ExerciseList({ exercises, submissionCounts, disabled, onChange }
   }
 
   function remove(index: number) {
-    setConfirming(null);
+    setPending(null);
     onChange(exercises.filter((_, at) => at !== index));
   }
 
@@ -68,7 +73,19 @@ export function ExerciseList({ exercises, submissionCounts, disabled, onChange }
     const exercise = exercises[index];
     const made = exercise?.id === undefined ? 0 : submissionCounts[exercise.id] ?? 0;
     if (made === 0) remove(index);
-    else setConfirming(index);
+    else setPending({ what: 'remove', index });
+  }
+
+  function changeKind(index: number, kind: ExerciseKind) {
+    setPending(null);
+    replace(index, withKind(exercises[index]!, kind));
+  }
+
+  function askToChangeKind(index: number, kind: ExerciseKind) {
+    // Nothing to lose, nothing to ask: a newly added Exercise with empty fields,
+    // or a change between two Kinds that use the same ones, applies at once.
+    if (discardedByKindChange(exercises[index]!, kind) === 0) changeKind(index, kind);
+    else setPending({ what: 'kind', index, kind });
   }
 
   return (
@@ -93,9 +110,19 @@ export function ExerciseList({ exercises, submissionCounts, disabled, onChange }
 
               <label>
                 <span>{ru.draft.exerciseKind}</span>
+                {/* A select has already changed what it displays by the time its
+                    change handler runs, so the form has to decide whether it
+                    snaps back while the confirmation is pending or stays on the
+                    new Kind. It snaps back — `value` is the Exercise's own Kind,
+                    and the Exercise does not change until the author confirms.
+                    The alternative would leave a select reading «Выбор варианта»
+                    above a word order's fragments: a screen that lies about what
+                    it is showing. The Kind being asked for is named in the
+                    confirmation instead, where it is a question rather than a
+                    claim. */}
                 <select
                   value={exercise.kind}
-                  onChange={(e) => replace(index, withKind(exercise, e.target.value as ExerciseKind))}
+                  onChange={(e) => askToChangeKind(index, e.target.value as ExerciseKind)}
                   disabled={disabled}
                 >
                   {EXERCISE_KINDS.map((kind) => (
@@ -166,14 +193,31 @@ export function ExerciseList({ exercises, submissionCounts, disabled, onChange }
                 </>
               ) : null}
 
-              {confirming === index ? (
+              {pending?.what === 'kind' && pending.index === index ? (
+                <>
+                  <p className="error" role="alert">
+                    {ru.draft.kindChangeDiscards(
+                      discardedByKindChange(exercise, pending.kind),
+                      ru.exerciseKinds[pending.kind] ?? pending.kind,
+                    )}
+                  </p>
+                  <p className="actions">
+                    <button type="button" onClick={() => changeKind(index, pending.kind)} disabled={disabled}>
+                      {ru.draft.confirmKindChange}
+                    </button>
+                    <button type="button" className="secondary" onClick={() => setPending(null)} disabled={disabled}>
+                      {ru.draft.cancelKindChange}
+                    </button>
+                  </p>
+                </>
+              ) : pending?.what === 'remove' && pending.index === index ? (
                 <>
                   <p className="error" role="alert">{ru.draft.removeWithSubmissions(made)}</p>
                   <p className="actions">
                     <button type="button" onClick={() => remove(index)} disabled={disabled}>
                       {ru.draft.confirmRemove}
                     </button>
-                    <button type="button" className="secondary" onClick={() => setConfirming(null)} disabled={disabled}>
+                    <button type="button" className="secondary" onClick={() => setPending(null)} disabled={disabled}>
                       {ru.draft.cancelRemove}
                     </button>
                   </p>

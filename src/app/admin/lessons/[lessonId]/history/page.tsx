@@ -69,6 +69,12 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
                 {' · '}{ru.admin.exerciseCount(entry.exerciseCount)}
                 {entry.publishedAt === null ? null : ` · ${ru.draft.historyPublished}`}
               </span>
+              {/* What was asked for, on a Draft a Refinement produced. The
+                  history is the conversation as much as it is the versions:
+                  «доработка с Claude» says a turn happened, and this says which. */}
+              {entry.refinementRequest === null
+                ? null
+                : <span className="muted">{' — '}{ru.refinement.asked} {entry.refinementRequest}</span>}
               {' '}
               {entry.id === selectedId
                 ? <span className="muted">{ru.draft.historySelected}</span>

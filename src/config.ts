@@ -51,6 +51,20 @@ export const config = {
     concurrency: int('GRADER_CONCURRENCY', 2),
   },
 
+  authoring: {
+    // Its own limit, and its own timeout, because the work is nothing like
+    // grading. The spike measured a Verdict at 4-7s; a whole Lesson with ten
+    // Exercises at `max` Effort on Opus 5 is minutes. Sharing the Grader's 90s
+    // would time out the very calls this exists for, and sharing its two slots
+    // would leave a Student in front of a spinner waiting on an Admin's Lesson —
+    // with no way of knowing that is what they are waiting for.
+    timeoutMs: int('AUTHORING_TIMEOUT_MS', 10 * 60_000),
+    // One at a time by default: a two-person application has one Admin, and a
+    // second concurrent Generation buys nothing but a second minutes-long call
+    // against the same subscription.
+    concurrency: int('AUTHORING_CONCURRENCY', 1),
+  },
+
   uploads: {
     // Outside the build output, deliberately: an image written into .next would
     // not survive the next build, and the point of serving through a route is

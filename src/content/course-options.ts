@@ -36,6 +36,17 @@ export const DEFAULT_GRADER_MODEL = {
   tj: 'claude-opus-5',
 } as const satisfies Record<Language, GraderModel>;
 
+/**
+ * The models an Admin may choose to write a Lesson with.
+ *
+ * The same two, and for the same reason ADR 0002 gives for grading: a model that
+ * explains grammar confidently and wrongly is worse than no model at all in a
+ * language-learning application, and a Theory is read by a Student as fact. Haiku
+ * is absent by construction here too — a picker that cannot offer it and a parse
+ * that will not accept it are two guards rather than one.
+ */
+export const AUTHOR_MODELS = GRADER_MODELS;
+
 export type GraderModelFault = 'grader_model_forbidden' | 'grader_model_unknown';
 
 /**

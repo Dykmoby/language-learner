@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Semaphore } from '../src/grader/semaphore.ts';
+import { Semaphore } from '../src/claude/semaphore.ts';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 

@@ -57,6 +57,13 @@
       "when": 1787289819109,
       "tag": "0007_authoring",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787328718378,
+      "tag": "0008_generation",
+      "breakpoints": true
     }
   ]
 }

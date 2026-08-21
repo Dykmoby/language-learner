@@ -1,5 +1,11 @@
-// In-process concurrency limit for Grader calls (design.md § Grading: at 2, with
-// a FIFO queue behind it).
+// In-process concurrency limit for SDK calls.
+//
+// Grading and authoring each hold their own, at their own limits (design.md
+// § Grading puts grading at 2 with a FIFO queue behind it). Two limits rather
+// than one because the two kinds of work are nothing alike: a Verdict is 4-7s,
+// and a Generation at max Effort on Opus 5 is minutes. Sharing a limit lets an
+// Admin's Lesson occupy a grading slot while a Student sits in front of a
+// spinner with no way of knowing that is what they are waiting for.
 //
 // FIFO matters: a Submission that queued first must not be overtaken by one that
 // arrived later, or a Student watching a spinner waits on someone else's answer.

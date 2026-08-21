@@ -82,7 +82,19 @@ function firstParsableObject(body: string): { ok: true; value: unknown } | { ok:
   return { ok: false, reason: lastReason };
 }
 
-export function parseGraderOutput(raw: string): ParseOutcome {
+/**
+ * The one JSON object in a model's answer, whatever it wrapped it in.
+ *
+ * Exported because the Author's contract needs exactly this and a second copy
+ * would be a second thing to keep in step: Sonnet 5 wrapped its JSON in fences
+ * on 5 of 5 runs of the longest case in the spike, and a Lesson document is a far
+ * longer output than a Verdict, so the habit gets more room there rather than
+ * less. It lives in this module rather than in a shared one because this module
+ * imports nothing at all, and that property is asserted by a test.
+ */
+export function extractJsonObject(
+  raw: string,
+): { ok: true; value: unknown; wasFenced: boolean; raw: string } | { ok: false; reason: string; raw: string } {
   const trimmed = raw.trim();
 
   const fence = FENCE.exec(trimmed);
@@ -98,8 +110,17 @@ export function parseGraderOutput(raw: string): ParseOutcome {
     found = firstParsableObject(trimmed);
   }
 
-  if (!found.ok) return { ok: false, reason: found.reason, raw: trimmed };
-  const parsed = found.value;
+  return found.ok
+    ? { ok: true, value: found.value, wasFenced, raw: trimmed }
+    : { ok: false, reason: found.reason, raw: trimmed };
+}
+
+export function parseGraderOutput(raw: string): ParseOutcome {
+  const extracted = extractJsonObject(raw);
+  const trimmed = extracted.raw;
+  if (!extracted.ok) return { ok: false, reason: extracted.reason, raw: trimmed };
+
+  const { wasFenced, value: parsed } = extracted;
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     return { ok: false, reason: 'parsed value is not an object', raw: trimmed };
@@ -159,7 +180,14 @@ const SIMPLE_ESCAPES: Readonly<Record<string, string>> = {
 // Also tolerant of a markdown fence, because the fence arrives before the object
 // does and parseGraderOutput already forgives it downstream. Finding the field by
 // its key rather than by parsing means the fence costs nothing here.
-const FEEDBACK_FIELD = /"feedback_ru"\s*:\s*"/;
+//
+// Built per field rather than fixed to one, because the Grader is not the only
+// caller streaming a long string out of a JSON object being typed: a Lesson
+// document's Theory arrives the same way, and a second decoder would be a second
+// place for the escape rules to be got wrong.
+function openingOf(field: string): RegExp {
+  return new RegExp(`"${field}"\\s*:\\s*"`);
+}
 
 // A high surrogate on its own is half a character. Held back until its pair
 // arrives rather than emitted and repaired, because the caller sends the suffix
@@ -169,8 +197,8 @@ function withoutTrailingHalfPair(value: string): string {
   return last >= 0xd800 && last <= 0xdbff ? value.slice(0, -1) : value;
 }
 
-export function feedbackRuSoFar(rawSoFar: string): string {
-  const opening = FEEDBACK_FIELD.exec(rawSoFar);
+export function jsonStringFieldSoFar(rawSoFar: string, field: string): string {
+  const opening = openingOf(field).exec(rawSoFar);
   // The field has not started yet — nothing to show, and not an error either.
   if (!opening) return '';
 
@@ -208,6 +236,16 @@ export function feedbackRuSoFar(rawSoFar: string): string {
   }
 
   return withoutTrailingHalfPair(out);
+}
+
+/**
+ * The Grader's explanation, as far as it is known.
+ *
+ * design.md § Response contract fixes `feedback_ru` first for exactly this
+ * reason: the field the Student waits on is the one that starts arriving first.
+ */
+export function feedbackRuSoFar(rawSoFar: string): string {
+  return jsonStringFieldSoFar(rawSoFar, 'feedback_ru');
 }
 
 // Reports every Error Type outside the per-Language enum rather than throwing:

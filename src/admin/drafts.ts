@@ -8,7 +8,7 @@
 // silently poison grading for that Exercise — and it is built now, while a human
 // is still typing every character, so that Generation inherits it.
 
-import { and, asc, count, desc, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, lte, notInArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
@@ -19,6 +19,7 @@ import {
   documentFaults, exerciseLevelFaults,
   type DocumentExercise, type DocumentFault, type LessonDocument,
 } from '../content/lesson-document.ts';
+import { unreviewedReferenceAnswers } from '../authoring/review.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -56,6 +57,29 @@ export function publishedDocument(db: Db, lessonId: number): LessonDocument | nu
       choices: exercise.choices,
     })),
   };
+}
+
+/**
+ * The **published** Lessons of a Course up to and including one of them.
+ *
+ * Published, not Drafts, and that is the point: what a "continue from Lesson N"
+ * context is for is continuity with what the Student has actually worked
+ * through. A Draft nobody published is a Lesson nobody has read, and building on
+ * it would produce a Lesson that references material the Student has never seen.
+ *
+ * Whole Theories come back; bounding them is the Author's contract's decision,
+ * because how much context is worth paying for is a question about the prompt
+ * rather than about the database.
+ */
+export function publishedLessonsUpTo(db: Db, lessonId: number): LessonRow[] {
+  const own = db.select().from(lessons).where(eq(lessons.id, lessonId)).get();
+  if (!own) return [];
+
+  return db.select().from(lessons)
+    .where(and(eq(lessons.courseId, own.courseId), lte(lessons.position, own.position)))
+    .orderBy(asc(lessons.position))
+    .all()
+    .filter((lesson) => lesson.publishedAt !== null);
 }
 
 /** One Draft by id, or null. */
@@ -104,6 +128,11 @@ export type OpenDraft = {
   /** The newest Draft's document, or the published content where there is none. */
   document: LessonDocument;
   draftId: number | null;
+  /**
+   * What made the Draft that is open, or null where the Lesson has never been
+   * saved and what is shown is the published content.
+   */
+  origin: DraftOrigin | null;
   /** The newest Draft has not been published — what the Admin has is ahead of what the Student reads. */
   hasUnpublishedChanges: boolean;
   /** This Lesson has never been published: no Student has ever read it. */
@@ -130,9 +159,68 @@ export function openDraft(db: Db, lessonId: number): OpenDraft | null {
     lesson: found.lesson,
     document: draft?.document ?? published,
     draftId: draft?.id ?? null,
+    origin: draft?.origin ?? null,
     hasUnpublishedChanges: draft !== null && draft.publishedAt === null,
     neverPublished: found.lesson.publishedAt === null,
     submissionCounts: submissionCounts(db, lessonId),
+  };
+}
+
+/**
+ * The Draft Claude wrote that this one descends from, or null.
+ *
+ * "Descends from" is simply "at or before it in this Lesson's history", because
+ * the history only ever grows: a Draft is the newest thing that existed when it
+ * was written, so everything before it is its ancestry. The origin recorded on
+ * each row is what tells a Claude-written one apart, and it is recorded when the
+ * Draft is saved rather than guessed afterwards.
+ *
+ * The **newest** such ancestor, not the first: an Admin who has refined three
+ * times is reviewing the third turn's answers, not the first turn's.
+ */
+export function claudeAncestor(db: Db, draftId: number): LessonDraftRow | null {
+  const draft = findDraft(db, draftId);
+  if (draft === null) return null;
+
+  return db.select().from(lessonDrafts)
+    .where(and(
+      eq(lessonDrafts.lessonId, draft.lessonId),
+      lte(lessonDrafts.id, draft.id),
+      inArray(lessonDrafts.origin, ['generation', 'refinement']),
+    ))
+    .orderBy(desc(lessonDrafts.id))
+    .limit(1)
+    .get() ?? null;
+}
+
+export type PublishReview = {
+  /** This Draft descends from something Claude wrote. */
+  fromClaude: boolean;
+  /**
+   * How many of its Exercises still carry a Reference Answer exactly as Claude
+   * wrote it. Nought on a Draft an Admin has been through Exercise by Exercise —
+   * and nought is what makes the confirmation fall honestly, the same way a Kind
+   * change that discards nothing applies immediately.
+   */
+  unreviewed: number;
+};
+
+/**
+ * What a person still has to look at before this Draft becomes a Lesson.
+ *
+ * The count is what makes the question answerable. "Are you sure?" is a click
+ * tax; "восемь упражнений с непроверенными эталонными ответами" is information,
+ * and it points at the specific thing that would poison grading. A confirmation
+ * that always appears is one nobody reads, which is worse than none.
+ */
+export function publishReview(db: Db, draftId: number): PublishReview {
+  const draft = findDraft(db, draftId);
+  const ancestor = draft === null ? null : claudeAncestor(db, draftId);
+  if (draft === null || ancestor === null) return { fromClaude: false, unreviewed: 0 };
+
+  return {
+    fromClaude: true,
+    unreviewed: unreviewedReferenceAnswers(ancestor.document, draft.document),
   };
 }
 
@@ -159,8 +247,16 @@ export function saveDraft(
     lessonId: number;
     studentId: number;
     document: LessonDocument;
-    /** What made this Draft. Manual editing until Generation and Refinement land. */
+    /** What made this Draft. Defaults to a manual edit, which is what a save is. */
     origin?: DraftOrigin;
+    /**
+     * The SDK conversation this Draft came out of, on the ones that came out of
+     * one. What makes restoring an earlier Draft a fork of the conversation at
+     * that point rather than a rewind of the one that ran to the end.
+     */
+    sessionId?: string | null;
+    /** What the Admin asked for, on a Draft a Refinement turn produced. */
+    refinementRequest?: string | null;
   },
 ): SaveDraftResult {
   const faults = exerciseLevelFaults(documentFaults(input.document));
@@ -170,6 +266,8 @@ export function saveDraft(
     lessonId: input.lessonId,
     document: input.document,
     origin: input.origin ?? 'manual',
+    sessionId: input.sessionId ?? null,
+    refinementRequest: input.refinementRequest ?? null,
     publishedAt: null,
     createdBy: input.studentId,
     createdAt: new Date(),
@@ -304,6 +402,8 @@ export type DraftSummary = {
   /** Null where the account that wrote it is gone; a Draft outlives its author. */
   authorUsername: string | null;
   exerciseCount: number;
+  /** What the Admin asked for, on a Draft a Refinement turn produced. */
+  refinementRequest: string | null;
 };
 
 /** Every Draft of a Lesson, newest first. */
@@ -321,6 +421,39 @@ export function draftHistory(db: Db, lessonId: number): DraftSummary[] {
       publishedAt: draft.publishedAt,
       authorUsername: username,
       exerciseCount: draft.document.exercises.length,
+      refinementRequest: draft.refinementRequest,
+    }));
+}
+
+/** One turn of the conversation over a Lesson, as the rows remember it. */
+export type RefinementTurn = {
+  /** The Draft the turn produced, which is what a later turn forks from. */
+  draftId: number;
+  askedAt: Date;
+  message: string;
+  /** Null on a turn whose session the SDK never named. */
+  sessionId: string | null;
+};
+
+/**
+ * The conversation over a Lesson, oldest first.
+ *
+ * Read back out of the Drafts rather than out of a table of its own: every turn
+ * already appends a row carrying the request, the document it produced and the
+ * session it came from, in order. A separate transcript would be a second
+ * history that could disagree with this one about what happened — and this is
+ * the history that survives a reload, because it is the one on disk.
+ */
+export function refinementThread(db: Db, lessonId: number): RefinementTurn[] {
+  return db.select().from(lessonDrafts)
+    .where(and(eq(lessonDrafts.lessonId, lessonId), isNotNull(lessonDrafts.refinementRequest)))
+    .orderBy(asc(lessonDrafts.id))
+    .all()
+    .map((draft) => ({
+      draftId: draft.id,
+      askedAt: draft.createdAt,
+      message: draft.refinementRequest ?? '',
+      sessionId: draft.sessionId,
     }));
 }
 

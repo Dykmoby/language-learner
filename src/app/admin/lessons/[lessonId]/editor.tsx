@@ -17,7 +17,11 @@ import { useRef, useState } from 'react';
 import { ru, faultMessage } from '../../../../ru.ts';
 import { renderTheory } from '../../../../content/markdown.ts';
 import type { DocumentFault, LessonDocument } from '../../../../content/lesson-document.ts';
+import type { DraftOrigin } from '../../../../db/schema.ts';
 import { ExerciseList } from './exercises.tsx';
+import { GeneratePanel, type EarlierLessonChoice } from './generate.tsx';
+import { RefinePanel, type Turn } from './refine.tsx';
+import type { Pending } from './pending.ts';
 import { ImageUpload } from './image-upload.tsx';
 
 type Props = {
@@ -28,12 +32,21 @@ type Props = {
   neverPublished: boolean;
   submissionCounts: Record<number, number>;
   maxUploadBytes: number;
+  /** Published Lessons of this Course a Generation may be told to continue from. */
+  earlierLessons: EarlierLessonChoice[];
+  /** The Course's own Grader model, offered first because it is the one this Course trusts. */
+  defaultAuthorModel: string;
+  /** The conversation so far, read back out of the Drafts it produced. */
+  refinementTurns: Turn[];
+  /** What made the Draft that is open, or null on a Lesson never saved. */
+  origin: DraftOrigin | null;
 };
 
 type Phase = 'editing' | 'saving' | 'publishing';
 
 export function DraftEditor({
   lessonId, initial, draftId, hasUnpublishedChanges, neverPublished, submissionCounts, maxUploadBytes,
+  earlierLessons, defaultAuthorModel, refinementTurns, origin,
 }: Props) {
   const [draft, setDraft] = useState<LessonDocument>(initial);
   const [phase, setPhase] = useState<Phase>('editing');
@@ -46,6 +59,13 @@ export function DraftEditor({
   const [notice, setNotice] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [faults, setFaults] = useState<DocumentFault[]>([]);
+  // The form's one pending confirmation. Held here rather than inside the control
+  // that raises it, so a Kind change, an Exercise removal and a Publish can never
+  // be waiting on the author at the same time.
+  const [pending, setPending] = useState<Pending | null>(null);
+  // What made the Draft on the screen. It changes under the Admin as they save,
+  // generate or refine, so it is state rather than the prop it started as.
+  const [draftOrigin, setDraftOrigin] = useState<DraftOrigin | null>(origin);
   const theoryRef = useRef<HTMLTextAreaElement | null>(null);
 
   const busy = phase !== 'editing';
@@ -70,6 +90,31 @@ export function DraftEditor({
     const at = field?.selectionStart ?? source.length;
     const to = field?.selectionEnd ?? at;
     edit({ theoryMarkdown: `${source.slice(0, at)}${markdown}${source.slice(to)}` });
+  }
+
+  /**
+   * A Lesson that came back from Claude, whole and past every rule.
+   *
+   * It lands exactly as a save does, because it *is* a save: the Draft was
+   * appended server-side before this ran, so the editor is catching up with a row
+   * rather than holding unsaved work. That is why `unsaved` goes false and
+   * Publish becomes available — and the deliberate second act is still the only
+   * thing that reaches a Student.
+   */
+  function acceptAuthored(
+    document: LessonDocument,
+    authoredDraftId: number,
+    authoredOrigin: DraftOrigin,
+  ) {
+    setDraft(document);
+    setSavedDraftId(authoredDraftId);
+    setDraftOrigin(authoredOrigin);
+    setAhead(true);
+    setUnsaved(false);
+    setNotice(null);
+    setProblem(null);
+    setFaults([]);
+    setPending(null);
   }
 
   async function save() {
@@ -98,6 +143,10 @@ export function DraftEditor({
         return;
       }
       setSavedDraftId(body.draftId);
+      // A save is a manual edit whatever the Draft it started from was, and the
+      // badge has to say so: an Admin who has been through every Exercise by hand
+      // is no longer looking at what Claude wrote.
+      setDraftOrigin('manual');
       setAhead(true);
       setUnsaved(false);
       setNotice(ru.draft.saved);
@@ -108,7 +157,15 @@ export function DraftEditor({
     }
   }
 
-  async function publish() {
+  /**
+   * Publishing, and the one question it may ask first.
+   *
+   * The question comes from the server rather than from a check here: it is the
+   * last point before a Student reads the Lesson, and a tab open since before a
+   * Refinement landed would otherwise be answering about a Draft that no longer
+   * exists. `confirmed` is the answer travelling back on the same request.
+   */
+  async function publish(confirmed = false) {
     if (!canPublish) {
       setProblem(unsaved ? ru.draft.saveFirst : ru.draft.nothingToPublish);
       return;
@@ -117,15 +174,22 @@ export function DraftEditor({
     setNotice(null);
     setProblem(null);
     setFaults([]);
+    setPending(null);
     try {
       const response = await fetch(`/api/admin/lessons/${lessonId}/publish`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ draftId: savedDraftId }),
+        body: JSON.stringify({ draftId: savedDraftId, confirmed }),
       });
       const body = (await response.json()) as
-        { ok?: boolean; reason?: string; faults?: DocumentFault[] };
+        { ok?: boolean; reason?: string; faults?: DocumentFault[]; unreviewed?: number };
       if (!response.ok || body.ok !== true) {
+        // Not a refusal: a question. Nothing is wrong with the Draft, and saying
+        // «исправьте и попробуйте снова» about it would be false.
+        if (body.reason === 'unreviewed') {
+          setPending({ what: 'publish', unreviewed: body.unreviewed ?? 0 });
+          return;
+        }
         setFaults(body.faults ?? []);
         // Already live means this tab is a step behind, not that the work is
         // wrong — saying "исправьте и попробуйте снова" would send the Admin
@@ -155,6 +219,12 @@ export function DraftEditor({
         {unsaved ? ru.draft.unsaved : ahead ? ru.draft.unpublishedChanges : ru.draft.upToDate}
       </p>
       {neverPublished ? <p className="muted">{ru.draft.neverPublished}</p> : null}
+      {/* What made this Draft, said wherever a Draft is shown. Until now a Draft
+          an Admin wrote every word of and one Claude produced thirty seconds ago
+          were indistinguishable here. */}
+      {draftOrigin === null ? null : (
+        <p className="muted">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</p>
+      )}
 
       <label>
         <span>{ru.draft.lessonTitle}</span>
@@ -190,10 +260,38 @@ export function DraftEditor({
 
       <ImageUpload maxBytes={maxUploadBytes} disabled={busy} onInsert={insertAtCursor} />
 
+      {/* A generated Lesson lands here exactly as a save does: the Draft is
+          already appended server-side, so the editor is catching up with a row
+          rather than holding unsaved work. That is why `unsaved` goes false and
+          Publish becomes available — the deliberate second act is still the only
+          thing that reaches a Student. */}
+      <GeneratePanel
+        lessonId={lessonId}
+        earlier={earlierLessons}
+        defaultModel={defaultAuthorModel}
+        disabled={busy}
+        onGenerated={(document, id) => acceptAuthored(document, id, 'generation')}
+      />
+
+      {/* The document it is handed is `draft` — whatever is in the editor at this
+          moment, hand edits included — and the Draft it forks from is the one on
+          the screen. Both are what make editing and conversing interleave. */}
+      <RefinePanel
+        lessonId={lessonId}
+        document={draft}
+        fromDraftId={savedDraftId}
+        initialTurns={refinementTurns}
+        defaultModel={defaultAuthorModel}
+        disabled={busy}
+        onRefined={(document, id) => acceptAuthored(document, id, 'refinement')}
+      />
+
       <ExerciseList
         exercises={draft.exercises}
         submissionCounts={submissionCounts}
         disabled={busy}
+        pending={pending}
+        setPending={setPending}
         onChange={(exercises) => edit({ exercises })}
       />
 
@@ -213,14 +311,38 @@ export function DraftEditor({
       )}
       {notice === null ? null : <p className="ok" role="status">{notice}</p>}
 
-      <p className="actions">
-        <button type="button" onClick={save} disabled={busy}>
-          {phase === 'saving' ? ru.draft.saving : ru.draft.save}
-        </button>
-        <button type="button" className="secondary" onClick={publish} disabled={busy || !canPublish}>
-          {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
-        </button>
-      </p>
+      {pending?.what === 'publish' ? (
+        <>
+          {/* A count, and the specific thing it points at. "Вы уверены?" is a
+              click tax; naming how many Reference Answers nobody has read is
+              information — and a Reference Answer is what the Grader receives as
+              the model answer on every Submission made against that Exercise, so
+              a wrong one poisons grading silently and for good. */}
+          <p className="error" role="alert">{ru.draft.publishUnreviewed(pending.unreviewed)}</p>
+          <p className="actions">
+            <button type="button" onClick={() => publish(true)} disabled={busy}>
+              {ru.draft.confirmPublish}
+            </button>
+            <button type="button" className="secondary" onClick={() => setPending(null)} disabled={busy}>
+              {ru.draft.cancelPublish}
+            </button>
+          </p>
+        </>
+      ) : (
+        <p className="actions">
+          <button type="button" onClick={save} disabled={busy}>
+            {phase === 'saving' ? ru.draft.saving : ru.draft.save}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => publish()}
+            disabled={busy || !canPublish}
+          >
+            {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
+          </button>
+        </p>
+      )}
 
       <h2>{ru.draft.preview}</h2>
       <div
