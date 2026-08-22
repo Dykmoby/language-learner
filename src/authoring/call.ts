@@ -24,7 +24,7 @@ import { jsonStringFieldSoFar, type Language } from '../grader/contract.ts';
 import { config } from '../config.ts';
 import type { DocumentFault, LessonDocument } from '../content/lesson-document.ts';
 import {
-  buildAuthorPrompt, buildAuthorSystemPrompt, parseGeneratedLesson, reviewGeneratedLesson,
+  buildAuthorPrompt, buildAuthorSystemPrompt, parseGeneratedLesson, checkGeneratedLesson,
   type AuthorRefusal, type GenerationRequest, type MixMismatch,
 } from './contract.ts';
 
@@ -77,8 +77,13 @@ export function theorySoFar(rawSoFar: string): string {
   return jsonStringFieldSoFar(rawSoFar, 'theoryMarkdown');
 }
 
-/** What counts as wrong with the document that came back. */
-export type Review = (document: LessonDocument) => { faults: DocumentFault[]; mismatches: MixMismatch[] };
+/**
+ * What counts as wrong with the document that came back.
+ *
+ * A check, not a review: "review" means the thing a person does before a Lesson
+ * reaches a Student, and no rule here can do it — see authoring/review.ts.
+ */
+export type Check = (document: LessonDocument) => { faults: DocumentFault[]; mismatches: MixMismatch[] };
 
 export type AuthoringCall = {
   language: Language;
@@ -88,7 +93,7 @@ export type AuthoringCall = {
   effort?: Effort;
   /** A conversation to carry on from. Always forked — see ClaudeRequest.resume. */
   resume?: string;
-  review: Review;
+  check: Check;
 };
 
 export function authorLesson(call: AuthoringCall): AuthoringHandle {
@@ -130,12 +135,12 @@ function judge(
     console.warn(`[authoring] ${call.model} wrapped its Lesson in markdown fences`);
   }
 
-  const review = call.review(parsed.document);
-  if (review.faults.length > 0) {
-    return { ok: false, sessionId, usage, wallMs, failure: { kind: 'invalid', faults: review.faults } };
+  const checked = call.check(parsed.document);
+  if (checked.faults.length > 0) {
+    return { ok: false, sessionId, usage, wallMs, failure: { kind: 'invalid', faults: checked.faults } };
   }
 
-  return { ok: true, sessionId, usage, wallMs, document: parsed.document, mismatches: review.mismatches };
+  return { ok: true, sessionId, usage, wallMs, document: parsed.document, mismatches: checked.mismatches };
 }
 
 export type GenerateInput = {
@@ -151,6 +156,6 @@ export function generateLesson(input: GenerateInput): AuthoringHandle {
     prompt: buildAuthorPrompt(input.request),
     model: input.model,
     ...(input.effort === undefined ? {} : { effort: input.effort }),
-    review: (document) => reviewGeneratedLesson(document, input.request),
+    check: (document) => checkGeneratedLesson(document, input.request),
   });
 }

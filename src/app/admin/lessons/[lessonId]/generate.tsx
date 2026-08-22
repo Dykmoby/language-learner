@@ -48,7 +48,7 @@ export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, onGen
 
   const [notice, setNotice] = useState<string | null>(null);
   const [differences, setDifferences] = useState<string[]>([]);
-  const stream = useAuthoringStream();
+  const stream = useAuthoringStream(ru.generation);
 
   const busy = stream.running || disabled;
 

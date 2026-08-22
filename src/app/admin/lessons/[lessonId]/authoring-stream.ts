@@ -15,11 +15,26 @@
 // Writing that twice is how the two paths come to disagree about it.
 
 import { useRef, useState } from 'react';
-import { ru } from '../../../../ru.ts';
 import type { DocumentFault } from '../../../../content/lesson-document.ts';
 import { takeFrames, type AuthoringResultFrame } from '../../../../authoring/wire.ts';
 
 type Succeeded = Extract<AuthoringResultFrame, { ok: true }>;
+
+/**
+ * What this caller calls a failure, in its own words.
+ *
+ * Passed in rather than read from one caller's corner of the dictionary. The two
+ * callers fail identically and must report identically *in shape*, but they are
+ * different acts — CONTEXT.md keeps Generation and Refinement apart as terms —
+ * and telling an Admin whose доработка timed out that the генерация failed names
+ * the wrong act.
+ */
+export type FailureWords = {
+  failed: string;
+  timedOut: string;
+  cancelled: string;
+  refusedInvalid: string;
+};
 
 export type AuthoringStream = {
   running: boolean;
@@ -34,7 +49,7 @@ export type AuthoringStream = {
   clear: () => void;
 };
 
-export function useAuthoringStream(): AuthoringStream {
+export function useAuthoringStream(words: FailureWords): AuthoringStream {
   const [running, setRunning] = useState(false);
   const [theory, setTheory] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -54,10 +69,10 @@ export function useAuthoringStream(): AuthoringStream {
   function report(frame: Extract<AuthoringResultFrame, { ok: false }>) {
     setFaults(frame.faults);
     setProblem(
-      frame.reason === 'invalid' ? ru.generation.refusedInvalid
-        : frame.detail === 'timeout' ? ru.generation.timedOut
-        : frame.detail === 'aborted' ? ru.generation.cancelled
-        : ru.generation.failed,
+      frame.reason === 'invalid' ? words.refusedInvalid
+        : frame.detail === 'timeout' ? words.timedOut
+        : frame.detail === 'aborted' ? words.cancelled
+        : words.failed,
     );
   }
 
@@ -81,7 +96,7 @@ export function useAuthoringStream(): AuthoringStream {
         // else is a failure and must not be reported as if the form were wrong.
         const refused = await response.json().catch(() => null) as { faults?: DocumentFault[] } | null;
         setFaults(refused?.faults ?? []);
-        setProblem(ru.generation.failed);
+        setProblem(words.failed);
         return;
       }
 
@@ -111,7 +126,7 @@ export function useAuthoringStream(): AuthoringStream {
     } catch (error) {
       // An abort is the Admin's own doing, and saying «не удалось» about it would
       // report a failure where there was a decision.
-      setProblem((error as Error)?.name === 'AbortError' ? ru.generation.cancelled : ru.generation.failed);
+      setProblem((error as Error)?.name === 'AbortError' ? words.cancelled : words.failed);
     } finally {
       abort.current = null;
       setRunning(false);

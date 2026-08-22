@@ -131,7 +131,14 @@ const LANES: Record<Lane, Semaphore> = {
   authoring: new Semaphore(config.authoring.concurrency),
 };
 
-/** How many calls are running and queued in each lane. Read by the health panel and by tests. */
+/**
+ * How many calls are running and queued in each lane.
+ *
+ * Exported for one test, and it earns that: the semaphore takes its permit on the
+ * way in, so a saturated authoring lane leaving every grading slot free is
+ * observable synchronously — which is the only way to assert the two lanes are
+ * separate without a model.
+ */
 export function laneLoad(lane: Lane): { inFlight: number; queued: number } {
   return { inFlight: LANES[lane].inFlight, queued: LANES[lane].queued };
 }
@@ -255,7 +262,7 @@ function credentialsLookUnreachable(): boolean {
   }
 }
 
-export function diagnose(reason: string): { likelyCredentials: boolean; likelyEgress: boolean } {
+function diagnose(reason: string): { likelyCredentials: boolean; likelyEgress: boolean } {
   const unreachable = credentialsLookUnreachable();
   return {
     likelyCredentials: unreachable,
@@ -264,7 +271,7 @@ export function diagnose(reason: string): { likelyCredentials: boolean; likelyEg
 }
 
 /** A failure value, with the heuristics filled in unless the caller knows better. */
-export function callFailure(
+function callFailure(
   kind: CallFailureKind,
   reason: string,
   raw: string | null,

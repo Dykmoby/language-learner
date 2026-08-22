@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   buildAuthorPrompt, buildAuthorSystemPrompt, parseGeneratedLesson, mixMismatches,
-  reviewGeneratedLesson, generationRequestFaults, earlierLessonContext, boundedSummary,
+  checkGeneratedLesson, generationRequestFaults, earlierLessonContext, boundedSummary,
   AUTHOR_REFUSALS, REQUEST_FAULTS, MAX_EARLIER_LESSONS, EARLIER_LESSON_SUMMARY_CHARS, MAX_EXERCISES,
   type GenerationRequest,
 } from '../src/authoring/contract.ts';
@@ -250,7 +250,7 @@ test('a generated Exercise is judged by the validity rules an author\'s is judge
     }],
   };
 
-  const review = reviewGeneratedLesson(broken, { ...REQUEST, exerciseCount: 1, kindMix: {} });
+  const review = checkGeneratedLesson(broken, { ...REQUEST, exerciseCount: 1, kindMix: {} });
   const codes = review.faults.map((fault) => fault.code);
   assert.ok(codes.includes('accepted_answer_not_a_choice'));
   assert.ok(codes.includes('reference_answer_not_a_choice'));
@@ -260,7 +260,7 @@ test('a generated Exercise is judged by the validity rules an author\'s is judge
 test('a Generation that came back without a Theory is a failed Generation', () => {
   // Saving a hand-typed Draft tolerates this: it is an ordinary state halfway
   // through writing one. A Generation is not halfway through anything.
-  const review = reviewGeneratedLesson(
+  const review = checkGeneratedLesson(
     { ...LESSON, theoryMarkdown: '' },
     REQUEST,
   );
@@ -268,7 +268,7 @@ test('a Generation that came back without a Theory is a failed Generation', () =
 });
 
 test('a coherent generated Lesson has no faults at all', () => {
-  assert.deepEqual(reviewGeneratedLesson(LESSON, REQUEST), { faults: [], mismatches: [] });
+  assert.deepEqual(checkGeneratedLesson(LESSON, REQUEST), { faults: [], mismatches: [] });
 });
 
 // --- What was asked for against what came back -------------------------------
@@ -306,7 +306,7 @@ test('a mismatch is never a fault', () => {
   // An incoherent Exercise must never reach a Draft; a Lesson that is coherent
   // but not quite what was ordered is minutes of work, and throwing it away
   // would be worse than saying so.
-  const review = reviewGeneratedLesson(LESSON, { ...REQUEST, exerciseCount: 9 });
+  const review = checkGeneratedLesson(LESSON, { ...REQUEST, exerciseCount: 9 });
   assert.deepEqual(review.faults, []);
   assert.equal(review.mismatches.length, 1);
 });
@@ -314,6 +314,8 @@ test('a mismatch is never a fault', () => {
 // --- Russian -----------------------------------------------------------------
 
 test('every request fault and every refusal resolves to Russian from the dictionary', () => {
+  // Including `message_empty`, which a Refinement turn reports. A stable code
+  // with no sentence behind it reaches the Admin as the code itself.
   const codes = [...REQUEST_FAULTS, ...AUTHOR_REFUSALS].sort();
   assert.deepEqual(Object.keys(ru.generationFaults).sort(), codes);
   for (const code of codes) {

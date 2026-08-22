@@ -21,7 +21,7 @@ import { ENGLISH_A1 } from '../src/content/english-a1.ts';
 import { lessons, students, lessonDrafts } from '../src/db/schema.ts';
 import {
   claudeAncestor, draftHistory, publishReview, publishedLessonsUpTo,
-  refinementThread, saveDraft,
+  refinementThread, restoreDraft, saveDraft,
 } from '../src/admin/drafts.ts';
 import { createLesson } from '../src/admin/authoring.ts';
 import { startGeneration } from '../src/authoring/generation.ts';
@@ -227,7 +227,70 @@ test('a Draft records the session it came out of, so a restore forks rather than
   } finally { handle.cleanup(); }
 });
 
-test('a manual save records no session and no request', () => {
+test('restoring an earlier Draft brings its conversation back with it', () => {
+  // The whole of what makes an old Draft more than old text. Going back three
+  // turns and carrying on has to be a fork of the conversation at that point; a
+  // restore that dropped the session would leave the text without the thread that
+  // produced it, which is the rewind the append-only history exists to avoid.
+  const handle = freshDatabase();
+  try {
+    const lesson = firstLesson(handle.db);
+    const studentId = admin(handle.db).id;
+
+    const firstTurn = saveDraft(handle.db, {
+      lessonId: lesson.id, studentId, document: document('I have a cat.'),
+      origin: 'refinement', sessionId: 'session-one', refinementRequest: 'Первая просьба.',
+    });
+    saveDraft(handle.db, {
+      lessonId: lesson.id, studentId, document: document('I have a dog.'),
+      origin: 'refinement', sessionId: 'session-two', refinementRequest: 'Вторая просьба.',
+    });
+    assert.equal(firstTurn.ok, true);
+    if (!firstTurn.ok) return;
+
+    const restored = restoreDraft(handle.db, {
+      lessonId: lesson.id, draftId: firstTurn.draft.id, studentId,
+    });
+    assert.equal(restored.ok, true);
+    if (!restored.ok) return;
+
+    assert.equal(restored.draft.origin, 'restore');
+    assert.equal(
+      restored.draft.sessionId, 'session-one',
+      'refining from here forks the first turn, not the last',
+    );
+    assert.equal(
+      restored.draft.refinementRequest, null,
+      'a restore is not a turn, and must not put words in an Admin\'s mouth',
+    );
+  } finally { handle.cleanup(); }
+});
+
+test('a hand edit stays inside the conversation', () => {
+  // ADR 0004 has manual edits and conversation interleaving with no merge step
+  // anywhere. That only holds if saving a typo fix keeps the thread: otherwise
+  // fixing one character silently ends the discussion.
+  const handle = freshDatabase();
+  try {
+    const lesson = firstLesson(handle.db);
+    const studentId = admin(handle.db).id;
+
+    saveDraft(handle.db, {
+      lessonId: lesson.id, studentId, document: document('I have a cat.'),
+      origin: 'generation', sessionId: 'session-one',
+    });
+    const edited = saveDraft(handle.db, {
+      lessonId: lesson.id, studentId, document: document('I have a cat!'),
+    });
+
+    assert.equal(edited.ok, true);
+    if (!edited.ok) return;
+    assert.equal(edited.draft.origin, 'manual', 'it is still a hand edit');
+    assert.equal(edited.draft.sessionId, 'session-one', 'and still the same conversation');
+  } finally { handle.cleanup(); }
+});
+
+test('a Lesson that has never been conversed about has no session to inherit', () => {
   const handle = freshDatabase();
   try {
     const lesson = firstLesson(handle.db);

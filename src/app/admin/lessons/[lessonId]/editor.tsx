@@ -14,11 +14,12 @@
 // shape, and Refinement will exchange exactly this each turn.
 
 import { useRef, useState } from 'react';
-import { ru, faultMessage } from '../../../../ru.ts';
+import { ru } from '../../../../ru.ts';
 import { renderTheory } from '../../../../content/markdown.ts';
 import type { DocumentFault, LessonDocument } from '../../../../content/lesson-document.ts';
 import type { DraftOrigin } from '../../../../db/schema.ts';
 import { ExerciseList } from './exercises.tsx';
+import { FaultList } from './faults.tsx';
 import { GeneratePanel, type EarlierLessonChoice } from './generate.tsx';
 import { RefinePanel, type Turn } from './refine.tsx';
 import type { Pending } from './pending.ts';
@@ -78,6 +79,12 @@ export function DraftEditor({
     setNotice(null);
     setProblem(null);
     setFaults([]);
+    // A publish confirmation is a question about a particular Draft — "eight
+    // Reference Answers nobody has read" — and the moment the document changes
+    // it is a question about something that no longer exists. Withdrawn rather
+    // than left standing, which would also strand the author: the confirmation
+    // replaces the Save button, and confirming an unsaved Draft is refused.
+    if (pending?.what === 'publish') setPending(null);
   }
 
   /**
@@ -167,6 +174,7 @@ export function DraftEditor({
    */
   async function publish(confirmed = false) {
     if (!canPublish) {
+      setPending(null);
       setProblem(unsaved ? ru.draft.saveFirst : ru.draft.nothingToPublish);
       return;
     }
@@ -296,19 +304,7 @@ export function DraftEditor({
       />
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
-      {faults.length === 0 ? null : (
-        <ul className="cards">
-          {faults.map((fault, index) => (
-            <li key={`${fault.code}-${index}`} className="error">
-              {fault.exercisePosition === undefined
-                ? null
-                : `${ru.draft.faultAt(fault.exercisePosition)} `}
-              {faultMessage(fault.code)}
-              {fault.offending === undefined ? null : ` — ${fault.offending}`}
-            </li>
-          ))}
-        </ul>
-      )}
+      <FaultList faults={faults} />
       {notice === null ? null : <p className="ok" role="status">{notice}</p>}
 
       {pending?.what === 'publish' ? (

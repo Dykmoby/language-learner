@@ -24,24 +24,16 @@ import type * as schema from '../db/schema.ts';
 import { DeltaStream } from '../claude/harness.ts';
 import { findDraft, openDraft, saveDraft } from '../admin/drafts.ts';
 import { documentFaults, type LessonDocument } from '../content/lesson-document.ts';
-import { buildRefinementPrompt } from './contract.ts';
+import { buildRefinementPrompt, type RequestFaultCode } from './contract.ts';
 import type { RefinementForm } from './form.ts';
 import { authorLesson, theorySoFar, type AuthoringHandle, type AuthoringOutcome } from './call.ts';
 import { refusalFrame } from './result.ts';
 import type { AuthoringResultFrame } from './wire.ts';
+import type { StartedAuthoring } from './respond.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
-export type StartedRefinement =
-  | { ok: false; reason: 'not_found' }
-  | { ok: false; reason: 'invalid_request'; faults: 'message_empty'[] }
-  | {
-      ok: true;
-      deltas: AsyncIterable<string>;
-      decode: (rawSoFar: string) => string;
-      frame: Promise<AuthoringResultFrame>;
-      abort: () => void;
-    };
+export type StartedRefinement = StartedAuthoring<RequestFaultCode>;
 
 export function startRefinement(
   db: Db,
@@ -69,7 +61,7 @@ export function startRefinement(
     // Nothing to measure a Refinement against: there is no order, only a Lesson
     // and a request. The validity rules still hold in full — an incoherent
     // Exercise must never reach a Draft, whichever call produced it.
-    review: (document) => ({ faults: documentFaults(document), mismatches: [] }),
+    check: (document) => ({ faults: documentFaults(document), mismatches: [] }),
   });
 
   // One stream for the Admin whether the turn took one attempt or two. The

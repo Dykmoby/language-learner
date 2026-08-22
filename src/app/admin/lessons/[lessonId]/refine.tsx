@@ -49,7 +49,7 @@ export function RefinePanel({
   const [model, setModel] = useState(defaultModel);
   const [effort, setEffort] = useState<Effort | null>(null);
   const [threadLost, setThreadLost] = useState(false);
-  const stream = useAuthoringStream();
+  const stream = useAuthoringStream(ru.refinement);
 
   const busy = stream.running || disabled;
 
@@ -125,7 +125,7 @@ export function RefinePanel({
         </button>
         {stream.running ? (
           <button type="button" className="secondary" onClick={stream.cancel}>
-            {ru.generation.cancel}
+            {ru.refinement.cancel}
           </button>
         ) : null}
       </p>

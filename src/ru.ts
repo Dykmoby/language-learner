@@ -541,6 +541,17 @@ export const ru = {
     // the thread. Saying which is the difference between a warning and a scare.
     threadLost:
       'Прежний разговор продолжить не удалось, поэтому начат новый — Claude видит текущий урок, но не помнит предыдущие просьбы. Повторите важное в следующем сообщении.',
+
+    // A Refinement fails the same way a Generation does, and must say so in its
+    // own words. CONTEXT.md keeps Generation and Refinement apart as terms;
+    // telling an Admin whose доработка timed out that «не удалось сгенерировать
+    // урок» names the wrong act entirely.
+    cancel: 'Отменить',
+    cancelled: 'Доработка отменена. Черновик не изменился.',
+    failed: 'Не удалось доработать урок. Черновик не изменился — ваш запрос остался в поле, попробуйте ещё раз.',
+    timedOut: 'Claude не ответил вовремя. Черновик не изменился — попробуйте ещё раз, можно с меньшим усилием.',
+    refusedInvalid:
+      'Claude вернул урок с испорченными упражнениями, поэтому он не сохранён. Черновик не изменился.',
   },
 
   // How much reasoning Claude applies during Generation, chosen per request by
@@ -565,6 +576,7 @@ export const ru = {
     exercise_count_out_of_range: 'Столько упражнений в одном уроке не бывает. Укажите другое число.',
     kind_mix_exceeds_count:
       'Видов упражнений заказано больше, чем упражнений в уроке. Уменьшите одно из чисел.',
+    message_empty: 'Напишите, что нужно изменить в уроке.',
     no_document: 'Claude не вернул урок. Черновик не изменился.',
     field_missing: 'В уроке, который вернул Claude, не хватает обязательной части. Черновик не изменился.',
     unknown_exercise_kind:

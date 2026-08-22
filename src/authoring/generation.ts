@@ -24,26 +24,11 @@ import type { GenerationForm } from './form.ts';
 import { generateLesson, theorySoFar } from './call.ts';
 import { refusalFrame } from './result.ts';
 import type { AuthoringResultFrame } from './wire.ts';
+import type { StartedAuthoring } from './respond.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
-export type StartedGeneration =
-  | { ok: false; reason: 'not_found' }
-  // Refused before the call goes out. A Generation is minutes of work, and
-  // spending them to report something knowable at the button press is worse than
-  // not starting.
-  | { ok: false; reason: 'invalid_request'; faults: RequestFaultCode[] }
-  | {
-      ok: true;
-      /** The Lesson document being typed out, raw. */
-      deltas: AsyncIterable<string>;
-      /** The Theory as far as it is known — what the editor actually shows. */
-      decode: (rawSoFar: string) => string;
-      /** Already running. Reading it must not be what makes it finish. */
-      frame: Promise<AuthoringResultFrame>;
-      /** Abandons the call. Nothing has been written, so nothing has to be undone. */
-      abort: () => void;
-    };
+export type StartedGeneration = StartedAuthoring<RequestFaultCode>;
 
 /**
  * The whole request, assembled from the form and from the Course the Lesson

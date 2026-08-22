@@ -111,7 +111,13 @@ export function boundedSummary(theoryMarkdown: string): string {
 }
 
 export const REQUEST_FAULTS = [
+  // A Generation that cannot be asked for.
   'topic_empty', 'exercise_count_out_of_range', 'kind_mix_exceeds_count',
+  // A Refinement turn that cannot be asked for. It lives on this list rather
+  // than on one of its own because it is the same kind of thing — a request
+  // refused before it costs anything — and a second list would be a second place
+  // for a code to end up without a Russian sentence behind it.
+  'message_empty',
 ] as const;
 export type RequestFaultCode = (typeof REQUEST_FAULTS)[number];
 
@@ -462,12 +468,17 @@ export function mixMismatches(
 
 // --- The whole judgement -----------------------------------------------------
 
-export type GenerationReview = {
+export type GenerationCheck = {
   /** Reasons no Draft may be written. Empty means the document is storable. */
   faults: DocumentFault[];
   /** Facts about what came back. Never a reason to throw the Lesson away. */
   mismatches: MixMismatch[];
 };
+
+// A *check*, not a review. The word "review" is spoken for in this codebase: it
+// means the thing a person does before a Lesson reaches a Student, which no rule
+// here can do — a Reference Answer that is fluent, plausible and wrong passes
+// every check below. See authoring/review.ts.
 
 /**
  * Everything wrong with a generated Lesson, split by what it costs.
@@ -478,9 +489,9 @@ export type GenerationReview = {
  * through writing one; a Generation that came back without a Theory is not
  * halfway through anything, it is a failed Generation.
  */
-export function reviewGeneratedLesson(
+export function checkGeneratedLesson(
   document: LessonDocument,
   request: GenerationRequest,
-): GenerationReview {
+): GenerationCheck {
   return { faults: documentFaults(document), mismatches: mixMismatches(document, request) };
 }

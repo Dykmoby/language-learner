@@ -14,7 +14,7 @@ import { getDatabase } from '../../../../../../db/index.ts';
 import { adminOrRefusal, idFromParam } from '../../../../../../admin/guard.ts';
 import { startRefinement } from '../../../../../../authoring/refinement.ts';
 import { parseRefinementForm } from '../../../../../../authoring/form.ts';
-import { progressiveStream } from '../../../../../../wire/ndjson.ts';
+import { authoringResponse } from '../../../../../../authoring/respond.ts';
 
 export async function POST(
   request: Request,
@@ -29,25 +29,8 @@ export async function POST(
   const form = parseRefinementForm(await request.json().catch(() => null));
   if (form === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
-  const started = startRefinement(getDatabase().db, { lessonId, studentId: student.id, form });
-  if (!started.ok) {
-    if (started.reason === 'not_found') return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    return NextResponse.json(
-      { ok: false, reason: 'invalid_request', faults: started.faults.map((code) => ({ code })) },
-      { status: 422 },
-    );
-  }
-
-  // Abandoning a turn writes nothing, exactly as abandoning a Generation does —
-  // and here it also leaves the thread where it was, because the Draft that
-  // records the session is only written on success.
-  request.signal.addEventListener('abort', started.abort, { once: true });
-
-  return new Response(progressiveStream(started), {
-    headers: {
-      'content-type': 'application/x-ndjson; charset=utf-8',
-      'cache-control': 'no-store',
-      'x-accel-buffering': 'no',
-    },
-  });
+  return authoringResponse(
+    request,
+    startRefinement(getDatabase().db, { lessonId, studentId: student.id, form }),
+  );
 }

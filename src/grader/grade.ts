@@ -19,7 +19,7 @@ import {
 } from './contract.ts';
 import {
   callClaude, EMPTY_USAGE,
-  type CallOutcome, type ClaudeUsage,
+  type CallFailure, type CallOutcome, type ClaudeUsage,
 } from '../claude/harness.ts';
 import { config } from '../config.ts';
 
@@ -85,13 +85,7 @@ export type GradingHandle = {
  * still listening — so an abort here is something unexpected, not a Student
  * navigating away.
  */
-function asGradingFailure(failure: {
-  kind: 'timeout' | 'aborted' | 'sdk';
-  reason: string;
-  likelyCredentials: boolean;
-  likelyEgress: boolean;
-  raw: string | null;
-}): GradingFailure {
+function asGradingFailure(failure: CallFailure): GradingFailure {
   return { ...failure, kind: failure.kind === 'aborted' ? 'sdk' : failure.kind };
 }
 

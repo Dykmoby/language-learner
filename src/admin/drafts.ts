@@ -250,9 +250,11 @@ export function saveDraft(
     /** What made this Draft. Defaults to a manual edit, which is what a save is. */
     origin?: DraftOrigin;
     /**
-     * The SDK conversation this Draft came out of, on the ones that came out of
-     * one. What makes restoring an earlier Draft a fork of the conversation at
-     * that point rather than a rewind of the one that ran to the end.
+     * The SDK conversation this Draft belongs to.
+     *
+     * Left out by a manual save, which **inherits** it from the Draft before —
+     * see below. Passed explicitly by a Generation, which starts a conversation,
+     * and by a Refinement turn, which continues one.
      */
     sessionId?: string | null;
     /** What the Admin asked for, on a Draft a Refinement turn produced. */
@@ -262,11 +264,21 @@ export function saveDraft(
   const faults = exerciseLevelFaults(documentFaults(input.document));
   if (faults.length > 0) return { ok: false, reason: 'invalid', faults };
 
+  // A hand edit does not leave the conversation. ADR 0004 has manual edits and
+  // conversation interleaving with no merge step anywhere — an Admin fixes a
+  // typo, asks for two more Exercises, and gets back a document carrying both —
+  // and that only holds if saving the typo fix keeps the thread. Inherited
+  // rather than passed in, because the caller saving a Draft has no business
+  // knowing which conversation it is part of.
+  const inherited = input.sessionId === undefined
+    ? latestDraft(db, input.lessonId)?.sessionId ?? null
+    : input.sessionId;
+
   const draft = db.insert(lessonDrafts).values({
     lessonId: input.lessonId,
     document: input.document,
     origin: input.origin ?? 'manual',
-    sessionId: input.sessionId ?? null,
+    sessionId: inherited,
     refinementRequest: input.refinementRequest ?? null,
     publishedAt: null,
     createdBy: input.studentId,
@@ -429,7 +441,6 @@ export function draftHistory(db: Db, lessonId: number): DraftSummary[] {
 export type RefinementTurn = {
   /** The Draft the turn produced, which is what a later turn forks from. */
   draftId: number;
-  askedAt: Date;
   message: string;
   /** Null on a turn whose session the SDK never named. */
   sessionId: string | null;
@@ -451,7 +462,6 @@ export function refinementThread(db: Db, lessonId: number): RefinementTurn[] {
     .all()
     .map((draft) => ({
       draftId: draft.id,
-      askedAt: draft.createdAt,
       message: draft.refinementRequest ?? '',
       sessionId: draft.sessionId,
     }));
@@ -491,6 +501,16 @@ export function restoreDraft(
     lessonId: draft.lessonId,
     document: draft.document,
     origin: 'restore',
+    // The conversation comes back with the document, and this is the whole of
+    // what makes an old Draft more than old text: restoring the Draft from three
+    // turns ago and carrying on forks the conversation at *that* point. Dropping
+    // it here would leave the text without the thread that produced it — the
+    // rewind the append-only history exists to avoid.
+    sessionId: draft.sessionId,
+    // Not carried across: the request belongs to the turn that was asked, and a
+    // restore is not that turn. Copying it would put words in an Admin's mouth
+    // in the history.
+    refinementRequest: null,
     publishedAt: null,
     createdBy: input.studentId,
     createdAt: new Date(),
