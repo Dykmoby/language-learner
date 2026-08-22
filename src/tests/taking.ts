@@ -24,7 +24,9 @@ import {
   type CourseRow, type ExerciseRow, type SubmissionRow, type TestRow, type TestAttemptRow,
 } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
+import { acceptedAnswersFor } from '../content/accepted.ts';
 import { deterministicCheck } from '../practice/deterministic-check.ts';
+import { disputesOn } from '../practice/disputes.ts';
 import { isEnrolled } from '../practice/lessons.ts';
 import { attemptOutcome } from './score.ts';
 import type {
@@ -211,7 +213,10 @@ export function submitAttempt(
       let corrected: string | null = null;
 
       if (isDeterministic(exercise.kind)) {
-        const outcome = deterministicCheck(answer, exercise.acceptedAnswers, {
+        // The authored list and the Accepted Variants alike — CONTEXT.md
+        // § Deterministic Check names both, and a Test judges in code exactly as
+        // a Practice does.
+        const outcome = deterministicCheck(answer, acceptedAnswersFor(tx, exercise), {
           caseSensitive: exercise.caseSensitive,
         });
         status = 'graded';
@@ -301,14 +306,24 @@ export function openAttempt(
   const outcome = attemptOutcome(answers, attempt.passThreshold);
   const awaiting: number[] = [];
 
+  // Objections against this attempt's answers. They change no score and reopen
+  // no attempt — a Test gates nothing — so they are read here purely so the
+  // review can say that an objection was made and what came of it.
+  const objections = new Map(
+    disputesOn(db, answers.map((row) => row.id)).map((row) => [row.submissionId, row]),
+  );
+
   const reviewed: AttemptExerciseView[] = answered.map(({ submission: row, exercise }, index) => {
     const status = row.status === 'graded' || row.status === 'grading_failed'
       ? row.status
       : 'awaiting_grading';
     if (status === 'awaiting_grading') awaiting.push(exercise.id);
 
+    const objection = objections.get(row.id);
+
     return {
       exerciseId: exercise.id,
+      submissionId: row.id,
       // Its place in this attempt, not in the Test as it stands: «задание 2 из 3»
       // has to add up on the screen it is written on.
       position: index + 1,
@@ -330,6 +345,7 @@ export function openAttempt(
       })),
       referenceAnswer: exercise.referenceAnswer,
       acceptedAnswers: isDeterministic(exercise.kind) ? exercise.acceptedAnswers : [],
+      dispute: objection === undefined ? null : { ruling: objection.ruling },
     };
   });
 

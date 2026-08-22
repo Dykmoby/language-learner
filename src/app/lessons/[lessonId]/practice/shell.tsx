@@ -17,9 +17,10 @@
 import { useState } from 'react';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import type { ExerciseKind } from '../../../../db/schema.ts';
-import type { ExerciseState } from '../../../../practice/progress.ts';
 import { takeFrames, type ResultFrame, type RevealResult } from '../../../../practice/wire.ts';
 import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
+import { DisputeForm } from '../../../shared/dispute-form.tsx';
+import { ProgressBar, type Segment } from '../../../shared/progress-bar.tsx';
 
 export type CurrentExercise = {
   id: number;
@@ -30,13 +31,13 @@ export type CurrentExercise = {
   revealOffered: boolean;
 };
 
-export type Segment = { position: number; state: ExerciseState };
+export type { Segment };
 
 type Props = {
   /** Null when every Exercise in the Practice is complete. */
   current: CurrentExercise | null;
   segments: Segment[];
-  counts: { completed: number; completedWithHelp: number; total: number };
+  counts: { completed: number; completedWithHelp: number; disputed: number; total: number };
   nextLessonId: number | null;
   courseId: number;
 };
@@ -51,6 +52,9 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
   const [revealed, setRevealed] = useState<RevealResult | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [revealOffered, setRevealOffered] = useState(current?.revealOffered ?? false);
+  // Set the moment an objection lands. Progression has already unblocked on the
+  // server by then — this is only what the screen offers next.
+  const [disputed, setDisputed] = useState(false);
 
   if (segments.length === 0) return <p className="muted">{ru.practice.empty}</p>;
 
@@ -59,6 +63,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     setResult(null);
     setRevealed(null);
     setRefusal(null);
+    setDisputed(false);
     setPhase('answering');
   }
 
@@ -137,6 +142,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
         {current ? <>{ru.practice.position(current.position, counts.total)}{' · '}</> : null}
         {ru.practice.doneCount(counts.completed)}
         {counts.completedWithHelp > 0 ? <>{' · '}{ru.practice.withHelpCount(counts.completedWithHelp)}</> : null}
+        {counts.disputed > 0 ? <>{' · '}{ru.practice.disputedCount(counts.disputed)}</> : null}
       </p>
     </>
   );
@@ -229,15 +235,22 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
             </>
           )}
 
+          {/* An objection is only offered against a judgement that went against
+              the Student: a failed grading was never judged, and a correct
+              Verdict is not something anybody objects to. */}
+          {!advancing && result.status === 'graded' && result.submissionId !== null ? (
+            <DisputeForm submissionId={result.submissionId} onDisputed={() => setDisputed(true)} />
+          ) : null}
+
           <p className="actions">
-            {advancing
+            {advancing || disputed
               ? <button type="button" onClick={advance}>{ru.practice.next}</button>
               : <button type="button" onClick={retry}>{ru.practice.submit}</button>}
-            {!advancing && result.progression.revealOffered ? (
+            {!advancing && !disputed && result.progression.revealOffered ? (
               <button type="button" className="secondary" onClick={reveal}>{ru.practice.reveal}</button>
             ) : null}
           </p>
-          {!advancing && !result.progression.revealOffered && result.status === 'graded' ? (
+          {!advancing && !disputed && !result.progression.revealOffered && result.status === 'graded' ? (
             <p className="muted">{ru.practice.revealHint}</p>
           ) : null}
         </div>
@@ -253,19 +266,5 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
         </div>
       ) : null}
     </section>
-  );
-}
-
-// Completed With Help is its own segment — not folded in with unaided
-// completions and not left out. A Student who revealed half the Lesson should be
-// able to see that they did, and the segments differ in pattern as well as in
-// colour so the distinction survives both themes.
-function ProgressBar({ segments }: { segments: Segment[] }) {
-  return (
-    <ol className="progress" aria-label={ru.practice.title}>
-      {segments.map((segment) => (
-        <li key={segment.position} className={`segment ${segment.state}`} title={String(segment.position)} />
-      ))}
-    </ol>
   );
 }

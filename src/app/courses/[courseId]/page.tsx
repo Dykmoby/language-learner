@@ -51,6 +51,13 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                 : complete
                   ? ru.course.complete
                   : `${ru.course.inProgress}: ${progress.counts.completed + progress.counts.completedWithHelp}/${progress.counts.total}`}
+              {/* A disputed Exercise stops holding the Student without having
+                  been finished, so a Lesson can read as done while an objection
+                  in it is still open. Saying so is the difference between a
+                  complete Lesson and one nobody has ruled on yet. */}
+              {progress.counts.disputed > 0
+                ? ` · ${ru.practice.disputedCount(progress.counts.disputed)}`
+                : ''}
             </span>
           </li>
         ))}
@@ -66,6 +73,9 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
         }))}
       />
 
+      <p className="actions">
+        <a href={`/courses/${course.id}/progress`}>{ru.progress.link}</a>
+      </p>
       <p><a href="/">{ru.course.back}</a></p>
     </main>
   );

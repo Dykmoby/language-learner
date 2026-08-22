@@ -33,6 +33,15 @@ export type ProgressionView = {
 export type ResultFrame = {
   t: 'result';
   status: 'graded' | 'grading_failed';
+  /**
+   * The row this judgement was written to, so the Student can object to it — a
+   * Dispute is against a Verdict on a Submission, and nothing else on this frame
+   * identifies which one.
+   *
+   * Null on a failure that could not be persisted at all. A failed grading was
+   * never judged and is not disputable either way, so nothing is lost by it.
+   */
+  submissionId: number | null;
   /** Null on a failed grading: there was no judgement, and none may be implied. */
   verdict: Verdict | null;
   feedbackRu: string | null;

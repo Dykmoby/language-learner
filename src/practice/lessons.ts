@@ -13,6 +13,7 @@ import {
   type CourseRow, type LessonRow, type ExerciseRow, type SubmissionRow,
 } from '../db/schema.ts';
 import { practiceProgress, type ExerciseProgress, type PracticeProgress } from './progress.ts';
+import { disputesOn } from './disputes.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -91,6 +92,11 @@ export function courseOutline(db: Db, studentId: number, courseId: number): Less
     else submissionsByExercise.set(row.exerciseId, [row]);
   }
 
+  // Read once for the whole Course rather than per Lesson: the objections are a
+  // second input to the derivation, and a Lesson-at-a-time lookup would be a
+  // query per Lesson to answer a question the one set of rows already answers.
+  const objections = disputesOn(db, rows.map((row) => row.id));
+
   let previousComplete = true; // the first Lesson in a Course is unlocked on enrollment
   return courseLessons.map((lesson) => {
     const setId = setByLesson.get(lesson.id);
@@ -98,6 +104,7 @@ export function courseOutline(db: Db, studentId: number, courseId: number): Less
     const progress = practiceProgress(
       own,
       own.flatMap((exercise) => submissionsByExercise.get(exercise.id) ?? []),
+      objections,
     );
 
     const outline: LessonOutline = {

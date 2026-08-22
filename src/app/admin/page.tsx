@@ -47,6 +47,9 @@ export default async function AdminPage() {
       <NewCourseForm />
 
       <p className="actions">
+        <a href="/admin/disputes">{ru.disputeReview.link}</a>
+      </p>
+      <p className="actions">
         <a href="/admin/health">{ru.admin.healthLink}</a>
       </p>
       <p><a href="/">{ru.admin.home}</a></p>

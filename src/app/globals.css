@@ -81,15 +81,22 @@ button.secondary { color: var(--fg); background: transparent; border-color: var(
 .theory code { background: color-mix(in srgb, var(--line) 45%, transparent); padding: 0.1em 0.3em; border-radius: 4px; }
 .theory pre { background: color-mix(in srgb, var(--line) 45%, transparent); padding: 0.8rem; border-radius: 6px; overflow-x: auto; }
 
-/* Four states, told apart without relying on colour alone: the shapes differ
+/* Five states, told apart without relying on colour alone: the shapes differ
    too, because Completed With Help is a fact about the Student's progress and
-   not a decoration. */
+   not a decoration — and so is a Dispute, which is neither a pass nor a fail and
+   must not borrow the colour of either. */
 ol.progress { display: flex; gap: 4px; list-style: none; padding: 0; margin: 0 0 0.75rem; }
 ol.progress .segment { height: 8px; flex: 1; border-radius: 999px; background: var(--line); }
 ol.progress .segment.completed { background: var(--good); }
 ol.progress .segment.completed_with_help {
   background: repeating-linear-gradient(135deg, var(--good) 0 4px, var(--bg) 4px 8px);
   border: 1px solid var(--good);
+}
+/* Deliberately neither --good nor --bad: nobody has decided yet. The dotted
+   fill is what carries it where hue does not. */
+ol.progress .segment.disputed {
+  background: repeating-linear-gradient(90deg, var(--muted) 0 2px, var(--bg) 2px 5px);
+  border: 1px solid var(--muted);
 }
 ol.progress .segment.current { background: var(--accent); }
 
@@ -186,3 +193,113 @@ pre.streaming {
   background: color-mix(in srgb, var(--bad) 12%, transparent);
   text-decoration: line-through;
 }
+
+/* --- Disputes --------------------------------------------------------------
+   An objection is a fact about a judgement rather than a judgement, so it is
+   marked out from the answer beside it without being coloured as right or wrong.
+   The rule is the same one the progress bar keeps. */
+.disputed {
+  border-left: 3px dashed var(--muted);
+  padding: 0.2rem 0 0.2rem 0.7rem;
+  color: var(--muted);
+}
+.disputeForm { margin: 0.75rem 0; }
+.disputeForm textarea { max-width: 46rem; }
+
+/* What an Exercise already accepts, on the review screen: a list an Admin is
+   about to add to, so it reads as data rather than as prose. */
+ul.variants { list-style: none; padding: 0; margin: 0 0 1rem; }
+ul.variants li {
+  padding: 0.35rem 0.7rem; margin-bottom: 0.35rem;
+  border: 1px solid var(--line); border-radius: 6px;
+}
+.decision { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: 1rem; }
+
+/* --- Progress and statistics -----------------------------------------------
+   design.md § Progress and statistics. The bar is the Practice's bar over a
+   whole Lesson, so the segment classes and their meanings are shared and the two
+   screens cannot come to disagree about what a colour means. */
+ol.progressLessons { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+ol.progressLessons li { margin-bottom: 1.25rem; }
+ol.progressLessons p { margin: 0 0 0.4rem; }
+
+/* Whose record this is, where it is not the viewer's own. Marked out rather than
+   set in the muted grey everything else uses: it is the one line on the screen
+   that must not be skimmed past. */
+.viewingStudent {
+  border-left: 3px solid var(--accent);
+  padding: 0.3rem 0 0.3rem 0.7rem;
+  font-weight: 650;
+}
+
+ul.attempts { list-style: none; padding: 0; }
+ul.attempts li { margin-bottom: 0.5rem; }
+
+/* The Error Type histogram. The bar is the shape of the answer and the number
+   beside it is the answer — a picture is not a report, and a screen reader reads
+   only one of the two. */
+table.histogram { border-collapse: collapse; width: 100%; max-width: 46rem; }
+table.histogram th, table.histogram td { text-align: left; padding: 0.35rem 0.5rem; }
+table.histogram thead th { color: var(--muted); font-weight: 500; font-size: 0.9rem; }
+table.histogram tbody th { font-weight: 500; white-space: nowrap; padding-right: 1rem; }
+table.histogram td { width: 100%; }
+table.histogram .bar {
+  display: inline-block; height: 0.8em; min-width: 2px;
+  vertical-align: baseline; margin-right: 0.5rem; border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  border: 1px solid var(--accent);
+}
+table.histogram .value { color: var(--muted); white-space: nowrap; }
+
+/* --- Change over time -------------------------------------------------------
+   Hand-rolled SVG, and no charting library: four screens on a single-tenant ARM
+   box do not justify a dependency, a bundle and an upgrade path.
+
+   Six series, and each is told apart three ways over — hue, dash pattern and
+   marker shape — because the error-highlight states already have to hold in
+   light and dark beside Cyrillic and Latin, and a chart with several lines has
+   that problem twice over. Any one of the three is enough on its own, so the
+   chart survives monochrome, either theme, and a reader who cannot tell two of
+   the hues apart. */
+:root {
+  --series-1: #2f5fd0;
+  --series-2: #b3261e;
+  --series-3: #146b3a;
+  --series-4: #7a4bbd;
+  --series-5: #9a6400;
+  --series-6: #0f6f7a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series-1: #8ab0ff;
+    --series-2: #f2b8b5;
+    --series-3: #7fd1a1;
+    --series-4: #c3a6f5;
+    --series-5: #e0b76a;
+    --series-6: #74cdd8;
+  }
+}
+
+.chartFrame { overflow-x: auto; margin: 0 0 1rem; }
+svg.chart { display: block; width: 100%; min-width: 30rem; max-width: 46rem; height: auto; }
+
+svg.chart .grid line { stroke: var(--line); stroke-width: 1; }
+svg.chart .grid text, svg.chart .axis { fill: var(--muted); font-size: 12px; }
+
+svg.chart .series .line { stroke-width: 2; }
+/* The label reads as text rather than as part of the line it names. */
+svg.chart .series .seriesLabel {
+  font-size: 12px; font-weight: 650; stroke: none;
+}
+
+svg.chart .s1 { stroke: var(--series-1); fill: var(--series-1); }
+svg.chart .s2 { stroke: var(--series-2); fill: var(--series-2); }
+svg.chart .s3 { stroke: var(--series-3); fill: var(--series-3); }
+svg.chart .s4 { stroke: var(--series-4); fill: var(--series-4); }
+svg.chart .s5 { stroke: var(--series-5); fill: var(--series-5); }
+svg.chart .s6 { stroke: var(--series-6); fill: var(--series-6); }
+
+.spanPickers { display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; }
+table.spanTable td { width: auto; text-align: right; }
+table.spanTable caption { text-align: left; padding-bottom: 0.4rem; }
