@@ -31,6 +31,11 @@ export type AttemptAnswer = {
 
 export type AttemptExerciseView = {
   exerciseId: number;
+  /**
+   * The answer as a row, so it can be objected to. A Test's answers are
+   * Submissions (ADR 0005), which is exactly why the same Dispute reaches them.
+   */
+  submissionId: number;
   position: number;
   kind: ExerciseKind;
   prompt: string;
@@ -47,6 +52,15 @@ export type AttemptExerciseView = {
   referenceAnswer: string;
   /** Deterministic Kinds only: every answer that would have been accepted. */
   acceptedAnswers: string[];
+  /**
+   * The objection standing against this judgement, if the Student made one, and
+   * what an Admin ruled if they have. Null where none was made.
+   *
+   * Disputing a Test moves no score and reopens no attempt — a Test gates
+   * nothing, so there is nothing to unblock — which is why this is a fact shown
+   * beside the answer rather than anything the score is derived from.
+   */
+  dispute: { ruling: 'upheld' | 'rejected' | null } | null;
 };
 
 export type AttemptView = {

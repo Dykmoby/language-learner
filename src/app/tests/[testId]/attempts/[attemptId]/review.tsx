@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { ru, errorTypeLabel } from '../../../../../ru.ts';
 import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
+import { DisputeForm } from '../../../../shared/dispute-form.tsx';
 
 /** How often the page asks whether the batch has landed. */
 const POLL_MS = 4000;
@@ -133,6 +134,13 @@ function stateLabel(exercise: AttemptExerciseView): string {
   return exercise.correct ? ru.test.correctAnswer : ru.test.wrongAnswer;
 }
 
+/** What became of an objection, once one has been made against this judgement. */
+function disputeLabel(ruling: 'upheld' | 'rejected' | null): string {
+  return ruling === 'upheld' ? ru.dispute.upheld
+    : ruling === 'rejected' ? ru.dispute.rejected
+    : ru.dispute.pending;
+}
+
 function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; total: number }) {
   // Open by default unless it was right: what a Student came to read is what
   // went wrong, and everything else is one click away.
@@ -199,6 +207,16 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
           <p className="corrected">
             {ru.test.referenceAnswer}: <strong>{exercise.referenceAnswer}</strong>
           </p>
+
+          {/* A Test is where a Student writes at greatest length with no
+              Progressive Hint to lean on, which is where a wrong Verdict is most
+              worth overturning. Only a judgement can be objected to, so an
+              unjudged or failed answer offers nothing here. */}
+          {exercise.dispute !== null ? (
+            <p className="disputed" role="status">{disputeLabel(exercise.dispute.ruling)}</p>
+          ) : wrong ? (
+            <DisputeForm submissionId={exercise.submissionId} inTest />
+          ) : null}
         </>
       ) : null}
     </li>

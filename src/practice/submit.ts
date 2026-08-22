@@ -14,13 +14,15 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
-  submissions, acceptedVariants, isDeterministic,
+  submissions, isDeterministic,
   type ExerciseRow, type SubmissionRow, type SubmissionStatus,
 } from '../db/schema.ts';
+import { acceptedAnswersFor, variantsOf } from '../content/accepted.ts';
 import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
 import { deterministicCheck } from './deterministic-check.ts';
+import { disputesOn } from './disputes.ts';
 import { openExercise, type LessonRefusal, type OpenExercise } from './lessons.ts';
 import { isComplete, practiceProgress, type ExerciseState } from './progress.ts';
 import type { ProgressionView, ResultFrame, RevealResult } from './wire.ts';
@@ -109,7 +111,10 @@ function progressionAfter(
     ))
     .all();
 
-  const progress = practiceProgress(exercises, rows);
+  // The objections too: a disputed Exercise stops blocking the moment the
+  // objection is made, and progression re-derived without them would put the
+  // Student straight back on it.
+  const progress = practiceProgress(exercises, rows, disputesOn(db, rows.map((row) => row.id)));
   const own = progress.exercises.find((p) => p.exerciseId === exerciseId);
 
   return {
@@ -167,9 +172,7 @@ export function graderRequestFor(
 ): GradeRequest {
   const { course, lesson, exercise } = opened;
 
-  const variants = db.select().from(acceptedVariants)
-    .where(eq(acceptedVariants.exerciseId, exercise.id)).all()
-    .map((row) => row.value);
+  const variants = variantsOf(db, exercise.id);
 
   const context: ExerciseContext = {
     language: course.language as Language,
@@ -205,7 +208,10 @@ export function submitAnswer(
   const previousExerciseId = progress.currentExerciseId;
 
   if (isDeterministic(exercise.kind)) {
-    const outcome = deterministicCheck(answer, exercise.acceptedAnswers, {
+    // The authored list *and* the Accepted Variants — CONTEXT.md § Deterministic
+    // Check names both. Without the second, upholding a Dispute on a fill-gap
+    // would write a variant nothing ever consults.
+    const outcome = deterministicCheck(answer, acceptedAnswersFor(db, exercise), {
       caseSensitive: exercise.caseSensitive,
     });
     // Both Verdict columns are set from the comparison, exactly as they are set
@@ -214,7 +220,7 @@ export function submitAnswer(
     // from a Grader-judged row for no reason).
     const verdict: Verdict = outcome.correct ? 'correct' : 'incorrect';
 
-    writeSubmission(db, studentId, exerciseId, {
+    const row = writeSubmission(db, studentId, exerciseId, {
       status: 'graded',
       answer,
       proposedVerdict: verdict,
@@ -230,6 +236,7 @@ export function submitAnswer(
       frame: {
         t: 'result',
         status: 'graded',
+        submissionId: row.id,
         verdict,
         feedbackRu: null,
         corrected: outcome.correct ? outcome.matched : null,
@@ -256,6 +263,9 @@ export function submitAnswer(
       return {
         t: 'result',
         status: 'grading_failed',
+        // Nothing was persisted — this is the path where persistence itself
+        // threw — so there is no row to object to.
+        submissionId: null,
         verdict: null,
         feedbackRu: null,
         corrected: null,
@@ -293,7 +303,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
   if (!outcome.ok) {
     // Measured at roughly 1 call in 24. The row exists so the Student's words are
     // not lost, and its status is what keeps it out of the attempt count.
-    writeSubmission(db, studentId, exerciseId, {
+    const row = writeSubmission(db, studentId, exerciseId, {
       status: 'grading_failed',
       answer,
       failureReason: `${outcome.failure.kind}: ${outcome.failure.reason}`,
@@ -302,6 +312,10 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     return {
       t: 'result',
       status: 'grading_failed',
+      // Named, but not disputable: only a judgement can be objected to, and this
+      // answer was never judged. The endpoint refuses it rather than the frame
+      // hiding it, so a Student who tries is told why.
+      submissionId: row.id,
       // No Verdict, and no errors: a failure must never be rendered as a wrong
       // answer, so there is nothing here that could be mistaken for one.
       verdict: null,
@@ -324,7 +338,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     console.warn(`[grader] Coherence Guard fired: ${guarded.rule}`);
   }
 
-  writeSubmission(db, studentId, exerciseId, {
+  const row = writeSubmission(db, studentId, exerciseId, {
     status: 'graded',
     answer,
     // Both, deliberately: keeping only the guarded value makes the Verdict's
@@ -339,6 +353,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
   return {
     t: 'result',
     status: 'graded',
+    submissionId: row.id,
     verdict: guarded.verdict,
     feedbackRu: response.feedback_ru,
     corrected: response.corrected,

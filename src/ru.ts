@@ -249,6 +249,7 @@ export const ru = {
     // The progress bar states, spelled out for a screen reader as well as shown.
     doneCount: (n: number) => `Пройдено: ${n}`,
     withHelpCount: (n: number) => `С подсказкой: ${n}`,
+    disputedCount: (n: number) => `Оспорено: ${n}`,
     answer: 'Ваш ответ',
     chooseOption: 'Выберите вариант',
     buildSentence: 'Нажимайте на слова, чтобы составить предложение',
@@ -279,6 +280,139 @@ export const ru = {
     nextLessonUnlocked: 'Следующий урок открыт.',
     courseComplete: 'Это был последний урок курса.',
     empty: 'В этом уроке пока нет упражнений.',
+  },
+
+  // CONTEXT.md § Dispute — an objection to a Verdict, in the Student's own words.
+  // Deliberately never «жалоба»: a Dispute is not a complaint about the
+  // application, and the word a Student reads is what tells them which of the two
+  // this is.
+  dispute: {
+    offer: 'Не согласны с оценкой?',
+    open: 'Оспорить оценку',
+    commentLabel: 'Почему вы считаете свой ответ верным',
+    commentPlaceholder: 'Например: так тоже говорят, я встречал этот оборот в учебнике.',
+    submit: 'Отправить возражение',
+    cancel: 'Отмена',
+    sending: 'Отправляем…',
+    // Both halves matter: the objection is recorded, and the Student is not
+    // waiting for it. design.md § Progression unblocks progression at this moment.
+    sent: 'Возражение отправлено. Преподаватель его посмотрит — можно продолжать, упражнение больше не задерживает.',
+    // A Test gates nothing, so there is nothing here to unblock and saying there
+    // was would be saying something false.
+    sentInTest: 'Возражение отправлено. Преподаватель его посмотрит. Оценка за тест не меняется.',
+    emptyComment: 'Напишите, почему вы считаете свой ответ верным.',
+    tooLong: (limit: number) =>
+      `Возражение слишком длинное — не больше ${limit} символов. Ничего не отправлено.`,
+    already: 'Возражение по этому ответу уже отправлено.',
+    notJudged: 'Этот ответ ещё не был оценён, поэтому оспаривать нечего.',
+    // What the Student sees afterwards, on the progress bar and beside the answer.
+    pending: 'На рассмотрении',
+    upheld: 'Возражение принято',
+    rejected: 'Оценка оставлена без изменений',
+  },
+
+  // The Admin's half: the queue, one Dispute reviewed, and the two decisions.
+  disputeReview: {
+    title: 'Возражения',
+    link: 'Возражения',
+    // On the Admin index, so the queue is not something to remember to look at.
+    waiting: (n: number) => `Ждут решения: ${n}`,
+    queueEmpty: 'Возражений, ожидающих решения, нет.',
+    resolvedTitle: 'Рассмотренные',
+    resolvedEmpty: 'Рассмотренных возражений пока нет.',
+    from: (student: string, course: string) => `${student} · ${course}`,
+    // Named so the Admin sees at a glance where the answer was written: a Test is
+    // where a Student writes at greatest length with no Progressive Hint.
+    inLesson: (title: string) => `Урок: ${title}`,
+    inTest: (title: string) => `Тест: ${title}`,
+    open: 'Рассмотреть',
+    back: 'Ко всем возражениям',
+
+    exerciseTitle: 'Упражнение',
+    referenceAnswer: 'Эталонный ответ',
+    acceptedTitle: 'Уже принимаются',
+    acceptedNone: 'Дополнительных принимаемых ответов пока нет.',
+    studentAnswer: 'Ответ студента',
+    graderErrors: 'Что нашёл Проверяющий',
+    graderNoErrors: 'Проверяющий не отметил ни одной ошибки.',
+    verdict: 'Оценка',
+    comment: 'Возражение студента',
+    submittedAt: 'Отправлено',
+
+    uphold: 'Принять возражение',
+    // Says what pressing it does, because it does something irreversible to the
+    // Exercise: the answer becomes context for every later Grader call.
+    upholdHint: 'Ответ студента станет одним из принимаемых ответов этого упражнения.',
+    reject: 'Оставить оценку',
+    rejectHint: 'Оценка остаётся прежней. У студента ничего не отнимается.',
+
+    variantAdded: 'Ответ добавлен к принимаемым.',
+    // The honest answer where the answer was already accepted: nothing was added,
+    // and saying one was would be saying something false.
+    variantAlready: 'Такой ответ уже принимался — ничего не добавлено.',
+    alreadyResolved: 'Это возражение уже рассмотрено.',
+  },
+
+  // design.md § Progress and statistics — where a Student stands, what they get
+  // wrong, and whether that is improving. One screen, three sections.
+  progress: {
+    title: 'Прогресс',
+    link: 'Прогресс',
+    // Shown only when an Admin is looking at somebody else's record, because a
+    // screen that does not say whose it is invites a decision about the wrong
+    // person.
+    viewingStudent: (username: string) => `Прогресс студента: ${username}`,
+    chooseStudent: 'Чей прогресс показать',
+
+    lessonsTitle: 'Уроки',
+    courseTotal: 'Курс целиком',
+    // Read out beside the bar, because a bar alone is not a number.
+    percent: (n: number) => `${n}%`,
+    breakdown: (completed: number, withHelp: number, total: number) =>
+      `Пройдено самостоятельно: ${completed} · с подсказкой: ${withHelp} · всего: ${total}`,
+    locked: 'ещё не открыт',
+    noLessons: 'В этом курсе пока нет опубликованных уроков.',
+
+    attemptsTitle: 'Попытки в тестах',
+    noAttempts: 'Тесты пока не сдавались.',
+    attemptLine: (test: string, attempt: number) => `${test}, попытка ${attempt}`,
+    // A score is withheld until every answer has been judged: an unfinished
+    // judgement is not a zero.
+    attemptPending: 'Ещё проверяется',
+    attemptFailedGrading: 'Проверка не завершилась',
+  },
+
+  // design.md § Progress and statistics — «артикли — 14 ошибок».
+  errorStats: {
+    title: 'Ошибки по типам',
+    // The whole point of the ordering: the largest count is what to work on next.
+    hint: 'Считаются все ответы — и в уроках, и в тестах. Сверху то, что встречается чаще всего.',
+    none: 'Ошибок пока нет — либо ещё нечего считать.',
+    count: (n: number) => `${n} ${plural(n, 'ошибка', 'ошибки', 'ошибок')}`,
+    typeHeading: 'Тип ошибки',
+    countHeading: 'Сколько раз',
+  },
+
+  // design.md § Progress and statistics: charts over selected Lessons, to show
+  // change over time. The only view in the application that answers whether the
+  // studying is working.
+  changeOverTime: {
+    title: 'Как меняется со временем',
+    hint: 'Выберите отрезок уроков — сколько раз встречался каждый тип ошибки.',
+    from: 'С урока',
+    to: 'По урок',
+    // Errors made in a Test belong to no Lesson, so they are counted in the table
+    // above and not on this chart. Saying so is cheaper than a wrong conclusion.
+    testsExcluded: 'Ошибки из тестов сюда не попадают — они относятся не к уроку.',
+    // Said rather than drawn: an empty chart looks like a broken chart.
+    noErrors: 'На выбранном отрезке ошибок нет.',
+    noLessons: 'Пока не из чего выбирать — в курсе нет опубликованных уроков.',
+    lessonShort: (position: number) => `У${position}`,
+    tableCaption: 'Те же числа, по урокам',
+    // A cap, and it is said out loud rather than silently dropping the rest.
+    shownSeries: (shown: number, all: number) =>
+      `Показаны ${shown} самых частых типов из ${all}. Остальные — в таблице ниже.`,
+    total: 'Всего',
   },
 
   // A Test, from the Student's side. design.md § Tests: no feedback until it is
@@ -710,6 +844,9 @@ export const ru = {
   errors: {
     notFound: 'Страница не найдена.',
     serverError: 'Что-то пошло не так.',
+    // A request the server could not read at all. Seen only by a stale tab or a
+    // hand-made call, so it says what it can without guessing.
+    badRequest: 'Запрос не понят.',
   },
 } as const;
 

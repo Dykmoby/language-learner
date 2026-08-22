@@ -21,6 +21,7 @@ const PAYLOAD = JSON.stringify({
 const RESULT: ResultFrame = {
   t: 'result',
   status: 'graded',
+  submissionId: 1,
   verdict: 'partially_correct',
   feedbackRu: FEEDBACK,
   corrected: 'I have a cat.',
@@ -111,7 +112,7 @@ test('the Errors do not stream — they arrive only in the terminal frame', asyn
 
 test('a failed grading streams nothing and still delivers its terminal frame', async () => {
   const failure: ResultFrame = {
-    t: 'result', status: 'grading_failed', verdict: null, feedbackRu: null,
+    t: 'result', status: 'grading_failed', submissionId: 1, verdict: null, feedbackRu: null,
     corrected: null, errors: [],
     progression: {
       advanced: false, nextExerciseId: 1, lessonComplete: false,

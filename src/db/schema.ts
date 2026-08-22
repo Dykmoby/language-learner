@@ -351,3 +351,47 @@ export const loginThrottle = sqliteTable('login_throttle', {
   lastFailureAt: integer('last_failure_at', { mode: 'timestamp_ms' }).notNull(),
   lockedUntil: integer('locked_until', { mode: 'timestamp_ms' }),
 });
+
+// --- Disputes ----------------------------------------------------------------
+
+// A Student's objection to a Verdict — CONTEXT.md. A fact *about* a judgement,
+// never an edit to one: ADR 0003 keeps both the proposed and the guarded Verdict
+// so the Grader's run-to-run instability stays measurable, and overwriting either
+// after a review would destroy the one number that says whether the Grader is
+// improving — how often a person overruled it. So nothing here writes to
+// `submissions`, and the progress derivation reads the two together.
+//
+// A ruling of null is the queue: a Dispute awaiting a decision. Resolved rows
+// keep their ruling and stay readable, because a resolved Dispute is the record
+// of a decision rather than a task that evaporates when it is done.
+export const DISPUTE_RULINGS = ['upheld', 'rejected'] as const;
+export type DisputeRuling = (typeof DISPUTE_RULINGS)[number];
+
+export const disputes = sqliteTable('disputes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Unique: one objection per Submission, and the database says so rather than a
+  // check somewhere that could be skipped by the next caller. Saying it twice is
+  // not saying it louder.
+  submissionId: integer('submission_id').notNull().unique()
+    .references(() => submissions.id, { onDelete: 'cascade' }),
+  // Denormalised from the Submission on purpose: the Admin's queue lists whose
+  // each Dispute is, and reading that through a join to the Submission on every
+  // row buys nothing when the answer can never differ — a Dispute is written by
+  // the Student who wrote the answer, and that is the rule the endpoint enforces.
+  studentId: integer('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  // In their own words. Required: an objection with no reason is not reviewable.
+  comment: text('comment').notNull(),
+  ruling: text('ruling', { enum: DISPUTE_RULINGS }),
+  // Nullable for the same reason a Draft's author is: losing an account must not
+  // take the record of its decisions with it.
+  resolvedBy: integer('resolved_by').references(() => students.id, { onDelete: 'set null' }),
+  resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [
+  // The queue is "every Dispute with no ruling, oldest first", and it is the one
+  // query an Admin runs here.
+  index('disputes_ruling_idx').on(t.ruling, t.createdAt),
+  index('disputes_student_idx').on(t.studentId),
+]);
+
+export type DisputeRow = typeof disputes.$inferSelect;
