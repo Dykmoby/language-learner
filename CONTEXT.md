@@ -52,6 +52,10 @@ _Avoid_: type, format
 An assessment owned by a Course rather than a Lesson. Gives no feedback until submitted, and gates nothing.
 _Avoid_: quiz, exam, assessment
 
+**Attempt**:
+One Student's run at a Test, from the first answer to the score. Numbered per Student and per Test, unlimited, and never replaced by a later one — the point of taking a Test twice is the difference between the two.
+_Avoid_: try, run, sitting, session
+
 ### Answers and judgement
 
 **Reference Answer**:

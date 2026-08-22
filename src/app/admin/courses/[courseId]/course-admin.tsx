@@ -20,6 +20,13 @@ export type LessonEntry = {
   publication: LessonPublication;
 };
 
+export type TestEntry = {
+  id: number;
+  title: string;
+  exerciseCount: number;
+  published: boolean;
+};
+
 export type StudentEntry = {
   id: number;
   username: string;
@@ -29,6 +36,7 @@ export type StudentEntry = {
 type Props = {
   courseId: number;
   initialLessons: LessonEntry[];
+  initialTests: TestEntry[];
   initialRoster: StudentEntry[];
 };
 
@@ -37,10 +45,12 @@ function publicationLabel(publication: LessonPublication): string {
   return publication === 'published' ? ru.admin.published : ru.admin.unpublishedChanges;
 }
 
-export function CourseAdmin({ courseId, initialLessons, initialRoster }: Props) {
+export function CourseAdmin({ courseId, initialLessons, initialTests, initialRoster }: Props) {
   const [lessons, setLessons] = useState(initialLessons);
+  const [tests] = useState(initialTests);
   const [roster, setRoster] = useState(initialRoster);
   const [title, setTitle] = useState('');
+  const [testTitle, setTestTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [faults, setFaults] = useState<string[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
@@ -77,6 +87,22 @@ export function CourseAdmin({ courseId, initialLessons, initialRoster }: Props) 
       // Into the new Lesson's Draft: an empty Lesson is not something anyone
       // wants to look at a list entry for, they want to write it.
       window.location.href = `/admin/lessons/${body!.lessonId as number}`;
+    } catch {
+      setProblem(ru.admin.writeFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addTest() {
+    setBusy(true);
+    clearMessages();
+    try {
+      const { ok, body } = await post(`/api/admin/courses/${courseId}/tests`, { title: testTitle });
+      if (!ok) return report(body);
+      // Into the Test itself: what an Admin came to do is write its Exercises,
+      // and an empty Test is not something anyone wants a list entry for.
+      window.location.href = `/admin/tests/${body!.testId as number}`;
     } catch {
       setProblem(ru.admin.writeFailed);
     } finally {
@@ -177,6 +203,41 @@ export function CourseAdmin({ courseId, initialLessons, initialRoster }: Props) 
       <p className="actions">
         <button type="button" onClick={addLesson} disabled={busy}>
           {busy ? ru.admin.creatingLesson : ru.admin.createLesson}
+        </button>
+      </p>
+
+      <h2>{ru.admin.testsTitle}</h2>
+      {tests.length === 0 ? (
+        <p className="muted">{ru.admin.noTests}</p>
+      ) : (
+        <ul className="cards">
+          {tests.map((test) => (
+            <li key={test.id}>
+              <a href={`/admin/tests/${test.id}`}>{test.title}</a>
+              <span className="muted">
+                {' — '}
+                {test.published ? ru.testAdmin.published : ru.testAdmin.unpublished}
+                {' · '}{ru.admin.exerciseCount(test.exerciseCount)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3>{ru.admin.newTestTitle}</h3>
+      <label>
+        <span>{ru.admin.testTitleField}</span>
+        <input
+          type="text"
+          value={testTitle}
+          onChange={(e) => { setTestTitle(e.target.value); clearMessages(); }}
+          disabled={busy}
+        />
+      </label>
+      <p className="muted">{ru.admin.testStartsAsDraft}</p>
+      <p className="actions">
+        <button type="button" onClick={addTest} disabled={busy}>
+          {busy ? ru.admin.creatingTest : ru.admin.createTest}
         </button>
       </p>
 

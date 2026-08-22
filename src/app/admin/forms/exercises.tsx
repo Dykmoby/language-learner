@@ -1,7 +1,12 @@
 'use client';
 
-// The Practice, authored by hand: one form per Exercise Kind, because the fields
+// Exercises, authored by hand: one form per Exercise Kind, because the fields
 // genuinely differ (design.md § Authoring).
+//
+// It serves both places Exercises come into being — a Lesson's Practice and a
+// Test — and knows about neither. It is handed a list and hands one back, which
+// is what the Exercise Set makes possible: owned by exactly one of the two, so
+// nothing about authoring, ordering or judging an Exercise branches on which.
 //
 // The distinction the forms exist to make visible is between what the Student is
 // *offered* and what is *accepted*. For a multiple choice and a word order they
@@ -13,15 +18,15 @@
 // again on the way into a published Lesson; this only makes the incoherent
 // shapes harder to type in the first place.
 
-import { ru } from '../../../../ru.ts';
+import { ru } from '../../../ru.ts';
 import {
   EXERCISE_KINDS, isDeterministic, offersChoices, type ExerciseKind,
-} from '../../../../content/exercise-validity.ts';
+} from '../../../content/exercise-validity.ts';
 import {
   blankExercise, discardedByKindChange, removeChoice, renameChoice, withKind,
   type DocumentExercise,
-} from '../../../../content/lesson-document.ts';
-import { movedWithin } from '../../../../content/ordering.ts';
+} from '../../../content/lesson-document.ts';
+import { movedWithin } from '../../../content/ordering.ts';
 import type { Pending } from './pending.ts';
 
 type Props = {

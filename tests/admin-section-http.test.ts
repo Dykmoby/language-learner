@@ -15,6 +15,7 @@ import { ru } from '../src/ru.ts';
 // added here is a page whose guard nobody checked.
 const ADMIN_PAGES = [
   '/admin', '/admin/courses/1', '/admin/lessons/1', '/admin/lessons/1/history', '/admin/health',
+  '/admin/tests/1',
 ];
 
 let app: BootedApp;

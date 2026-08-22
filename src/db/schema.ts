@@ -81,7 +81,19 @@ export const tests = sqliteTable('tests', {
   courseId: integer('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   passThreshold: integer('pass_threshold').notNull().default(80),
+  // The same rule a Lesson follows, for the same reason: an assessment a Student
+  // can open and cannot do is worse than no assessment. A Test starts here and
+  // is absent from the Course they read until an Admin publishes it.
+  //
+  // Unlike a Lesson there is no Draft behind it — a Test has no Theory to write
+  // and no conversation to hold over it, so its Exercises are edited in place and
+  // an edit to a published Test is live when it is saved. That is affordable
+  // here in a way it would not be for a Lesson: a Test gates nothing, and the
+  // worst an edit costs is one wasted attempt.
+  publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
 });
+
+export type TestRow = typeof tests.$inferSelect;
 
 // Owned by exactly one of a Lesson's Practice or a Test — never both, never
 // neither. That invariant belongs to the database, not to application code, so
@@ -202,7 +214,16 @@ export type LessonDraftRow = typeof lessonDrafts.$inferSelect;
 // the Reference Answer instead of a fourth attempt. It is a row here rather than
 // a flag on the Exercise because completion is derived from Submissions — a
 // separate flag is a second source of truth that can disagree with them.
-export const SUBMISSION_STATUSES = ['graded', 'grading_failed', 'revealed'] as const;
+//
+// 'awaiting_grading' exists for a Test and nowhere else. A Practice Submission is
+// written *after* it has been judged, because judging it is what the Student is
+// waiting for; a Test's answers are collected while it withholds every judgement,
+// stored when the attempt is submitted, and only then sent to the Grader in one
+// batch. The row therefore exists before its Verdict does, and this is the state
+// it sits in until the batch lands — or, if the batch fails, the state it moves
+// out of into 'grading_failed', where it can be graded again without the Student
+// re-entering a single answer.
+export const SUBMISSION_STATUSES = ['graded', 'grading_failed', 'revealed', 'awaiting_grading'] as const;
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 export { LANGUAGES, VERDICTS };
 
@@ -215,6 +236,32 @@ export const enrollments = sqliteTable('enrollments', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 }, (t) => [unique('enrollments_student_course_unq').on(t.studentId, t.courseId)]);
 
+// One run at a Test by one Student, and the thing that groups its answers.
+//
+// A row exists once an attempt has been **submitted**: a Test is answered in one
+// screen and sent in one request, so there is no half-attempt on the server to
+// keep — and an abandoned one is not an attempt, it is a Student who closed a tab.
+//
+// Retakes are unlimited and every attempt is kept: `attempt` numbers them per
+// Student and per Test, and a later one never overwrites an earlier one. The
+// point of a Test taken twice is the difference between the two.
+export const testAttempts = sqliteTable('test_attempts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  testId: integer('test_id').notNull().references(() => tests.id, { onDelete: 'cascade' }),
+  studentId: integer('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  attempt: integer('attempt').notNull(),
+  // What the Test's threshold was when this attempt was taken. Copied rather
+  // than read through the Test, because an Admin who raises the threshold next
+  // month must not retroactively fail an attempt that passed.
+  passThreshold: integer('pass_threshold').notNull(),
+  submittedAt: integer('submitted_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [
+  unique('test_attempts_student_test_attempt_unq').on(t.studentId, t.testId, t.attempt),
+  index('test_attempts_student_test_idx').on(t.studentId, t.testId),
+]);
+
+export type TestAttemptRow = typeof testAttempts.$inferSelect;
+
 // One Student's answer to one Exercise on one attempt.
 export const submissions = sqliteTable('submissions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -224,6 +271,19 @@ export const submissions = sqliteTable('submissions', {
   // context, and no session state exists anywhere (ADR 0004).
   attempt: integer('attempt').notNull(),
   answer: text('answer').notNull(),
+
+  // The Test attempt this answer was given in, or null for a Practice Submission.
+  //
+  // A Test's answers are Submissions rather than rows of their own so that
+  // design.md § Progress and statistics stays literally true: the Error Type
+  // histogram is specified as being across all Submissions, and a Test's Errors
+  // belong in it. A table apart would mean either a union at every query or
+  // statistics that quietly omit Tests.
+  //
+  // Where an attempt supplies the `attempt` number, the uniqueness below still
+  // holds: an attempt answers each of its Exercises once, and retaking the Test
+  // numbers the next attempt one higher.
+  testAttemptId: integer('test_attempt_id').references(() => testAttempts.id, { onDelete: 'cascade' }),
 
   // A failed grading is not a wrong answer, and must never be rendered as one
   // (design.md § Failure behaviour).
@@ -242,6 +302,7 @@ export const submissions = sqliteTable('submissions', {
 }, (t) => [
   unique('submissions_student_exercise_attempt_unq').on(t.studentId, t.exerciseId, t.attempt),
   index('submissions_student_exercise_idx').on(t.studentId, t.exerciseId),
+  index('submissions_test_attempt_idx').on(t.testAttemptId),
 ]);
 
 // One structured fault found in a Submission. Rows, not a JSON blob: the whole

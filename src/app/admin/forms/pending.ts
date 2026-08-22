@@ -1,6 +1,6 @@
 'use client';
 
-// The one thing on the Draft editor waiting to be confirmed.
+// The one thing on an authoring form waiting to be confirmed.
 //
 // One at a time across the whole form, whichever it is. A confirmation the
 // author has forgotten about is a confirmation that confirms nothing, and two of
@@ -11,7 +11,7 @@
 // for exactly that reason: three components each holding their own «вы уверены?»
 // is three confirmations that can all be open together.
 
-import type { ExerciseKind } from '../../../../content/exercise-validity.ts';
+import type { ExerciseKind } from '../../../content/exercise-validity.ts';
 
 export type Pending =
   /** Removing an Exercise that has Submissions against it. */
@@ -24,3 +24,11 @@ export type Pending =
    * it is about the Draft as a whole.
    */
   | { what: 'publish'; unreviewed: number };
+
+/**
+ * The subset a form without a Draft behind it can raise. A Test publishes a flag
+ * rather than a document, so there is no Draft to ask about — and expressing that
+ * as a narrower type is what stops a Test editor from having to handle a
+ * confirmation it can never receive.
+ */
+export type PendingExerciseEdit = Extract<Pending, { what: 'remove' | 'kind' }>;

@@ -7,6 +7,8 @@ import { ru } from '../../../ru.ts';
 import { currentStudent } from '../../../auth/current-student.ts';
 import { getDatabase } from '../../../db/index.ts';
 import { courseOutline, enrolledCourses, rememberCurrentCourse } from '../../../practice/lessons.ts';
+import { courseTests } from '../../../tests/taking.ts';
+import { CourseTests } from './tests.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,9 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
 
   rememberCurrentCourse(db, student.id, course.id);
   const outline = courseOutline(db, student.id, course.id);
+  // Published Tests only, and listed apart from the Lessons: a Test gates
+  // nothing, so it does not belong in a list whose order is what unlocks what.
+  const tests = courseTests(db, student.id, course.id);
 
   return (
     <main>
@@ -50,6 +55,16 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
           </li>
         ))}
       </ol>
+
+      <h2>{ru.test.sectionTitle}</h2>
+      <CourseTests
+        tests={tests.map(({ test, exerciseCount, attempts }) => ({
+          id: test.id,
+          title: test.title,
+          exerciseCount,
+          attempts,
+        }))}
+      />
 
       <p><a href="/">{ru.course.back}</a></p>
     </main>
