@@ -245,7 +245,15 @@ function asStringArray(value: unknown): string[] | null {
   return (value as string[]).filter((item) => item.trim() !== '');
 }
 
-function parseDocumentExercise(value: unknown): DocumentExercise | null {
+/**
+ * One Exercise as a form sends it, or null if it is not that shape at all.
+ *
+ * Exported because a Test's Exercises arrive in exactly this shape and are
+ * judged by exactly these rules — a second copy would be a second place for the
+ * id-preserving rule below to be got wrong, and losing an id turns an edit into a
+ * delete-and-reinsert that takes a Student's Submissions with it.
+ */
+export function parseDocumentExercise(value: unknown): DocumentExercise | null {
   if (typeof value !== 'object' || value === null) return null;
   const body = value as Record<string, unknown>;
 

@@ -14,9 +14,10 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
-  submissions, submissionErrors, acceptedVariants, isDeterministic,
+  submissions, acceptedVariants, isDeterministic,
   type ExerciseRow, type SubmissionRow, type SubmissionStatus,
 } from '../db/schema.ts';
+import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
 import { deterministicCheck } from './deterministic-check.ts';
@@ -87,17 +88,7 @@ function writeSubmission(
       createdAt: new Date(),
     }).returning().get();
 
-    // Rows, not a JSON blob, and ordered: the Error Type histogram in step 7 is a
-    // query over these, and the order is the order the Grader found them in.
-    (fields.errors ?? []).forEach((error, index) => {
-      tx.insert(submissionErrors).values({
-        submissionId: row.id,
-        position: index + 1,
-        type: error.type,
-        span: error.span,
-        explanationRu: error.explanation_ru,
-      }).run();
-    });
+    writeSubmissionErrors(tx, row.id, fields.errors ?? []);
 
     return row;
   });

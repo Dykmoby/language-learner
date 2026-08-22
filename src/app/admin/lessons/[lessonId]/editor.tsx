@@ -18,11 +18,11 @@ import { ru } from '../../../../ru.ts';
 import { renderTheory } from '../../../../content/markdown.ts';
 import type { DocumentFault, LessonDocument } from '../../../../content/lesson-document.ts';
 import type { DraftOrigin } from '../../../../db/schema.ts';
-import { ExerciseList } from './exercises.tsx';
-import { FaultList } from './faults.tsx';
+import { ExerciseList } from '../../forms/exercises.tsx';
+import { FaultList } from '../../forms/faults.tsx';
 import { GeneratePanel, type EarlierLessonChoice } from './generate.tsx';
 import { RefinePanel, type Turn } from './refine.tsx';
-import type { Pending } from './pending.ts';
+import type { Pending } from '../../forms/pending.ts';
 import { ImageUpload } from './image-upload.tsx';
 
 type Props = {

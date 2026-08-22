@@ -8,17 +8,18 @@
 // which is why there is exactly one Exercise on the wire at a time and no second
 // copy of the rules living in the browser.
 //
-// Every branch on Exercise Kind lives in ExerciseQuestion at the bottom of this
-// file, and nowhere else: the shell asks a question and receives a string. In
-// particular nothing here knows whether an Exercise is judged in code or by the
-// Grader — both answer on the same wire in the same shape, and finding out would
-// only let the two paths drift apart.
+// Every branch on Exercise Kind lives in ExerciseQuestion, which a Test asks with
+// too: the shell asks a question and receives a string. In particular nothing
+// here knows whether an Exercise is judged in code or by the Grader — both answer
+// on the same wire in the same shape, and finding out would only let the two
+// paths drift apart.
 
 import { useState } from 'react';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import type { ExerciseKind } from '../../../../db/schema.ts';
 import type { ExerciseState } from '../../../../practice/progress.ts';
 import { takeFrames, type ResultFrame, type RevealResult } from '../../../../practice/wire.ts';
+import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
 
 export type CurrentExercise = {
   id: number;
@@ -266,153 +267,5 @@ function ProgressBar({ segments }: { segments: Segment[] }) {
         <li key={segment.position} className={`segment ${segment.state}`} title={String(segment.position)} />
       ))}
     </ol>
-  );
-}
-
-// The Exercise as the Student meets it: the prompt and the way it is answered,
-// together. They are one component because for a fill-gap they are one sentence —
-// the gap belongs in the text, not on a line of its own underneath it — and
-// because keeping them together is what leaves the shell with no branch on Kind
-// anywhere.
-function ExerciseQuestion({
-  exercise, answer, onAnswer, disabled, answered,
-}: {
-  exercise: CurrentExercise;
-  answer: string;
-  onAnswer: (value: string) => void;
-  disabled: boolean;
-  /** The answer is in and being judged or explained: show it, do not ask again. */
-  answered: boolean;
-}) {
-  const [fragments, setFragments] = useState<string[]>([]);
-
-  function useFragments(next: string[]) {
-    setFragments(next);
-    // Word order is answered as a sentence like any other: the fragments are how
-    // it is built, not what is submitted.
-    onAnswer(next.join(' '));
-  }
-
-  if (exercise.kind === 'fill_gap') {
-    // The prompt carries the gap as ___, so the input goes where the gap is.
-    const [before, ...rest] = exercise.prompt.split(GAP);
-    const after = rest.join(GAP);
-    const field = answered
-      ? <span className="given inline">{answer}</span>
-      : (
-        <input
-          type="text"
-          className="gap"
-          value={answer}
-          disabled={disabled}
-          autoComplete="off"
-          aria-label={ru.practice.answer}
-          onChange={(event) => onAnswer(event.target.value)}
-        />
-      );
-
-    return rest.length === 0
-      ? (
-        <>
-          <p className="prompt">{exercise.prompt}</p>
-          {field}
-        </>
-      )
-      : <p className="prompt">{before}{field}{after}</p>;
-  }
-
-  return (
-    <>
-      <p className="prompt">{exercise.prompt}</p>
-      {answered ? <p className="given">{answer}</p> : null}
-
-      {!answered && exercise.kind === 'multiple_choice' ? (
-        <ul className="choices" aria-label={ru.practice.chooseOption}>
-          {exercise.choices.map((choice) => (
-            <li key={choice}>
-              <label>
-                <input
-                  type="radio"
-                  name="choice"
-                  value={choice}
-                  checked={answer === choice}
-                  disabled={disabled}
-                  onChange={() => onAnswer(choice)}
-                />
-                <span>{choice}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {!answered && exercise.kind === 'word_order' ? (
-        <WordOrder
-          choices={exercise.choices}
-          fragments={fragments}
-          onFragments={useFragments}
-          disabled={disabled}
-        />
-      ) : null}
-
-      {!answered && WRITTEN_KINDS.includes(exercise.kind) ? (
-        <label>
-          <span>{ru.practice.answer}</span>
-          <textarea
-            rows={exercise.kind === 'open_writing' ? 6 : 3}
-            value={answer}
-            disabled={disabled}
-            onChange={(event) => onAnswer(event.target.value)}
-          />
-        </label>
-      ) : null}
-    </>
-  );
-}
-
-/** Where a fill-gap Exercise wants its input. */
-const GAP = '___';
-
-// Composition, translation and open writing are answered in prose; the Kinds
-// judged in code are answered by choosing or arranging.
-const WRITTEN_KINDS: ExerciseKind[] = ['composition', 'translation', 'open_writing'];
-
-function WordOrder({
-  choices, fragments, onFragments, disabled,
-}: {
-  choices: string[];
-  fragments: string[];
-  onFragments: (value: string[]) => void;
-  disabled: boolean;
-}) {
-  const remaining = [...choices];
-  for (const used of fragments) {
-    const at = remaining.indexOf(used);
-    if (at !== -1) remaining.splice(at, 1);
-  }
-
-  return (
-    <div className="wordOrder">
-      <p className="muted">{ru.practice.buildSentence}</p>
-      <p className="built">{fragments.join(' ') || ' '}</p>
-      <p className="fragments">
-        {remaining.map((fragment, index) => (
-          <button
-            key={`${fragment}-${index}`}
-            type="button"
-            className="secondary"
-            disabled={disabled}
-            onClick={() => onFragments([...fragments, fragment])}
-          >
-            {fragment}
-          </button>
-        ))}
-      </p>
-      <p>
-        <button type="button" className="secondary" disabled={disabled} onClick={() => onFragments([])}>
-          {ru.practice.clear}
-        </button>
-      </p>
-    </div>
   );
 }

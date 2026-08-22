@@ -1,0 +1,141 @@
+'use client';
+
+// The Test shell: every Exercise at once, and one button that ends it.
+//
+// It judges nothing and says nothing about any answer, which is the whole design
+// of a Test rather than a simplification of the Practice's shell. The answers are
+// held here until they are sent, so changing one before submitting costs nothing
+// and reaches nobody.
+//
+// The one thing it does ask is whether an unanswered Exercise was meant to stay
+// unanswered. A blank answer is judged like any other — incorrect — and a Student
+// who scrolled past one deserves to be told before that becomes true.
+
+import { useState } from 'react';
+import { ru } from '../../../ru.ts';
+import { ExerciseQuestion } from '../../shared/exercise-question.tsx';
+import type { AttemptSummary, TestExerciseView } from '../../../tests/wire.ts';
+import { AttemptList } from './attempts.tsx';
+
+type Props = {
+  testId: number;
+  exercises: TestExerciseView[];
+  attempts: AttemptSummary[];
+  courseId: number;
+};
+
+type Phase = 'answering' | 'confirming' | 'submitting';
+
+export function TestShell({ testId, exercises, attempts, courseId }: Props) {
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [phase, setPhase] = useState<Phase>('answering');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  if (exercises.length === 0) {
+    return (
+      <section>
+        <p className="muted">{ru.test.empty}</p>
+        <p><a href={`/courses/${courseId}`}>{ru.test.backToCourse}</a></p>
+      </section>
+    );
+  }
+
+  const unanswered = exercises.filter((exercise) => (answers[exercise.exerciseId] ?? '').trim() === '');
+
+  async function send() {
+    setPhase('submitting');
+    setProblem(null);
+    try {
+      const response = await fetch(`/api/tests/${testId}/attempts`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          answers: exercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            answer: answers[exercise.exerciseId] ?? '',
+          })),
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as
+        { ok?: boolean; attemptId?: number; error?: string } | null;
+
+      if (!response.ok || body?.ok !== true || typeof body.attemptId !== 'number') {
+        setProblem(body?.error ?? ru.test.submitFailed);
+        setPhase('answering');
+        return;
+      }
+
+      // Everything the Test withheld is on the review, so that is where
+      // submitting goes — not back to a screen that now has nothing to say.
+      window.location.href = `/tests/${testId}/attempts/${body.attemptId}`;
+    } catch {
+      setProblem(ru.test.submitFailed);
+      setPhase('answering');
+    }
+  }
+
+  function submit() {
+    if (unanswered.length > 0) {
+      setPhase('confirming');
+      return;
+    }
+    void send();
+  }
+
+  const busy = phase === 'submitting';
+
+  return (
+    <section>
+      <ol className="exercises">
+        {exercises.map((exercise) => (
+          <li key={exercise.exerciseId}>
+            <p className="muted">{ru.test.position(exercise.position, exercises.length)}</p>
+            <ExerciseQuestion
+              exercise={{
+                id: exercise.exerciseId,
+                kind: exercise.kind,
+                prompt: exercise.prompt,
+                choices: exercise.choices,
+              }}
+              answer={answers[exercise.exerciseId] ?? ''}
+              onAnswer={(value) => {
+                setAnswers((current) => ({ ...current, [exercise.exerciseId]: value }));
+                // A confirmation about unanswered Exercises is a question about
+                // the attempt as it was a moment ago; answering one withdraws it.
+                if (phase === 'confirming') setPhase('answering');
+                setProblem(null);
+              }}
+              disabled={busy}
+              answered={false}
+            />
+          </li>
+        ))}
+      </ol>
+
+      {problem === null ? null : <p className="error" role="alert">{problem}</p>}
+
+      {phase === 'confirming' ? (
+        <>
+          <p className="error" role="alert">{ru.test.unanswered(unanswered.length)}</p>
+          <p className="actions">
+            <button type="button" onClick={() => void send()}>{ru.test.submitAnyway}</button>
+            <button type="button" className="secondary" onClick={() => setPhase('answering')}>
+              {ru.test.keepAnswering}
+            </button>
+          </p>
+        </>
+      ) : (
+        <p className="actions">
+          <button type="button" onClick={submit} disabled={busy}>
+            {busy ? ru.test.submitting : ru.test.submit}
+          </button>
+        </p>
+      )}
+
+      <h2>{ru.test.attemptsTitle}</h2>
+      <AttemptList testId={testId} attempts={attempts} />
+
+      <p><a href={`/courses/${courseId}`}>{ru.test.backToCourse}</a></p>
+    </section>
+  );
+}

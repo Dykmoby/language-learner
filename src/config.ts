@@ -51,6 +51,21 @@ export const config = {
     concurrency: int('GRADER_CONCURRENCY', 2),
   },
 
+  testGrading: {
+    // A Test's free-form answers go to Claude in one call, and that call is not a
+    // Verdict on one Submission: the spike measured those at 4-7s, and ten answers
+    // judged at once is a different order of wait. The Grader's 90s would time out
+    // exactly the calls this exists for.
+    //
+    // It runs in the **grading** lane all the same — it is a Student's own
+    // foreground work, stateless per ADR 0004, and an Admin's Generation must
+    // never take its slot. The tension worth naming for whoever comes after: at a
+    // concurrency of 2, a long batch holds a grading slot for minutes. If that is
+    // ever measured leaving a Student waiting mid-Practice, the fix is a lane of
+    // its own — not a shorter timeout.
+    timeoutMs: int('TEST_GRADING_TIMEOUT_MS', 5 * 60_000),
+  },
+
   authoring: {
     // Its own limit, and its own timeout, because the work is nothing like
     // grading. The spike measured a Verdict at 4-7s; a whole Lesson with ten

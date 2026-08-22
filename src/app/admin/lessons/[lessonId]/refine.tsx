@@ -22,7 +22,7 @@ import { ru } from '../../../../ru.ts';
 import type { LessonDocument } from '../../../../content/lesson-document.ts';
 import type { Effort } from '../../../../claude/effort.ts';
 import { useAuthoringStream } from './authoring-stream.ts';
-import { FaultList } from './faults.tsx';
+import { FaultList } from '../../forms/faults.tsx';
 import { ModelAndEffort } from './model-picker.tsx';
 import { StreamedTheory } from './streamed-theory.tsx';
 

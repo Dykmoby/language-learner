@@ -9,6 +9,7 @@ import { ru } from '../../../../ru.ts';
 import { requireAdmin } from '../../../../admin/guard.ts';
 import { getDatabase } from '../../../../db/index.ts';
 import { adminCourse, courseRoster } from '../../../../admin/catalogue.ts';
+import { adminCourseTests } from '../../../../admin/tests.ts';
 import { CourseAdmin } from './course-admin.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,12 @@ export default async function AdminCoursePage({ params }: { params: Promise<{ co
           title: lesson.title,
           exerciseCount,
           publication,
+        }))}
+        initialTests={adminCourseTests(db, course.id).map(({ test, exerciseCount }) => ({
+          id: test.id,
+          title: test.title,
+          exerciseCount,
+          published: test.publishedAt !== null,
         }))}
         initialRoster={courseRoster(db, course.id).map(({ student, enrolled }) => ({
           id: student.id,

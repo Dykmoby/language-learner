@@ -25,6 +25,10 @@ export function secondsRu(n: number): string {
 export const ru = {
   appName: 'Языковой тренажёр',
 
+  // Dates are formatted by the browser rather than written out here, but which
+  // locale they are formatted in is still a fact about the interface language.
+  locale: 'ru-RU',
+
   common: {
     signOut: 'Выйти',
     loading: 'Загрузка…',
@@ -119,8 +123,62 @@ export const ru = {
     enrolledNow: 'Студент записан на курс.',
     noStudents: 'Нет ни одного аккаунта.',
 
+    // Tests, listed beside the Lessons of the same Course.
+    testsTitle: 'Проверочные работы',
+    noTests: 'В этом курсе пока нет проверочных работ.',
+    newTestTitle: 'Новая проверочная работа',
+    testTitleField: 'Название работы',
+    testStartsAsDraft:
+      'Работа создаётся черновиком: студенты увидят её только после публикации.',
+    createTest: 'Добавить работу',
+    creatingTest: 'Добавление работы…',
+
     // Every write in the section fails the same way, and says so the same way.
     writeFailed: 'Не удалось сохранить. Попробуйте ещё раз.',
+  },
+
+  // One Test, from an author's side. Kept apart from `draft` because the two acts
+  // differ: a Lesson is saved into a new Draft and published from it, and a Test
+  // has no Draft at all — saving changes what is there, and publishing only
+  // decides whether a Student can see it.
+  testAdmin: {
+    title: 'Проверочная работа',
+    explanation:
+      'У работы нет черновиков: что сохранено, то и есть. Студенты видят работу только после публикации.',
+    // design.md § Tests: a Test is a mirror, not a gate. Said on the screen
+    // because an Admin deciding what to put in one should know it opens nothing.
+    gatesNothing:
+      'Работа ничего не открывает и не закрывает: уроки идут своим порядком независимо от неё.',
+    titleField: 'Название работы',
+    passThreshold: 'Порог прохождения, %',
+    passThresholdHint:
+      'Доля верных ответов, при которой работа считается пройденной. По умолчанию 80%.',
+    save: 'Сохранить работу',
+    saving: 'Сохранение…',
+    saved: 'Работа сохранена.',
+    saveFailed: 'Не удалось сохранить работу. Попробуйте ещё раз.',
+    saveRefused: 'Работа не сохранена: исправьте упражнения ниже.',
+    publish: 'Опубликовать',
+    publishing: 'Публикация…',
+    published: 'Опубликована',
+    unpublished: 'Черновик — студенты её не видят',
+    publishedNow: 'Работа опубликована. Студенты видят её в курсе.',
+    publishRefused: 'Опубликовать нельзя: исправьте то, что ниже.',
+    // Publishing writes nothing but a flag, so what goes live is what was saved —
+    // not what is on the screen.
+    publishAfterSave: 'Сначала сохраните изменения: публикуется сохранённая работа.',
+    alreadyPublished: 'Работа уже опубликована. Обновите страницу.',
+    backToCourse: 'К курсу',
+  },
+
+  // Why a Test could not be saved or published, keyed by the stable code. Same
+  // split as everywhere else: the code is what is checked, this is only what is
+  // read, and a test asserts every code has exactly one entry.
+  testFaults: {
+    test_title_empty: 'Заполните название работы.',
+    pass_threshold_out_of_range: 'Порог прохождения — целое число от 1 до 100.',
+    test_empty: 'В работе нет ни одного упражнения — публиковать нечего.',
+    test_duplicate_exercise_id: 'Это упражнение указано в работе дважды. Оставьте одно.',
   },
 
   // The refusals the authoring writes report, keyed by the stable code. Same
@@ -221,6 +279,70 @@ export const ru = {
     nextLessonUnlocked: 'Следующий урок открыт.',
     courseComplete: 'Это был последний урок курса.',
     empty: 'В этом уроке пока нет упражнений.',
+  },
+
+  // A Test, from the Student's side. design.md § Tests: no feedback until it is
+  // submitted, a score against a threshold, unlimited retakes, and nothing gated
+  // either way.
+  test: {
+    sectionTitle: 'Проверочные работы',
+    none: 'В этом курсе пока нет проверочных работ.',
+    exerciseCount: (n: number) => `${n} ${plural(n, 'задание', 'задания', 'заданий')}`,
+    threshold: (n: number) => `Порог прохождения: ${n}%`,
+    start: 'Пройти работу',
+    retake: 'Пройти ещё раз',
+    // Said before the first answer rather than discovered after it: a Student who
+    // expects the usual per-answer feedback will otherwise think it is broken.
+    noFeedbackUntilSubmit:
+      'Работа проверяется целиком после отправки. Пока вы её пишете, никаких подсказок и оценок не будет.',
+    gatesNothing:
+      'Результат работы ни на что не влияет: уроки открываются своим порядком, сколько бы раз вы её ни проходили.',
+    empty: 'В этой работе пока нет заданий.',
+    position: (n: number, total: number) => `Задание ${n} из ${total}`,
+    submit: 'Отправить работу',
+    submitting: 'Отправка…',
+    submitFailed: 'Не удалось отправить работу. Попробуйте ещё раз.',
+    unanswered: (n: number) =>
+      `Без ответа ${n} ${plural(n, 'задание', 'задания', 'заданий')}. Отправить работу?`,
+    submitAnyway: 'Отправить',
+    keepAnswering: 'Вернуться к работе',
+
+    // Attempts. Every one is kept, and the point of taking a Test twice is the
+    // difference between the two.
+    attemptsTitle: 'Ваши попытки',
+    noAttempts: 'Вы ещё не проходили эту работу.',
+    attemptNumber: (n: number) => `Попытка ${n}`,
+    score: (correct: number, total: number, percent: number) =>
+      `${correct} из ${total} — ${percent}%`,
+    passed: 'Работа пройдена',
+    failed: 'Работа не пройдена',
+    notScored: 'Оценка не выставлена',
+
+    // The batch, while it is out and when it fails. design.md § Failure
+    // behaviour: never a wrong answer, and it must not read like one either.
+    grading: 'Свободные ответы проверяются…',
+    gradingExplanation:
+      'Все свободные ответы проверяются одним запросом, поэтому это дольше обычного. Страница обновится сама.',
+    gradingFailed:
+      'Не удалось проверить свободные ответы — это сбой проверки, а не ошибка в ваших ответах. Оценка не выставлена, ответы сохранены.',
+    regrade: 'Проверить ещё раз',
+    regrading: 'Проверка…',
+    regradeFailed: 'Проверить снова не удалось. Попробуйте позже.',
+
+    // The review.
+    reviewTitle: 'Разбор работы',
+    reviewHint: 'Верные задания свёрнуты — разверните, если хотите их посмотреть.',
+    showExercise: 'Показать',
+    hideExercise: 'Свернуть',
+    correctAnswer: 'Верно',
+    wrongAnswer: 'Неверно',
+    awaitingAnswer: 'Ещё не проверено',
+    failedAnswer: 'Проверка не удалась',
+    yourAnswer: 'Ваш ответ',
+    noAnswer: 'Ответа нет',
+    referenceAnswer: 'Правильный ответ',
+    backToTest: 'К работе',
+    backToCourse: 'К курсу',
   },
 
   // design.md § Error Type enum — stable in storage, Russian label at display
@@ -608,6 +730,7 @@ export function faultMessage(code: string): string {
   const authoring: Record<string, string> = ru.authoringFaults;
   const uploads: Record<string, string> = ru.uploadRefusals;
   const generation: Record<string, string> = ru.generationFaults;
+  const tests: Record<string, string> = ru.testFaults;
   return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code]
-    ?? uploads[code] ?? generation[code] ?? code;
+    ?? uploads[code] ?? generation[code] ?? tests[code] ?? code;
 }

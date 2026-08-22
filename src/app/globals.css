@@ -161,3 +161,28 @@ pre.streaming {
   font-family: inherit;
   color: var(--muted);
 }
+
+/* --- The Test review -------------------------------------------------------
+   Two shapes of wrong, because the judgement classes fail differently: a
+   Grader-judged Exercise is marked whole, a Deterministic one is marked on the
+   option that was chosen. Both are a tinted background plus a coloured edge
+   rather than colour alone — the distinction has to survive a screen that
+   renders colour poorly, and both themes. */
+.review .score { font-size: 1.35rem; font-weight: 650; margin: 0.5rem 0 0.25rem; }
+.review ol.exercises > li.wrong {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 8%, transparent);
+}
+.review ol.exercises > li.right { border-style: dashed; }
+.review ul.choices li {
+  padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid transparent;
+}
+.review ul.choices li.right {
+  border-color: var(--good);
+  background: color-mix(in srgb, var(--good) 12%, transparent);
+}
+.review ul.choices li.wrong {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  text-decoration: line-through;
+}
