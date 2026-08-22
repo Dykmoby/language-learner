@@ -1,14 +1,17 @@
-// What the browser and the route agree on.
+// What the browser and the route agree on for a Submission.
 //
-// Newline-delimited JSON, not SSE. The objection to SSE is issue #18's, not
-// design.md's: an event protocol, reconnection semantics and a text framing for
-// one one-shot stream is machinery for nothing. A frame per line is the smallest
-// thing that lets the explanation arrive progressively and the Verdict arrive
-// whole. Errors never stream — a half-arrived error list is not information.
+// The framing itself — newline-delimited JSON, a delta frame per revealed piece,
+// exactly one terminal frame — lives in ../wire/ndjson.ts and is shared with the
+// editor's Generation stream. What is here is this stream's cargo: Errors never
+// stream, because a half-arrived error list is not information.
 //
 // Shared by both sides so the browser cannot drift from what the route sends.
 
 import type { Verdict } from '../grader/contract.ts';
+import { takeFrames as takeAnyFrames, type DeltaFrame } from '../wire/ndjson.ts';
+
+export { encodeFrame } from '../wire/ndjson.ts';
+export type { DeltaFrame } from '../wire/ndjson.ts';
 
 export type ErrorView = {
   /** The stable enum string. The Russian label is resolved at display time. */
@@ -26,8 +29,6 @@ export type ProgressionView = {
   failedAttempts: number;
   revealOffered: boolean;
 };
-
-export type DeltaFrame = { t: 'delta'; text: string };
 
 export type ResultFrame = {
   t: 'result';
@@ -51,21 +52,7 @@ export type RevealResult = {
 
 export type Frame = DeltaFrame | ResultFrame;
 
-export function encodeFrame(frame: Frame): string {
-  return `${JSON.stringify(frame)}\n`;
-}
-
-/**
- * Splits a growing buffer into whole frames, returning the remainder. A frame
- * that has not finished arriving is not a frame yet.
- */
+/** The shared splitter, bound to this stream's frames so the browser gets types. */
 export function takeFrames(buffer: string): { frames: Frame[]; rest: string } {
-  const parts = buffer.split('\n');
-  const rest = parts.pop() ?? '';
-  const frames: Frame[] = [];
-  for (const part of parts) {
-    if (part.trim() === '') continue;
-    frames.push(JSON.parse(part) as Frame);
-  }
-  return { frames, rest };
+  return takeAnyFrames<Frame>(buffer);
 }

@@ -141,6 +141,41 @@ export function withKind(exercise: DocumentExercise, kind: ExerciseKind): Docume
   };
 }
 
+/**
+ * How many filled-in values a Kind change would throw away.
+ *
+ * A question about Kinds, not about a form: the answer is the same whoever asks
+ * it, so it is a pure function over the Exercise and the Kind it is becoming and
+ * every pair is tested as a table rather than through a browser. The form asks it
+ * and renders the answer.
+ *
+ * A **count**, not a list of field names. What an author needs to decide is how
+ * much of their typing is about to go, and «три заполненных поля» says that;
+ * "referenceAnswer, acceptedAnswers, choices" names the implementation and
+ * answers a different question.
+ *
+ * Nought is the important value. A Kind change that discards nothing must apply
+ * immediately — a newly added Exercise with empty fields, or a change between two
+ * Kinds that use the same fields, such as fill-gap to word order. A confirmation
+ * that always appears is one nobody reads, which is worse than none.
+ */
+export function discardedByKindChange(exercise: DocumentExercise, kind: ExerciseKind): number {
+  // Asked of `withKind` rather than re-derived from the Kind properties: what
+  // survives a Kind change is that function's rule, and a second copy of it here
+  // would be a warning that could disagree with what actually happens.
+  const after = withKind(exercise, kind);
+
+  // Held to the same standard the validity rules hold a value to: one that
+  // normalises away is absent, so losing it loses nothing.
+  const filled = (values: readonly string[] | undefined) => (values ?? []).filter((v) => !isBlank(v)).length;
+
+  const lostReference = !isBlank(exercise.referenceAnswer) && isBlank(after.referenceAnswer) ? 1 : 0;
+  const lostAnswers = Math.max(0, filled(exercise.acceptedAnswers) - filled(after.acceptedAnswers));
+  const lostChoices = Math.max(0, filled(exercise.choices) - filled(after.choices));
+
+  return lostReference + lostAnswers + lostChoices;
+}
+
 /** An empty Exercise of a Kind, as a form hands one to an author. */
 export function blankExercise(kind: ExerciseKind): DocumentExercise {
   return {

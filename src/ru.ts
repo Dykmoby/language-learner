@@ -407,7 +407,32 @@ export const ru = {
       `У этого упражнения уже есть ${n} ${plural(n, 'ответ', 'ответа', 'ответов')} студентов. Удаление упражнения удалит и их — это нельзя отменить.`,
     confirmRemove: 'Всё равно удалить',
     cancelRemove: 'Не удалять',
+    // Changing a Kind clears the fields the new Kind cannot use, and that
+    // clearing is correct — carrying them across produced an Exercise whose
+    // accepted answer could not tile its fragments. What was wrong is that it
+    // happened silently: discarding an author's own typing deserves the same
+    // warning as discarding a Student's answers, one control away on this form.
+    //
+    // A count, not a list of field names: what an author needs to decide is how
+    // much of their typing is about to go.
+    kindChangeDiscards: (n: number, kind: string) =>
+      `Смена вида на «${kind}» очистит ${n} ${plural(n, 'заполненное поле', 'заполненных поля', 'заполненных полей')}: этот вид упражнения их не использует.`,
+    confirmKindChange: 'Всё равно сменить',
+    cancelKindChange: 'Оставить вид как был',
     neverPublished: 'Этот урок ещё ни разу не опубликован — студенты его не видят.',
+    // What made the Draft on the screen. Until Generation existed, every Draft
+    // was typed by a person and saying so would have been noise; now it is the
+    // only thing distinguishing a Draft an Admin wrote every word of from one
+    // Claude produced thirty seconds ago.
+    madeBy: (origin: string) => `Этот черновик — ${origin}.`,
+    // A count, and the specific thing it points at. The validity rules cannot
+    // help here: an эталонный ответ that is fluent, plausible and wrong passes
+    // every rule there is. A person can catch it, but only if told there is
+    // something to look at.
+    publishUnreviewed: (n: number) =>
+      `В этом черновике ${n} ${plural(n, 'упражнение', 'упражнения', 'упражнений')} с эталонным ответом, который не менялся с тех пор, как его написал Claude. Проверяющий получает эталонный ответ при каждой проверке: ошибка в нём тихо портит проверку всех ответов на это упражнение.`,
+    confirmPublish: 'Всё равно опубликовать',
+    cancelPublish: 'Не публиковать — сначала проверю',
     faultAt: (position: number) => `Упражнение ${position}:`,
     backToCourse: 'К курсу',
   },
@@ -442,6 +467,124 @@ export const ru = {
       'Это упражнение указано в черновике дважды. Оставьте одно.',
   },
 
+  // design.md § Authoring — the Admin describes a Lesson and Claude writes it.
+  generation: {
+    title: 'Сгенерировать урок',
+    // Says plainly where the result lands, because that is the whole safeguard:
+    // a сгенерированный урок публикуется только отдельным решением человека.
+    explanation:
+      'Claude напишет урок целиком и сохранит его как новый черновик. Студенты не увидят его, пока вы не опубликуете. Предыдущие черновики остаются на месте.',
+    topic: 'Тема урока',
+    topicHint: 'Чем конкретнее, тем лучше: «Present Simple в вопросах» вместо «времена».',
+    vocabulary: 'Лексика — по одному слову в строке',
+    vocabularyHint: 'Эти слова урок должен объяснить и отработать.',
+    exerciseCount: 'Сколько упражнений',
+    exerciseCountHint: (min: number, max: number) => `От ${min} до ${max}.`,
+    kindMix: 'Сколько упражнений каждого вида',
+    // design.md § Authoring: the control exists because generation over-produces
+    // multiple choice — the cheapest Kind to write and the least useful to learn
+    // from. Saying so is why an Admin bothers to fill it in.
+    kindMixHint:
+      'Оставьте нули, чтобы Claude выбрал сам. Без этого он почти всегда пишет одни «выборы варианта»: их проще всего составить и меньше всего пользы от них при обучении. Сумма не должна превышать общее число упражнений.',
+    continueFrom: 'Продолжить после урока',
+    continueFromNone: 'Не продолжать — самостоятельный урок',
+    // Published only, and the reason is worth stating: continuity is with what
+    // the Student has actually worked through, not with what an Admin has drafted.
+    continueFromHint:
+      'В список попадают только опубликованные уроки: смысл в том, чтобы опираться на пройденное студентом.',
+    wishes: 'Дополнительные пожелания',
+    wishesHint: 'Свободным текстом: тон, темы примеров, чего избегать.',
+    model: 'Модель',
+    effort: 'Усилие',
+    effortDefault: 'По умолчанию',
+    effortHint:
+      'Чем выше, тем дольше и тщательнее. «Низкое» — быстрый черновик, «Максимальное» — несколько минут.',
+    generate: 'Сгенерировать',
+    generating: 'Claude пишет урок…',
+    theoryArriving: 'Теория, как она пишется',
+    cancel: 'Отменить генерацию',
+    // Nothing was written, and saying so is the difference between "ничего не
+    // произошло" and "непонятно, что теперь в черновике".
+    cancelled: 'Генерация отменена. Черновик не изменился.',
+    done: 'Урок сгенерирован и сохранён как черновик. Проверьте его и опубликуйте, если всё верно.',
+    failed: 'Не удалось сгенерировать урок. Черновик не изменился — исходные данные остались в форме, попробуйте ещё раз.',
+    timedOut: 'Claude не ответил вовремя. Черновик не изменился — попробуйте ещё раз, можно с меньшим усилием.',
+    // Refused rather than stored: an incoherent Exercise must never попасть в
+    // черновик. Which Exercises are at fault is listed beneath.
+    refusedInvalid:
+      'Claude вернул урок с испорченными упражнениями, поэтому он не сохранён. Черновик не изменился.',
+    // A difference from what was ordered, not a fault: the Draft is stored.
+    mismatchTitle: 'Не совпало с заказом',
+    mismatchHint: 'Черновик всё равно сохранён — поправьте вручную или сгенерируйте заново.',
+    countMismatch: (asked: number, produced: number) =>
+      `Заказано упражнений: ${asked}, пришло: ${produced}.`,
+    kindMismatch: (kind: string, asked: number, produced: number) =>
+      `«${kind}»: заказано ${asked}, пришло ${produced}.`,
+  },
+
+  // design.md § Authoring — the ongoing conversation with Claude over a Draft.
+  refinement: {
+    title: 'Доработка с Claude',
+    explanation:
+      'Скажите, что изменить, и Claude вернёт весь урок целиком с этой правкой. Каждый ответ — новый черновик; предыдущие остаются. Ваши правки руками тоже уходят в запрос, так что править и обсуждать можно вперемешку.',
+    // The conversation is over a Draft, and there is nothing to converse about
+    // until one exists.
+    saveFirst: 'Сначала сохраните черновик — разговор идёт про сохранённую версию урока.',
+    empty: 'Разговора об этом уроке ещё не было.',
+    asked: 'Вы попросили:',
+    message: 'Что изменить',
+    messageHint:
+      'Например: «третье упражнение слишком лёгкое», «добавь два задания на прошедшее время», «в теории артикль объяснён дважды».',
+    send: 'Отправить',
+    sending: 'Claude переписывает урок…',
+    // The document travels with every turn, so the Lesson is never lost — only
+    // the thread. Saying which is the difference between a warning and a scare.
+    threadLost:
+      'Прежний разговор продолжить не удалось, поэтому начат новый — Claude видит текущий урок, но не помнит предыдущие просьбы. Повторите важное в следующем сообщении.',
+
+    // A Refinement fails the same way a Generation does, and must say so in its
+    // own words. CONTEXT.md keeps Generation and Refinement apart as terms;
+    // telling an Admin whose доработка timed out that «не удалось сгенерировать
+    // урок» names the wrong act entirely.
+    cancel: 'Отменить',
+    cancelled: 'Доработка отменена. Черновик не изменился.',
+    failed: 'Не удалось доработать урок. Черновик не изменился — ваш запрос остался в поле, попробуйте ещё раз.',
+    timedOut: 'Claude не ответил вовремя. Черновик не изменился — попробуйте ещё раз, можно с меньшим усилием.',
+    refusedInvalid:
+      'Claude вернул урок с испорченными упражнениями, поэтому он не сохранён. Черновик не изменился.',
+  },
+
+  // How much reasoning Claude applies during Generation, chosen per request by
+  // the Admin. The stable value is what travels; this is only what is read.
+  efforts: {
+    low: 'Низкое',
+    medium: 'Среднее',
+    high: 'Высокое',
+    xhigh: 'Очень высокое',
+    max: 'Максимальное',
+  } as Record<string, string>,
+
+  // Why a Generation could not be asked for, and why what came back was not a
+  // Lesson. Same split as everywhere else: the code is what is checked, this is
+  // only what is read, and a test asserts every code has exactly one entry.
+  //
+  // Every refusal says the Draft did not change. design.md § Authoring: a
+  // failure must never look like content, and an Admin must never be left unsure
+  // whether what they are reading came from Claude or was already on the screen.
+  generationFaults: {
+    topic_empty: 'Опишите тему урока — без неё генерировать нечего.',
+    exercise_count_out_of_range: 'Столько упражнений в одном уроке не бывает. Укажите другое число.',
+    kind_mix_exceeds_count:
+      'Видов упражнений заказано больше, чем упражнений в уроке. Уменьшите одно из чисел.',
+    message_empty: 'Напишите, что нужно изменить в уроке.',
+    no_document: 'Claude не вернул урок. Черновик не изменился.',
+    field_missing: 'В уроке, который вернул Claude, не хватает обязательной части. Черновик не изменился.',
+    unknown_exercise_kind:
+      'Claude предложил вид упражнения, которого в системе нет. Черновик не изменился.',
+    malformed_exercise:
+      'Одно из упражнений заполнено так, что его нельзя прочитать. Черновик не изменился.',
+  },
+
   errors: {
     notFound: 'Страница не найдена.',
     serverError: 'Что-то пошло не так.',
@@ -464,5 +607,7 @@ export function faultMessage(code: string): string {
   const exerciseLevel: Record<string, string> = ru.exerciseFaults;
   const authoring: Record<string, string> = ru.authoringFaults;
   const uploads: Record<string, string> = ru.uploadRefusals;
-  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code] ?? uploads[code] ?? code;
+  const generation: Record<string, string> = ru.generationFaults;
+  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code]
+    ?? uploads[code] ?? generation[code] ?? code;
 }

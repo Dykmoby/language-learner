@@ -168,6 +168,26 @@ export const lessonDrafts = sqliteTable('lesson_drafts', {
   // no gain, and because "this version went live at T" is a fact about the
   // version rather than about the Lesson.
   publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+  // The SDK conversation this Draft belongs to. Null until one starts, and null
+  // on every Draft written before Refinement existed.
+  //
+  // Recorded per Draft rather than per Lesson, and that is what makes an old
+  // Draft more than old text: restoring one from three turns ago and carrying on
+  // is a fork of the conversation at that point rather than a rewind of the one
+  // that ran to the end. A single pointer on the Lesson could not express it.
+  //
+  // It is carried forward by a manual save and by a restore, not only written by
+  // a turn: a hand edit is a version of the Lesson being discussed, not a
+  // departure from the discussion.
+  sessionId: text('session_id'),
+  // What the Admin asked for, on a Draft a Refinement turn produced. Null on
+  // every other kind.
+  //
+  // Stored here rather than in a conversation table of its own because the thread
+  // *is* these rows: every turn already appends one, in order, carrying the
+  // document it produced and the session it came from. A separate table would be
+  // a second history that could disagree with this one about what happened.
+  refinementRequest: text('refinement_request'),
   // Nullable: losing the account that wrote a Draft must not take the Draft with
   // it, and a two-person application will outlive at least one re-seed.
   createdBy: integer('created_by').references(() => students.id, { onDelete: 'set null' }),

@@ -174,7 +174,13 @@ Alternatively, Generation: the Admin supplies topic, vocabulary list, exercise c
 
 Refinement exchanges the whole Draft each turn. Manual edits are fed back as the current document, so hand-editing and conversing interleave freely. Every turn is a restorable version — `forkSession` in the SDK provides this cheaply.
 
-**Generated Drafts never publish unreviewed.** A hallucinated Reference Answer would silently poison grading for that Exercise.
+**Generated Drafts never publish unreviewed.** A hallucinated Reference Answer would silently poison grading for that Exercise. Structurally this is the deliberate Publish, which nothing bypasses; behind it, a Draft whose origin is `generation` or `refinement` is marked wherever Drafts are shown, and publishing one names how many of its Exercises still carry a Reference Answer exactly as Claude wrote it. The count is what makes the question answerable — and it falls silent for an Admin who has been through every Exercise, because a confirmation that always appears is one nobody reads.
+
+The validity rules cannot help with the thing that actually goes wrong here: a Reference Answer that is fluent, plausible and wrong passes every rule there is. What they do catch is incoherence, and they catch it in Claude's output exactly as they catch it in an Admin's — same rules, same stable codes, same Russian.
+
+**Authoring has its own concurrency lane, and its own timeout.** § Grading puts grading at 2 with a FIFO queue behind it, sized for calls measured at 4-7s. A Generation at `max` Effort on Opus 5 is minutes. Sharing the limit would leave a Student in front of a spinner waiting on an Admin's Lesson, with no way of knowing that is what they are waiting for; sharing the 90s timeout would time out the very calls the lane exists for. Both are configurable (`AUTHORING_CONCURRENCY`, `AUTHORING_TIMEOUT_MS`).
+
+Authoring offers the same two models grading does. Haiku is absent for the same reason ADR 0002 gives: a Theory is read by a Student as fact, and a model that explains grammar confidently and wrongly is worse than none.
 
 Per-Course JSON import/export exists so content is portable off the Pi.
 
@@ -201,7 +207,7 @@ Restrained visual identity. Typography carries more weight here than in most app
 2. **Skeleton and deploy path** — **done 2026-08-20.** Next.js, schema, auth, seed script, systemd, Caddy, DuckDNS. The `HOME`/credentials path is proven: the deployed service returns a healthy check in 4.8s at 861 context tokens, inside the spike's measured band. The failure it actually surfaced was the proxy, not `HOME` — see § Platform.
 3. **Student vertical slice** — **done 2026-08-20.** One seeded Lesson → Practice → streamed grading → progression. Content is a checked-in fixture (`src/content/english-a1.ts`) seeded by its own script; the Deterministic Check, the incremental `feedback_ru` extractor and the progress derivation are pure and tested exhaustively; the Grader's failure path is tested at the HTTP seam by booting an application that cannot grade. The live-model happy path stays a manual check on the Pi, for the same reason step 2's healthy check did.
 4. **Authoring** — **done 2026-08-21.** Forms per Exercise Kind, markdown Theory with image upload, and content that comes into being through the screens rather than only through the seed script: a Course, a Lesson, an Enrollment, and the order of the Lessons in a Course. A Lesson created here starts unpublished and is absent from a Student's Course until someone publishes it — an empty published Lesson would sit in the middle of sequential unlocking. Draft history is a surface over the append-only rows step 4's first half already wrote; restoring appends rather than truncates, and never publishes.
-5. **Generation and Refinement.**
+5. **Generation and Refinement** — **done 2026-08-21.** One SDK harness behind both the Grader and the author, with its own concurrency lane so a Generation can never occupy a grading slot. The Author's contract is pure and tested without a model — the prompt an Admin's inputs become, the parse back into a Lesson document, the existing validity rules applied to Claude's Exercises, and the Kind mix measured against what was asked for. Generation and Refinement stream on the wire the Practice already uses, carrying the Theory instead of a Verdict. A generated Draft is marked as such wherever Drafts are shown, and publishing one asks first — naming how many Reference Answers nobody has read since Claude wrote them. The live-model happy path stays a manual check on the Pi, for the reason steps 2 and 3 left theirs there.
 6. **Tests** — batch grading and review screen.
 7. **Progress, charts, Disputes.**
 8. **Operations** — backup cron, health check, export.

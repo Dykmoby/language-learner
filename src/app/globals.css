@@ -146,3 +146,18 @@ ul.choiceRows > li {
   margin-bottom: 0.5rem;
 }
 ul.choiceRows input[type='text'] { flex: 1 1 12rem; width: auto; }
+
+/* The Theory arriving while Claude writes it. Deliberately unstyled as prose and
+   scrollable rather than growing without limit: it is a Lesson being written, not
+   a Lesson, and it must not be mistaken for the editor's own content. */
+pre.streaming {
+  white-space: pre-wrap;
+  max-height: 24rem;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--line) 30%, transparent);
+  border-left: 3px solid var(--line);
+  padding: 0.8rem;
+  border-radius: 6px;
+  font-family: inherit;
+  color: var(--muted);
+}
