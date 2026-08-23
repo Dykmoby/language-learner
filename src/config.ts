@@ -101,10 +101,13 @@ export const config = {
   },
 
   courseImport: {
-    // A whole Course in one file, images included. Generous, because a Course
-    // with twenty illustrations is legitimately large — and bounded all the
-    // same, because the file is read into memory on a Pi before a word of it is
-    // trusted.
+    // A whole Course in one file, images included. Generous, because twenty
+    // illustrations at the upload cap are legitimately ~54 MB once base64 has
+    // had them — and bounded all the same, because the file is read into memory
+    // before a word of it is trusted. Worth knowing before raising it: one
+    // import briefly holds the body, the text, the parsed graph and the decoded
+    // images at once, so peak is several times this number on a Pi. Lower it if
+    // the Courses here are smaller than that.
     maxBytes: int('COURSE_IMPORT_MAX_BYTES', 64 * 1024 * 1024),
   },
 

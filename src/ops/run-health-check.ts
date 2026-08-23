@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../config.ts';
 import { openDatabase } from '../db/client.ts';
 import { runHealthCheck } from '../grader/health-check.ts';
-import { recordHealthCheck } from './health-history.ts';
+import { tryRecordHealthCheck } from './health-history.ts';
 
 // CLI: node src/ops/run-health-check.ts
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -32,7 +32,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     // Never throws: the Grader module's terminal result is a discriminated
     // union, so an unhealthy check is a value rather than an exception.
     const result = await runHealthCheck();
-    recordHealthCheck(handle.db, result, 'timer');
+    // Recorded first, reported either way: if the row cannot be written the
+    // journal still gets what a paid call found, and the non-zero exit below
+    // says the run could not be kept.
+    const kept = tryRecordHealthCheck(handle.db, result, 'timer');
 
     const seconds = (result.wallMs / 1000).toFixed(1);
     if (result.healthy) {
@@ -49,6 +52,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         `health check: UNHEALTHY in ${seconds}s — ${result.reason ?? 'no reason given'}`
         + (guesses.length === 0 ? '' : ` [${guesses.join(', ')}]`),
       );
+    }
+
+    if (!kept.kept) {
+      // The one case that is this script's own failure rather than the Grader's,
+      // and the only one worth a non-zero exit: the check ran and nothing will
+      // ever read what it found. Most likely a database that has not had step
+      // 8's migration applied.
+      console.error(`health check not recorded: ${kept.reason}`);
+      process.exitCode = 1;
     }
   } finally {
     handle.close();

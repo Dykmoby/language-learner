@@ -31,10 +31,16 @@ export async function POST(request: Request): Promise<Response> {
   if (!(file instanceof File)) return NextResponse.json({ error: 'malformed' }, { status: 400 });
   if (file.size > maxBytes) return tooLarge();
 
+  const text = await file.text();
+  // Belt and braces, as the image upload does it: `content-length` and
+  // `File.size` are both reported rather than measured, and this is the number
+  // of bytes actually in hand.
+  if (Buffer.byteLength(text, 'utf8') > maxBytes) return tooLarge();
+
   const result = importCourse(
     getDatabase().db,
     { uploadDir: config.uploads.directory, maxImageBytes: config.uploads.maxBytes },
-    await file.text(),
+    text,
   );
 
   if (!result.ok) {

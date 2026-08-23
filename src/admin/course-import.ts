@@ -37,7 +37,7 @@ import { testPublishFaults, type TestDocument } from '../content/test-document.t
 import {
   imageUrl, referencedImageNames, sniffImageType, storeImage,
 } from '../content/uploads.ts';
-import { courseFaults } from './authoring.ts';
+import { courseFaults, resolvedGraderModel } from './authoring.ts';
 import {
   COURSE_EXPORT_VERSION, parseCourseExport, versionOf,
   type CourseExport, type ExportedLesson, type ExportedTest,
@@ -271,7 +271,12 @@ function writeContent(tx: Tx, file: CourseExport, stored: Map<string, string>): 
   const course = tx.insert(courses).values({
     language: file.course.language,
     level: file.course.level,
-    graderModel: file.course.graderModel,
+    // The model the file was *judged* on, not the string it happened to carry.
+    // `courseFaults` checks the resolved value — a blank one takes the
+    // Language's default per ADR 0002 — so writing the raw string here would
+    // create a Course that passed validation and can never grade: every
+    // Submission in it would reach the Grader as `{ model: '' }` and be refused.
+    graderModel: resolvedGraderModel(file.course),
     title: file.course.title.trim(),
     createdAt: new Date(),
   }).returning().get();

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { eq } from 'drizzle-orm';
 import { openDatabase } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
@@ -112,6 +112,23 @@ test('retention deletes old sets and nothing else in the folder', async () => {
     readdirSync(paths.destination).sort(),
     [backupSetName(now), recent, 'weekly-copy-notes.txt'].sort(),
   );
+});
+
+test('a run never prunes the set it has just written, whatever the window says', async () => {
+  const paths = scratch();
+  const live = liveDatabase(paths.databasePath);
+  try {
+    // Zero days is a reasonable guess at "do not prune", and a run that honoured
+    // it by deleting the backup it had just taken would report success having
+    // left nothing behind.
+    const report = await runBackup({ ...paths, retentionDays: 0 });
+
+    assert.ok(!report.pruned.includes(basename(report.path)));
+    assert.deepEqual(readdirSync(paths.destination), [basename(report.path)]);
+    assert.ok(existsSync(join(report.path, 'language-learner.db')));
+  } finally {
+    live.close();
+  }
 });
 
 test('a run that cannot write its destination fails, and says so non-zero', () => {

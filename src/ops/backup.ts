@@ -72,7 +72,12 @@ export function setsToPrune(
   now: Date,
   retentionDays: number,
 ): string[] {
-  const cutoff = now.getTime() - retentionDays * 24 * 60 * 60 * 1000;
+  // Compared at the granularity the names are written at. A set name holds whole
+  // seconds while the clock carries milliseconds, and comparing the two directly
+  // leaves the retention edge fuzzy by up to a second — enough for a window of
+  // zero days to find the set written a moment ago already past its own cutoff.
+  const second = 1000;
+  const cutoff = Math.floor(now.getTime() / second) * second - retentionDays * 24 * 60 * 60 * 1000;
   return entries.filter((entry) => {
     const taken = takenAt(entry);
     return taken !== null && taken.getTime() < cutoff;
@@ -150,8 +155,17 @@ export async function runBackup(request: BackupRequest): Promise<BackupReport> {
   // Pruned after the new set has landed, never before: a retention rule that ran
   // first would be free to delete the last good set and then fail to write a new
   // one.
+  //
+  // And never the set just written, whatever the window says. A set's name is
+  // truncated to whole seconds while `now` carries milliseconds, so a retention
+  // of 0 days — a reasonable guess at "do not prune" — would otherwise find the
+  // fresh set already older than its own cutoff and delete it, then report
+  // success. A backup run that ends with no backup is the one outcome this
+  // script must not have.
+  const justWritten = backupSetName(now);
   const pruned: string[] = [];
   for (const entry of setsToPrune(readdirSync(request.destination), now, request.retentionDays)) {
+    if (entry === justWritten) continue;
     rmSync(join(request.destination, entry), { recursive: true, force: true });
     pruned.push(entry);
   }

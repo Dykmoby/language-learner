@@ -23,6 +23,7 @@ import { createTest, saveTest, publishTest } from '../src/admin/tests.ts';
 import { assembleCourseExport, type CourseExport } from '../src/admin/course-export.ts';
 import { importCourse } from '../src/admin/course-import.ts';
 import { imageUrl, isStoredImageName } from '../src/content/uploads.ts';
+import { DEFAULT_GRADER_MODEL } from '../src/content/course-options.ts';
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
 const IMAGE_NAME = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.png';
@@ -315,6 +316,26 @@ test('Accepted Variants that do not line up with the Exercises are refused', () 
     assert.ok(!result.ok);
     assert.deepEqual(result.faults.map((f) => f.code), ['variants_misaligned']);
     assert.equal(coursesIn(target.db).length, 0);
+  } finally {
+    target.cleanup();
+  }
+});
+
+test('a file naming no Grader model gets the Language default, not a Course that cannot grade', () => {
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    // Hand-edited, or written by something other than the export: the format is
+    // the human-readable one, so this is a file somebody will actually produce.
+    // The validity rules pass it — a blank model takes ADR 0002's default for
+    // the Language — and the Course has to be created with the model it was
+    // judged on, or every Submission in it reaches the Grader as `{ model: '' }`
+    // and is refused.
+    const blank = { ...file, course: { ...file.course, graderModel: '' } };
+
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, JSON.stringify(blank));
+    assert.ok(result.ok);
+    assert.equal(result.course.graderModel, DEFAULT_GRADER_MODEL[file.course.language]);
   } finally {
     target.cleanup();
   }

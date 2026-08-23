@@ -10,7 +10,10 @@ import assert from 'node:assert/strict';
 import { backupSetName, setsToPrune } from '../src/ops/backup.ts';
 
 const DAY = 24 * 60 * 60 * 1000;
-const NOW = new Date('2026-08-22T03:15:00Z');
+// Deliberately carrying milliseconds, as a real run does. A `now` on a whole
+// second would hide the gap between the clock and a set name truncated to
+// seconds, and that gap is exactly where the retention edge lives.
+const NOW = new Date('2026-08-22T03:15:00.437Z');
 
 test('a set is named for the instant it was taken, in UTC', () => {
   assert.equal(backupSetName(new Date('2026-08-22T03:15:00Z')), '2026-08-22T031500Z');
@@ -63,7 +66,9 @@ test('anything that is not a set name is never touched', () => {
 });
 
 test('a retention window of zero days still keeps the set just taken', () => {
-  // Nobody should configure this, but a rule that deleted the backup it had
-  // just written would be worse than one that refused to prune at all.
+  // Nobody should configure this, but a rule that deleted the backup it had just
+  // written would be worse than one that refused to prune at all — and `now`
+  // here carries milliseconds, so this is the real arithmetic rather than a
+  // whole-second one that would hide the gap.
   assert.deepEqual(setsToPrune([backupSetName(NOW)], NOW, 0), []);
 });

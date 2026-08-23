@@ -46,6 +46,31 @@ export function recordHealthCheck(
   }).returning().get();
 }
 
+/**
+ * Records one run, and says whether it could be.
+ *
+ * Separate from `recordHealthCheck` because the two callers want opposite
+ * things from a failure. Every run costs a real, paid Grader call, and the
+ * commonest way this throws is a deploy where the code is live and the step-8
+ * migration has not been applied — precisely when the answer is worth having.
+ * So the answer is never lost to the failure to write it down: the caller
+ * returns or prints what it found, and reports separately that it could not be
+ * kept.
+ */
+export function tryRecordHealthCheck(
+  db: Db,
+  result: HealthResult,
+  source: HealthCheckSource,
+  now: Date = new Date(),
+): { kept: true } | { kept: false; reason: string } {
+  try {
+    recordHealthCheck(db, result, source, now);
+    return { kept: true };
+  } catch (error) {
+    return { kept: false, reason: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 /** The most recent run, or null on a system where the check has never been run. */
 export function latestHealthCheck(db: Db): HealthCheckRow | null {
   // By `ranAt` rather than by id: the two agree today, and only one of them
