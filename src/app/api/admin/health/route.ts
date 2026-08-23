@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { currentStudent } from '../../../../auth/current-student.ts';
 import { runHealthCheck } from '../../../../grader/health-check.ts';
+import { getDatabase } from '../../../../db/index.ts';
+import { recordHealthCheck } from '../../../../ops/health-history.ts';
 import { ru } from '../../../../ru.ts';
 
 // The middleware has already turned away anyone without a session. This is the
@@ -15,5 +17,13 @@ export async function POST(): Promise<NextResponse> {
 
   // Never throws: the Grader module's terminal result is a discriminated union,
   // so an unhealthy check is a value rather than an exception.
-  return NextResponse.json(await runHealthCheck());
+  const result = await runHealthCheck();
+
+  // Kept, so the answer outlives the tab it was asked in and reaches the
+  // dashboard. Recorded whether it passed or failed — a memory that only keeps
+  // the good news is not one worth reading.
+  const { db } = getDatabase();
+  recordHealthCheck(db, result, 'button');
+
+  return NextResponse.json(result);
 }

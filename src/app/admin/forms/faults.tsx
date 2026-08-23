@@ -17,21 +17,37 @@ import { ru, faultMessage } from '../../../ru.ts';
 export type ReadableFault = {
   code: string;
   exercisePosition?: number;
+  /** An imported file's faults also say which Lesson or Test of the file they are about. */
+  lessonPosition?: number;
+  testPosition?: number;
   offending?: string;
 };
+
+// «Урок 2: Упражнение 3: …» — outer first, because that is the order somebody
+// looks for it in the file.
+function where(fault: ReadableFault): string {
+  return [
+    fault.lessonPosition === undefined ? null : ru.transfer.faultInLesson(fault.lessonPosition),
+    fault.testPosition === undefined ? null : ru.transfer.faultInTest(fault.testPosition),
+    fault.exercisePosition === undefined ? null : ru.draft.faultAt(fault.exercisePosition),
+  ].filter((part) => part !== null).join(' ');
+}
 
 export function FaultList({ faults }: { faults: readonly ReadableFault[] }) {
   if (faults.length === 0) return null;
 
   return (
     <ul className="cards">
-      {faults.map((fault, index) => (
-        <li key={`${fault.code}-${index}`} className="error">
-          {fault.exercisePosition === undefined ? null : `${ru.draft.faultAt(fault.exercisePosition)} `}
-          {faultMessage(fault.code)}
-          {fault.offending === undefined ? null : ` — ${fault.offending}`}
-        </li>
-      ))}
+      {faults.map((fault, index) => {
+        const prefix = where(fault);
+        return (
+          <li key={`${fault.code}-${index}`} className="error">
+            {prefix === '' ? null : `${prefix} `}
+            {faultMessage(fault.code)}
+            {fault.offending === undefined ? null : ` — ${fault.offending}`}
+          </li>
+        );
+      })}
     </ul>
   );
 }

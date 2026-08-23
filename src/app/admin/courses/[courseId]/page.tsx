@@ -54,6 +54,13 @@ export default async function AdminCoursePage({ params }: { params: Promise<{ co
         }))}
       />
 
+      {/* Plain link rather than a control: the response is a file, and the
+          browser already knows what to do with one. */}
+      <p className="actions">
+        <a href={`/api/admin/courses/${course.id}/export`}>{ru.transfer.exportCourse}</a>
+      </p>
+      <p className="muted">{ru.transfer.exportHint}</p>
+
       <p><a href="/admin">{ru.admin.back}</a></p>
     </main>
   );

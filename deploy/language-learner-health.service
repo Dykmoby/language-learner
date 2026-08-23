@@ -1,0 +1,40 @@
+[Unit]
+Description=Grader health check for language-learner
+# The check makes a real outbound call. Starting it before the network is up
+# would record a failure that says nothing about the Grader.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=dykmoby
+Group=dykmoby
+WorkingDirectory=/home/dykmoby/language-learner
+
+# THE SAME LOAD-BEARING LINE THE SERVICE HAS, for the same reason (ADR 0001):
+# the Agent SDK reads Claude credentials from ~/.claude at call time. A check
+# that ran with a different HOME would be checking a path nothing else uses.
+Environment=HOME=/home/dykmoby
+Environment=NODE_ENV=production
+
+# The same file the service reads — DATABASE_PATH so the result lands in the
+# database the dashboard reads, and HTTP_PROXY/HTTPS_PROXY because a systemd
+# unit inherits neither from the profile. Without them the call fails with a 403
+# that names credentials while the credentials are fine, which is exactly the
+# wrong answer for an unattended check to record.
+EnvironmentFile=/etc/language-learner.env
+
+ExecStart=/home/dykmoby/.nvm/versions/node/v24.17.0/bin/node src/ops/run-health-check.ts
+
+# The Grader's own hard timeout is 90s. This is the ceiling on top of it, so a
+# hung SDK call cannot leave the unit active for ever — which is also what keeps
+# the timer from having anything to stack behind.
+TimeoutStartSec=300
+
+# Deliberately no Restart=. A failed check is an answer, not a fault to retry:
+# retrying it automatically would spend a second paid call to be told the same
+# thing.
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=language-learner-health
