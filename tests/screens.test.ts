@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { GLOBALS_CSS, parseRules, readStylesheet } from './helpers/css.ts';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 
@@ -82,4 +83,52 @@ test('no gamification', () => {
   }
 
   assert.deepEqual(offenders, [], 'a Student here is not a stranger being retained');
+});
+
+test('the health banner has four states, not two', () => {
+  // design.md § Operations gives the dashboard four, and two of them are not
+  // about the Grader at all. `unhealthy` and `stale` were nonetheless drawn the
+  // same plain red and told apart by their Russian alone — and they are not the
+  // same claim. One says grading was tried and failed. The other says nobody has
+  // tried recently enough for the answer to mean anything, which is red for a
+  // reason of its own and needs an edge of its own to say so.
+  const rules = parseRules(readStylesheet(GLOBALS_CSS));
+
+  const STYLES = ['solid', 'dashed', 'dotted', 'double'];
+  const edgeOf = (selector: string): { colour: string; style: string } => {
+    const found = { colour: '', style: '' };
+    for (const rule of rules) {
+      if (rule.selector !== selector) continue;
+      for (const { property, value } of rule.declarations) {
+        if (property === 'border-left' || property === 'border') {
+          const style = value.split(/\s+/).find((part) => STYLES.includes(part));
+          const colour = /var\(--[\w-]+\)/.exec(value)?.[0];
+          if (style) found.style = style;
+          if (colour) found.colour = colour;
+        }
+        if (property === 'border-left-style') found.style = value;
+        if (property === 'border-left-color') found.colour = value;
+      }
+    }
+    return found;
+  };
+
+  // Each state inherits the base edge and overrides what it changes, the way the
+  // cascade does.
+  const base = edgeOf('.healthBanner');
+  assert.ok(base.style && base.colour, '.healthBanner draws no edge to inherit');
+
+  const edges = new Map<string, string[]>();
+  for (const state of ['healthy', 'unhealthy', 'stale', 'never']) {
+    const own = edgeOf(`.healthBanner.${state}`);
+    const edge = `${own.colour || base.colour} ${own.style || base.style}`;
+    edges.set(edge, [...(edges.get(edge) ?? []), state]);
+  }
+
+  const shared = [...edges.entries()]
+    .filter(([, states]) => states.length > 1)
+    .map(([edge, states]) => `${states.join(' and ')} are both ${edge}`);
+
+  assert.deepEqual(shared, [], 'two of the four states look the same');
+  assert.equal(edges.size, 4);
 });

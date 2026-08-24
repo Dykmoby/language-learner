@@ -38,6 +38,9 @@ async function signedIn(account = STUDENT): Promise<Client> {
 const courseId = () => courseIdFor(app.databasePath, ENGLISH_A1.title);
 const lessonId = () => lessonsOf(app.databasePath, ENGLISH_A1.title)[0]!.lesson.id;
 
+/** The header's own element, whether or not it is wearing the Admin section's width. */
+const HEADER = /class="appHeader[ "]/;
+
 /** Every href a screen offers, absolute paths only. */
 function linksOn(html: string): string[] {
   return [...new Set([...html.matchAll(/href="(\/[^"#]*)"/g)].map((m) => m[1]!))]
@@ -63,7 +66,7 @@ test('the header wraps every signed-in screen, Student and Admin alike', async (
       const response = await client.fetch(path);
       assert.equal(response.status, 200, `${path} did not render`);
       const html = await response.text();
-      assert.ok(html.includes('class="appHeader"'), `${path} has no header`);
+      assert.match(html, HEADER, `${path} has no header`);
       assert.ok(html.includes(ru.common.signOut), `${path} offers no way to sign out`);
     }
   }
@@ -71,7 +74,7 @@ test('the header wraps every signed-in screen, Student and Admin alike', async (
 
 test('the sign-in screen has no header — there is no session to show and nowhere to go', async () => {
   const html = await (await new Client(app.baseUrl).fetch('/login')).text();
-  assert.ok(!html.includes('class="appHeader"'));
+  assert.doesNotMatch(html, HEADER);
   assert.ok(!html.includes(ru.common.signOut));
 });
 

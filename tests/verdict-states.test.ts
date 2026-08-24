@@ -109,8 +109,16 @@ test('no screen keeps a private treatment for a state the system defines', () =>
     '.ok': 'tone — a Lesson finished, a Test passed. Neither is a judgement on an answer',
     '.corrected': 'the Reference Answer itself, which is what correct looks like rather than a claim that this answer was',
     '.errors .span': 'the offending fragment inside an Error, which is already inside a state',
-    '.healthBanner.unhealthy, .healthBanner.stale': 'the Grader\'s standing, not a Student\'s answer — four states of its own',
-    '.healthBanner.healthy': 'the Grader\'s standing, not a Student\'s answer',
+    // The Grader's standing is not a judgement on a Student's answer. It has four
+    // states of its own — healthy, unhealthy, stale and never run — and two of
+    // them are not about the Grader at all, so it borrows the two hues and keeps
+    // its own edges rather than joining a system built for six other facts.
+    '.healthBanner.healthy': 'the Grader is answering',
+    '.healthBanner.unhealthy': 'the Grader was asked and failed',
+    '.healthBanner.stale': 'nobody has asked recently enough for the answer to mean anything',
+    '.healthBanner .bannerHealthy': 'the sentence that makes the claim, not the box around it',
+    '.healthBanner .bannerUnhealthy': 'the sentence that makes the claim',
+    '.healthBanner .bannerStale': 'the sentence that makes the claim',
   };
 
   // Built from the state names rather than from a prefix: `--rail-width` is the

@@ -38,6 +38,11 @@ main {
   background: var(--surface);
   border-bottom: var(--border-width) solid var(--line);
 }
+/* The Admin section is set wider than the Student's screens, so the header above
+   it widens too rather than stopping where the page does not. */
+.adminSection main { max-width: var(--measure-wide); }
+.appHeader.wide > div { max-width: var(--measure-wide); }
+
 .appHeader > div {
   max-width: var(--measure);
   margin: 0 auto;
@@ -132,7 +137,39 @@ textarea { resize: vertical; }
   outline-offset: 2px;
 }
 
-input[type='file'] { font-family: inherit; font-size: var(--text-base); color: var(--fg); }
+/* A file input is a control like any other and had been left looking like text
+   beside the fields it sits with. The button inside it is the browser's, so what
+   is shared is the box around it. */
+input[type='file'] {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--control-height);
+  background: var(--bg);
+  border: var(--border-width) dashed var(--line-strong);
+  border-radius: var(--radius);
+}
+input[type='file']::file-selector-button {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  margin-right: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  color: var(--fg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* Big enough to hit, and drawn in the accent so a ticked box reads as ticked
+   rather than as the operating system's grey. */
+input[type='checkbox'], input[type='radio'] {
+  width: 1.05em;
+  height: 1.05em;
+  accent-color: var(--accent);
+}
 
 button {
   font-family: inherit;
@@ -471,37 +508,85 @@ input.gap {
 
 /* --- Authoring --------------------------------------------------------------- */
 
-ol.exercises { list-style: none; padding: 0; }
+/* --- The Exercise forms ------------------------------------------------------
+   A Lesson's worth of them on one screen, each with its Kind, its options, its
+   Reference Answer and the answers it has come to accept. The question this
+   layout has to answer is where one Exercise stops and the next begins, and it
+   answers it three times over: a surface a shade off the page, a gap wide enough
+   to read as a gap, and the position of the Exercise set on its own line above
+   the fields rather than inside them. */
+
+ol.exercises { list-style: none; padding: 0; margin: 0; }
 ol.exercises > li {
+  background: var(--surface);
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-4) var(--space-1);
-  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  margin-bottom: var(--space-5);
 }
+/* The line that says which Exercise this is, and how it will be judged. It is
+   the boundary as much as it is a label, so it is drawn as one. */
+ol.exercises > li > p:first-child {
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-4)) var(--space-4);
+  padding: var(--space-1) var(--space-4) var(--space-3);
+  border-bottom: var(--border-width) solid var(--line);
+  font-size: var(--text-sm);
+}
+/* A field inside a card sits on the page colour, so it stays a field rather than
+   melting into the card around it. */
+ol.exercises input[type='text'], ol.exercises select, ol.exercises textarea { background: var(--bg); }
 
-ul.choiceRows { list-style: none; padding: 0; margin: 0 0 var(--space-2); }
+/* An option, whether it is the Reference Answer, whether it is accepted, and a
+   way to remove it — one line, and the line has to hold together as one thing. */
+ul.choiceRows { list-style: none; padding: 0; margin: 0 0 var(--space-3); }
 ul.choiceRows > li {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius);
 }
-ul.choiceRows input[type='text'] { flex: 1 1 12rem; width: auto; }
+ul.choiceRows input[type='text'] { flex: 1 1 12rem; width: auto; min-width: 0; }
+ul.choiceRows button { min-height: auto; padding: var(--space-1) var(--space-3); }
+
+/* The mark on a Draft that came from Claude, wherever Drafts are shown. Drawn as
+   a tag rather than set in the same muted grey as everything beside it: design.md
+   § Authoring wants it noticed, and a generated Reference Answer nobody has read
+   is the one thing that would silently poison grading for that Exercise. */
+.madeBy {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  color: var(--fg-muted);
+  background: var(--surface);
+}
 
 /* The Theory arriving while Claude writes it. Deliberately unstyled as prose and
    scrollable rather than growing without limit: it is a Lesson being written, not
-   a Lesson, and it must not be mistaken for the editor's own content. */
+   a Lesson, and it must not be mistaken for the editor's own content.
+
+   The repaint made that harder rather than easier — everything around it got
+   better looking — so the distinction is drawn rather than left to happen: a
+   sunken well, a dashed edge, and the muted colour of something provisional.
+   Nothing else in the Admin section is dashed all the way round. */
 pre.streaming {
   white-space: pre-wrap;
   max-height: 24rem;
   overflow-y: auto;
   background: var(--surface-sunken);
-  border-left: var(--rail-width) solid var(--line-strong);
+  border: var(--border-width) dashed var(--line-strong);
+  border-left-width: var(--rail-width);
   padding: var(--space-3);
   border-radius: var(--radius);
   font-family: inherit;
   font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   color: var(--fg-muted);
 }
 
@@ -555,15 +640,18 @@ pre.streaming {
    about to add to, so it reads as data rather than as prose. */
 ul.variants { list-style: none; padding: 0; margin: 0 0 var(--space-4); }
 ul.variants li {
-  padding: var(--space-1) var(--space-3);
-  margin-bottom: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  background: var(--surface);
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius);
 }
+/* Where an Admin decides. Set apart from the record above it, because everything
+   above is what happened and everything here changes it. */
 .decision {
   border-top: var(--border-width) solid var(--line);
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
 }
 
 /* --- Progress and statistics -------------------------------------------------
@@ -658,16 +746,37 @@ table.spanTable caption { text-align: left; padding-bottom: var(--space-1); }
    to the sentence that makes the claim, not to the box around it. */
 
 .healthBanner {
+  background: var(--surface);
   border: var(--border-width) solid var(--line);
-  border-left-width: var(--rail-width);
+  border-left: var(--rail-width) solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--space-3) var(--space-4);
   margin: 0 0 var(--space-5);
 }
 .healthBanner p { margin: 0 0 var(--space-1); }
 .healthBanner p:last-child { margin-bottom: 0; }
-.healthBanner.unhealthy, .healthBanner.stale { border-left-color: var(--state-incorrect-ink); }
+
+/* Four states, and four ways of looking — which they did not have. `unhealthy`
+   and `stale` were both plain red, told apart by their Russian alone, and they
+   are not the same claim: one says grading was tried and failed, the other says
+   nobody has tried recently enough for the answer to mean anything.
+
+   Stale keeps its red, for its own reason — a check that passed a week ago is not
+   evidence that grading works this afternoon — and takes a broken edge, because
+   what has lapsed is the evidence rather than the Grader. `never` is muted and
+   dotted: an absence of evidence is not a failure, and a dashboard that cried
+   wolf on a fresh install would be trained away inside a week. */
 .healthBanner.healthy { border-left-color: var(--state-correct-ink); }
+.healthBanner.unhealthy { border-left-color: var(--state-incorrect-ink); }
+.healthBanner.stale {
+  border-left-color: var(--state-incorrect-ink);
+  border-left-style: dashed;
+}
+.healthBanner.never { border-left-style: dotted; }
+
+.healthBanner .bannerHealthy { color: var(--state-correct-ink); font-weight: var(--weight-semibold); }
+.healthBanner .bannerUnhealthy { color: var(--state-incorrect-ink); font-weight: var(--weight-semibold); }
+.healthBanner .bannerStale { color: var(--state-incorrect-ink); font-weight: var(--weight-semibold); }
 
 /* --- Narrow viewports --------------------------------------------------------
    One breakpoint, and it does three things: it gives the page its space back,

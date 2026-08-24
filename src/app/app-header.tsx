@@ -34,8 +34,13 @@ export async function AppHeader() {
   const { db } = getDatabase();
   const course = openCourse(db, student, pathname);
 
+  // The Admin section is set on a wider measure than the Student's screens, and a
+  // header that stayed narrow above it would be a column that stops where the
+  // page does not.
+  const wide = pathname.startsWith('/admin');
+
   return (
-    <header className="appHeader">
+    <header className={wide ? 'appHeader wide' : 'appHeader'}>
       <div>
         {/* The way out, and deliberately not `/` — `/` redirects into the
             Current Course, so an application name pointing at it would be a
