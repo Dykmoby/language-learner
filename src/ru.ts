@@ -219,7 +219,68 @@ export const ru = {
     likelyEgress:
       'Учётные данные на месте, но запрос не вышел наружу. Это предположение, а не точный диагноз: скорее всего служба не видит прокси — проверьте HTTP_PROXY и HTTPS_PROXY в /etc/language-learner.env и что прокси на 127.0.0.1:7890 запущен.',
     forbidden: 'Доступ только для администратора.',
+
+    // The dashboard's banner: the last recorded run, read rather than run again.
+    // Rendering this page must never spend a Grader call.
+    never: 'Проверка Проверяющего ещё ни разу не выполнялась.',
+    // Not a failure, and not dressed as one: nobody has asked yet.
+    neverHint: 'Пока неизвестно, отвечает ли Проверяющий.',
+    // Old enough that it says nothing about now. Red, but red for its own reason.
+    stale: 'Последняя проверка слишком старая.',
+    staleHint:
+      'То, что проверка прошла успешно когда-то, не значит, что Проверяющий отвечает сейчас. Похоже, проверка перестала выполняться по расписанию.',
+    lastRunAt: (when: string) => `Последняя проверка: ${when}`,
+    ranBy: {
+      button: 'вручную',
+      timer: 'по расписанию',
+    } as Record<string, string>,
   },
+
+  // Moving a Course between boxes: the file an Admin downloads, and the same
+  // file read back. One dictionary for both halves, because an Admin meets them
+  // as one feature and the words have to agree.
+  transfer: {
+    exportCourse: 'Скачать курс одним файлом',
+    exportHint:
+      'Опубликованные уроки, проверочные работы, принятые варианты ответов и картинки — в одном JSON-файле. Ответы студентов, аккаунты и черновики в него не попадают.',
+
+    importTitle: 'Загрузить курс из файла',
+    importHint:
+      'Файл всегда создаёт новый курс: существующий не изменяется и не заменяется. Загрузите тот же файл дважды — получите два независимых курса.',
+    importFile: 'Файл курса',
+    importCourse: 'Загрузить курс',
+    importing: 'Загрузка курса…',
+    imported: (title: string) => `Курс «${title}» загружен.`,
+    importedCounts: (lessons: number, tests: number, images: number) =>
+      `Уроков: ${lessons}, проверочных работ: ${tests}, картинок: ${images}.`,
+    openImported: 'Открыть курс',
+    faultInLesson: (position: number) => `Урок ${position}:`,
+    faultInTest: (position: number) => `Проверочная работа ${position}:`,
+    // Said plainly, because a Course nobody is enrolled in is invisible to
+    // everyone including the person who just imported it.
+    importedNobodyEnrolled: 'На курс пока никто не записан — откройте его и запишите студентов.',
+    importedMissingImages: (n: number) =>
+      `Картинок не нашлось в файле: ${n}. Теория ссылается на них, но их придётся загрузить заново.`,
+    importFailed: 'Не удалось загрузить файл. Попробуйте ещё раз.',
+  },
+
+  // Why a file was refused. Nothing is written until every one of these has
+  // passed, so a refusal always means the database is untouched.
+  importFaults: {
+    not_json: 'Это не JSON-файл или он повреждён. Загрузите файл целиком.',
+    not_an_export: 'Файл не похож на экспорт курса.',
+    version_unknown:
+      'Файл сделан другой версией приложения, и прочитать его нельзя. Обновите приложение или экспортируйте курс заново.',
+    // The faults about the Course itself — a blank title, an unknown language or
+    // level, a model that may not grade — are not repeated here. They are the
+    // same codes the New Course form reports, with the same Russian, resolved
+    // through `faultMessage` from `authoringFaults`.
+    variants_misaligned:
+      'В файле нарушено соответствие между упражнениями и принятыми вариантами ответов.',
+    image_not_an_image: 'Одна из картинок в файле — не картинка. Файл не загружен.',
+    image_too_large: 'Одна из картинок в файле больше допустимого размера. Файл не загружен.',
+    file_too_large: 'Файл слишком большой.',
+  } as Record<string, string>,
 
   courses: {
     title: 'Мои курсы',
@@ -868,6 +929,7 @@ export function faultMessage(code: string): string {
   const uploads: Record<string, string> = ru.uploadRefusals;
   const generation: Record<string, string> = ru.generationFaults;
   const tests: Record<string, string> = ru.testFaults;
+  const imports: Record<string, string> = ru.importFaults;
   return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code]
-    ?? uploads[code] ?? generation[code] ?? tests[code] ?? code;
+    ?? uploads[code] ?? generation[code] ?? tests[code] ?? imports[code] ?? code;
 }

@@ -104,9 +104,37 @@ export function newImageName(type: ImageType): string {
   return `${randomBytes(16).toString('hex')}.${type.extension}`;
 }
 
+// The one definition of where a stored image is addressed from. The extractor
+// below is built out of it rather than repeating it, so a change to the route
+// cannot leave the two disagreeing about what an image reference looks like.
+const UPLOAD_ROUTE = '/api/uploads/';
+
 /** The address the Theory markdown points at — an application route, not a static asset. */
 export function imageUrl(name: string): string {
-  return `/api/uploads/${name}`;
+  return `${UPLOAD_ROUTE}${name}`;
+}
+
+// Anything at the upload route, up to whatever ends a markdown link or an
+// attribute. What comes out is then held to `isStoredImageName`, so a Theory
+// pointing at `/api/uploads/../../etc/passwd` yields nothing at all rather than
+// a name somebody has to remember to check.
+const REFERENCED_IMAGE = new RegExp(`${UPLOAD_ROUTE}([^\\s)"'<>]+)`, 'g');
+
+/**
+ * The stored images a Theory points at, each named once however often it is used.
+ *
+ * What the export needs in order to carry a Lesson's images with it: the
+ * markdown holds the only record of which images belong to which Lesson, since
+ * an upload is stored the moment it is made and is only ever tied to a Lesson by
+ * being written into its Theory.
+ */
+export function referencedImageNames(markdown: string): string[] {
+  const found = new Set<string>();
+  for (const match of markdown.matchAll(REFERENCED_IMAGE)) {
+    const name = match[1];
+    if (name !== undefined && isStoredImageName(name)) found.add(name);
+  }
+  return [...found];
 }
 
 export type StoredImage = { name: string; url: string; mime: string };

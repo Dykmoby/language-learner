@@ -1,0 +1,18 @@
+[Unit]
+Description=Take the nightly backup at 03:00
+
+[Timer]
+OnCalendar=03:00
+
+# Catches up after the Pi has been off, exactly as the DuckDNS timer does: a
+# night that was missed because the box was unplugged is taken on the way up
+# rather than skipped until tomorrow. Unlike the health check, this costs
+# nothing but disk.
+Persistent=true
+
+# 03:00 is also when everything else on a Pi decides to run.
+RandomizedDelaySec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

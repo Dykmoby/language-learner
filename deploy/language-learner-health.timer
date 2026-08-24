@@ -1,0 +1,33 @@
+[Unit]
+Description=Run the Grader health check periodically
+
+[Timer]
+# Once after boot, then every six hours. Low on purpose: every run is a real,
+# paid Grader call, and the question it answers — "did the credentials expire" —
+# does not change by the minute. Override the interval with a drop-in rather
+# than by editing this file:
+#
+#   sudo systemctl edit language-learner-health.timer
+#
+# and set OnUnitActiveSec= to taste. Keep it comfortably inside
+# HEALTH_STALE_AFTER_HOURS, or the dashboard will call an ordinary gap between
+# runs stale.
+OnBootSec=15min
+OnUnitActiveSec=6h
+
+# Not Persistent=true, unlike the DuckDNS timer. Catching up after the Pi has
+# been off would fire a paid call the moment the box comes back — and OnBootSec
+# already covers exactly that case, once, fifteen minutes in.
+Persistent=false
+
+# A run that overruns its interval is not stacked: systemd does not trigger a
+# unit that is still active, and TimeoutStartSec= in the service bounds how long
+# "still active" can last.
+#
+# The Pi has one job at 03:00 and it is the backup. Spreading this out keeps a
+# health check from landing on top of it.
+RandomizedDelaySec=10min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

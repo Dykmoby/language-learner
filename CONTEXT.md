@@ -137,3 +137,17 @@ _Avoid_: editing, iteration, feedback loop
 **Effort**:
 How much reasoning Claude applies during Generation, chosen per request by the Admin.
 _Avoid_: quality, depth, thinking level
+
+### Operations
+
+**Health Check**:
+One real Grader call against a fixed known input, run to find out whether grading works. Every run is kept; the Admin dashboard reads the latest one rather than running another.
+_Avoid_: ping, heartbeat, smoke test, monitor
+
+**Course Export**:
+One Course as a single JSON file — its published Lessons, its published Tests, the Accepted Variants its Exercises earned, and its Theory images. Carries no Submissions, Students, Enrollments or Drafts. Reading one back always creates a new Course.
+_Avoid_: dump, archive, snapshot, backup
+
+**Backup Set**:
+One dated directory holding both halves of this box's state: an online copy of the database and a copy of the upload folder. A database backup without the images is not a Backup Set.
+_Avoid_: snapshot, dump, archive

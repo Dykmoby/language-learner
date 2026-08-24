@@ -303,3 +303,20 @@ svg.chart .s6 { stroke: var(--series-6); fill: var(--series-6); }
 .spanPickers { display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; }
 table.spanTable td { width: auto; text-align: right; }
 table.spanTable caption { text-align: left; padding-bottom: 0.4rem; }
+
+/* --- The health banner ------------------------------------------------------
+   design.md § Operations: the dashboard says whether grading works, so that the
+   first person to discover expired credentials is not a student mid-Lesson. It
+   is set off from the page rather than coloured wholesale — the colour belongs
+   to the sentence that makes the claim, not to the box around it. */
+.healthBanner {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  margin: 0 0 1.5rem;
+}
+.healthBanner p { margin: 0 0 0.35rem; }
+.healthBanner p:last-child { margin-bottom: 0; }
+.healthBanner.unhealthy, .healthBanner.stale { border-left-color: var(--bad); }
+.healthBanner.healthy { border-left-color: var(--good); }

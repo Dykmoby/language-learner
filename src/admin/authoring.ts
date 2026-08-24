@@ -67,28 +67,48 @@ export type CourseInput = {
 
 export type CreateCourseResult = { ok: true; course: CourseRow } | Refused;
 
-export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
+/**
+ * The model a Course would actually be created with.
+ *
+ * Defaulted only where the Language is known — there is nothing to default from
+ * otherwise, and `language_unknown` is already the answer.
+ */
+export function resolvedGraderModel(input: CourseInput): string {
+  return isBlank(input.graderModel ?? '') && isLanguage(input.language)
+    ? DEFAULT_GRADER_MODEL[input.language]
+    : input.graderModel ?? '';
+}
+
+/**
+ * Every reason these Course fields cannot become a Course, or an empty array.
+ *
+ * Pure, and apart from `createCourse`, because a Course now arrives by two
+ * routes: the New Course form and an imported file. An import has to know
+ * whether the fields are good *before* it writes anything at all — it refuses a
+ * bad file with nothing written — and a second copy of these rules would be a
+ * second place for them to drift.
+ */
+export function courseFaults(input: CourseInput): AuthoringFaultCode[] {
   const faults: AuthoringFaultCode[] = [];
 
   if (isBlank(input.title)) faults.push('course_title_empty');
   if (!isLanguage(input.language)) faults.push('language_unknown');
   if (!isCefrLevel(input.level)) faults.push('level_unknown');
 
-  // Defaulted only where the Language is known — there is nothing to default
-  // from otherwise, and `language_unknown` is already the answer.
-  const graderModel = isBlank(input.graderModel ?? '') && isLanguage(input.language)
-    ? DEFAULT_GRADER_MODEL[input.language]
-    : input.graderModel ?? '';
-
-  const modelFault = graderModelFault(graderModel);
+  const modelFault = graderModelFault(resolvedGraderModel(input));
   if (modelFault !== null) faults.push(modelFault);
 
+  return faults;
+}
+
+export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
+  const faults = courseFaults(input);
   if (faults.length > 0) return { ok: false, faults };
 
   const course = db.insert(courses).values({
     language: input.language as Language,
     level: input.level,
-    graderModel,
+    graderModel: resolvedGraderModel(input),
     title: input.title.trim(),
     createdAt: new Date(),
   }).returning().get();

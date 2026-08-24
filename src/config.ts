@@ -1,6 +1,8 @@
 // Configuration comes from the environment file the systemd unit reads, never
 // from checked-in values. Nothing here has a secret as a default.
 
+import { homedir } from 'node:os';
+
 function str(name: string, fallback: string): string {
   const v = process.env[name];
   return v === undefined || v === '' ? fallback : v;
@@ -78,6 +80,35 @@ export const config = {
     // second concurrent Generation buys nothing but a second minutes-long call
     // against the same subscription.
     concurrency: int('AUTHORING_CONCURRENCY', 1),
+  },
+
+  health: {
+    // How long a recorded health check stays evidence.
+    //
+    // A check that last passed a week ago says nothing about whether grading
+    // works this afternoon, and a green banner on that basis is worse than no
+    // banner. Deliberately wider than the timer's interval, so an ordinary gap
+    // between runs — a reboot, a slow night — does not read as an alarm.
+    staleAfterMs: int('HEALTH_STALE_AFTER_HOURS', 24) * 60 * 60_000,
+  },
+
+  backup: {
+    // design.md § Operations: a nightly set into ~/backups, 14 days of them.
+    // Under the home directory rather than inside the repo, deliberately — a
+    // backup that a rebuild or a `git clean` can take with it is not one.
+    directory: str('BACKUP_DIR', `${homedir()}/backups`),
+    retentionDays: int('BACKUP_RETENTION_DAYS', 14),
+  },
+
+  courseImport: {
+    // A whole Course in one file, images included. Generous, because twenty
+    // illustrations at the upload cap are legitimately ~54 MB once base64 has
+    // had them — and bounded all the same, because the file is read into memory
+    // before a word of it is trusted. Worth knowing before raising it: one
+    // import briefly holds the body, the text, the parsed graph and the decoded
+    // images at once, so peak is several times this number on a Pi. Lower it if
+    // the Courses here are smaller than that.
+    maxBytes: int('COURSE_IMPORT_MAX_BYTES', 64 * 1024 * 1024),
   },
 
   uploads: {

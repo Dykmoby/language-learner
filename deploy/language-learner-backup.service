@@ -1,0 +1,32 @@
+[Unit]
+Description=Nightly backup of the language-learner database and uploads
+
+[Service]
+Type=oneshot
+User=dykmoby
+Group=dykmoby
+WorkingDirectory=/home/dykmoby/language-learner
+
+# Stated rather than inherited, because the destination depends on it: with no
+# BACKUP_DIR set, the sets land in ${HOME}/backups. systemd does derive HOME
+# from User=, and this is not the line to leave implicit.
+Environment=HOME=/home/dykmoby
+Environment=NODE_ENV=production
+
+# DATABASE_PATH and UPLOAD_DIR — both halves of the state — plus BACKUP_DIR and
+# BACKUP_RETENTION_DAYS if they have been set. The same file the service reads,
+# so a backup can never be taken of a different database than the one being
+# served.
+EnvironmentFile=/etc/language-learner.env
+
+ExecStart=/home/dykmoby/.nvm/versions/node/v24.17.0/bin/node src/ops/backup.ts
+
+# Generous: the ceiling is a slow SD card copying the uploads, not the database.
+TimeoutStartSec=1800
+
+# No Restart=. A oneshot that failed has said why in the journal, and a retry
+# loop against a full disk writes nothing but log lines.
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=language-learner-backup

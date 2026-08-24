@@ -395,3 +395,40 @@ export const disputes = sqliteTable('disputes', {
 ]);
 
 export type DisputeRow = typeof disputes.$inferSelect;
+
+// --- Operations --------------------------------------------------------------
+
+// Where a health check run came from. Recorded rather than inferred, because
+// "the timer is running" and "somebody pressed the button this morning" are
+// different facts about the same green result, and only one of them says the
+// check will still be running next week.
+export const HEALTH_CHECK_SOURCES = ['button', 'timer'] as const;
+export type HealthCheckSource = (typeof HEALTH_CHECK_SOURCES)[number];
+
+// One run of the Grader health check, kept.
+//
+// The check itself is exhaustive about what it reports, but its answer used to
+// live in the component state of whoever pressed the button: close the tab and
+// it was gone, and the dashboard never had one at all. A row per run is what
+// lets a page say whether grading works without spending a paid Grader call to
+// find out — and what lets an unattended run reach a person.
+//
+// Append-only, one row per run, so "when did this last work" stays answerable.
+// It is not a metric: nothing derives a rate from these rows, and the dashboard
+// reads exactly one of them.
+export const healthChecks = sqliteTable('health_checks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  healthy: integer('healthy', { mode: 'boolean' }).notNull(),
+  wallMs: integer('wall_ms').notNull(),
+  // Null on a healthy run — there was nothing to explain.
+  reason: text('reason'),
+  // Both heuristics, kept as the check reports them. ADR 0001: neither failure
+  // presents as what it is, so the guess is stored as a guess and rendered as
+  // one.
+  likelyCredentials: integer('likely_credentials', { mode: 'boolean' }).notNull().default(false),
+  likelyEgress: integer('likely_egress', { mode: 'boolean' }).notNull().default(false),
+  source: text('source', { enum: HEALTH_CHECK_SOURCES }).notNull(),
+  ranAt: integer('ran_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [index('health_checks_ran_at_idx').on(t.ranAt)]);
+
+export type HealthCheckRow = typeof healthChecks.$inferSelect;
