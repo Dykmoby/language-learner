@@ -41,6 +41,7 @@ export function recordHealthCheck(
     reason: result.reason,
     likelyCredentials: result.likelyCredentials,
     likelyEgress: result.likelyEgress,
+    likelyRateLimit: result.likelyRateLimit,
     source,
     ranAt: now,
   }).returning().get();

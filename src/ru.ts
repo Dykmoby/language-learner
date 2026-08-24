@@ -247,6 +247,12 @@ export const ru = {
     // reads like an authentication problem and is not one.
     likelyEgress:
       'Учётные данные на месте, но запрос не вышел наружу. Это предположение, а не точный диагноз: скорее всего служба не видит прокси — проверьте HTTP_PROXY и HTTPS_PROXY в /etc/language-learner.env и что прокси на 127.0.0.1:7890 запущен.',
+    // The third heuristic, and the one that is not a fault of this box at all:
+    // the API said "not now". Named as itself so the Admin is not sent to check
+    // credentials that are fine — the trap ADR 0001's egress heuristic exists to
+    // avoid, met at the other end.
+    likelyRateLimit:
+      'Похоже, обращения к API временно ограничены: слишком много запросов сразу или исчерпан лимит подписки. Учётные данные и сеть здесь ни при чём — подождите и запустите проверку ещё раз.',
     forbidden: 'Доступ только для администратора.',
 
     // The dashboard's banner: the last recorded run, read rather than run again.
@@ -359,6 +365,12 @@ export const ru = {
     // must not read like one either.
     gradingFailed:
       'Не удалось проверить ответ — это сбой проверки, а не ошибка в вашем ответе. Попытка не засчитана, попробуйте ещё раз.',
+    // The same fact — nothing was judged — with the reason the Student can act
+    // on. «Сейчас» is the whole difference: a failure that says «попробуйте ещё
+    // раз» invites an immediate retry into the same wall, and one that says the
+    // Проверяющий is busy asks for the pause that actually helps.
+    gradingBusy:
+      'Проверяющий сейчас перегружен — это не ошибка в вашем ответе. Попытка не засчитана, подождите немного и отправьте ответ ещё раз.',
     reveal: 'Показать ответ',
     revealHint: 'После трёх неудачных попыток можно посмотреть правильный ответ.',
     revealed: 'Ответ показан',
@@ -441,6 +453,29 @@ export const ru = {
     // and saying one was would be saying something false.
     variantAlready: 'Такой ответ уже принимался — ничего не добавлено.',
     alreadyResolved: 'Это возражение уже рассмотрено.',
+  },
+
+  // The Coherence Guard, as a number — CONTEXT.md § Coherence Guard, ADR 0003.
+  //
+  // Shown on the Disputes screen and nowhere else, because a guard firing and an
+  // upheld objection are the two ways the system records that the Grader was
+  // wrong. A Student never meets this rule, so the wording is for the one person
+  // who reviews judgements: it names what the rule does rather than what it is
+  // called in the code.
+  coherenceGuard: {
+    title: 'Сверка оценки с ошибками',
+    explanation:
+      'Проверяющий предлагает оценку, а сервер сверяет её со списком ошибок: без ошибок оценка становится «верно», а при найденных ошибках «верно» снимается. Ниже — сколько раз сверка изменила оценку.',
+    // Zero is the expected reading, and it renders as plainly as any other
+    // number: the guard did not fire once in the 24 measured calls, and a panel
+    // that looked broken at zero would be a panel nobody trusts at one.
+    fired: (fired: number, judged: number) =>
+      `Сверка изменила оценку ${fired} ${plural(fired, 'раз', 'раза', 'раз')} из ${judged} ${plural(judged, 'проверенного ответа', 'проверенных ответа', 'проверенных ответов')}.`,
+    forcedCorrect: (n: number) => `Ошибок не найдено, оценка повышена до «верно»: ${n}`,
+    forbadeCorrect: (n: number) => `Ошибки найдены, оценка «верно» снята: ${n}`,
+    // Nothing has been judged yet: not a firing of zero, because zero out of
+    // nothing is not evidence about the rule.
+    nothingJudged: 'Проверяющий пока не оценил ни одного ответа.',
   },
 
   // design.md § Progress and statistics — where a Student stands, what they get

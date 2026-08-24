@@ -23,6 +23,7 @@ const RESULT: ResultFrame = {
   status: 'graded',
   submissionId: 1,
   verdict: 'partially_correct',
+  failure: null,
   feedbackRu: FEEDBACK,
   corrected: 'I have a cat.',
   errors: [{ type: 'article', span: 'have cat', explanationRu: 'Пропущен артикль.' }],
@@ -112,8 +113,8 @@ test('the Errors do not stream — they arrive only in the terminal frame', asyn
 
 test('a failed grading streams nothing and still delivers its terminal frame', async () => {
   const failure: ResultFrame = {
-    t: 'result', status: 'grading_failed', submissionId: 1, verdict: null, feedbackRu: null,
-    corrected: null, errors: [],
+    t: 'result', status: 'grading_failed', submissionId: 1, verdict: null, failure: 'broken',
+    feedbackRu: null, corrected: null, errors: [],
     progression: {
       advanced: false, nextExerciseId: 1, lessonComplete: false,
       failedAttempts: 0, revealOffered: false,

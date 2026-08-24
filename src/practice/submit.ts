@@ -238,6 +238,7 @@ export function submitAnswer(
         status: 'graded',
         submissionId: row.id,
         verdict,
+        failure: null,
         feedbackRu: null,
         corrected: outcome.correct ? outcome.matched : null,
         errors: [],
@@ -267,6 +268,10 @@ export function submitAnswer(
         // threw — so there is no row to object to.
         submissionId: null,
         verdict: null,
+        // Broken rather than busy: whatever else is true, this application could
+        // not write the row down, and telling the Student to wait a moment would
+        // be advice about the wrong problem.
+        failure: 'broken',
         feedbackRu: null,
         corrected: null,
         errors: [],
@@ -319,6 +324,11 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
       // No Verdict, and no errors: a failure must never be rendered as a wrong
       // answer, so there is nothing here that could be mistaken for one.
       verdict: null,
+      // Busy or broken — the only distinction that changes what the Student
+      // should do next. A rate-limited call is the one failure where waiting a
+      // moment is the right advice, and where «попробуйте ещё раз» would send
+      // them straight back into the same wall.
+      failure: outcome.failure.likelyRateLimit ? 'busy' : 'broken',
       feedbackRu: null,
       corrected: null,
       errors: [],
@@ -355,6 +365,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     status: 'graded',
     submissionId: row.id,
     verdict: guarded.verdict,
+    failure: null,
     feedbackRu: response.feedback_ru,
     corrected: response.corrected,
     errors: response.errors.map((error) => ({

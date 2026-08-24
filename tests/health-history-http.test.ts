@@ -54,7 +54,7 @@ test('a run too old to be evidence renders as stale rather than as a failure', a
       db,
       {
         healthy: true, wallMs: 4800, reason: null,
-        likelyCredentials: false, likelyEgress: false,
+        likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
         detail: {
           verdict: 'partially_correct', errorCount: 1, contextTokens: 894,
           modelsInvoked: ['claude-sonnet-5'], wasFenced: false, unknownErrorTypes: [],
@@ -97,6 +97,40 @@ test('the button records what it found, and the dashboard reads it back without 
   const page = await (await client.fetch('/admin/health')).text();
   assert.ok(page.includes(ru.health.unhealthy));
   assert.equal(recordedRuns(), 2);
+});
+
+test('a rate-limited run is named as one, and does not send the Admin to check credentials', async () => {
+  // The trap: before this, a 429 under load landed as a generic SDK failure whose
+  // most specific guess was credentials — on a box whose credentials are fine.
+  // That is the same wrong turn ADR 0001's egress heuristic exists to prevent,
+  // met at the other end.
+  //
+  // Recorded through the application's own module rather than provoked, because
+  // the API decides when it rate-limits and a test cannot ask it to. What the
+  // classification does with a real failure is pinned without a model in
+  // `claude-harness.test.ts`.
+  withDatabase(app.databasePath, (db) => {
+    recordHealthCheck(
+      db,
+      {
+        healthy: false,
+        wallMs: 3261,
+        reason: "Claude Code returned an error result: You've hit your session limit",
+        likelyCredentials: false, likelyEgress: false, likelyRateLimit: true,
+        detail: {
+          verdict: null, errorCount: null, contextTokens: null,
+          modelsInvoked: [], wasFenced: false, unknownErrorTypes: [],
+        },
+      },
+      'timer',
+    );
+  });
+
+  const html = await (await (await adminClient()).fetch('/admin')).text();
+
+  assert.ok(html.includes(ru.health.likelyRateLimit), 'the banner names the rate limit as itself');
+  assert.ok(!html.includes(ru.health.likelyCredentials), 'and never blames credentials that are fine');
+  assert.ok(!html.includes(ru.health.likelyEgress), 'nor the proxy');
 });
 
 test('a Student who is not an Admin never reaches the dashboard, banner and all', async () => {

@@ -36,7 +36,10 @@ export type BatchGradingOutcome =
 function refused(reason: string): BatchGradingOutcome {
   return {
     ok: false, wallMs: 0, usage: EMPTY_USAGE,
-    failure: { kind: 'refused', reason, raw: null, likelyCredentials: false, likelyEgress: false },
+    failure: {
+      kind: 'refused', reason, raw: null,
+      likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
+    },
   };
 }
 
@@ -86,10 +89,10 @@ function judge(outcome: CallOutcome, request: BatchRequest): BatchGradingOutcome
     return {
       ok: false, wallMs, usage,
       // A contract failure means the call reached the model and came back. It
-      // says nothing about credentials or the network.
+      // says nothing about credentials, the network, or how busy the API is.
       failure: {
         kind: 'contract', reason: parsed.reason, raw: parsed.raw,
-        likelyCredentials: false, likelyEgress: false,
+        likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
       },
     };
   }

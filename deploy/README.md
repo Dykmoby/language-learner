@@ -62,7 +62,9 @@ sudo ./install-timers.sh
   different `HOME`, or without the proxy, would prove the wrong thing green.
 
 Run the migrations first. Both units write to the database, and the health check
-writes to a table that only exists after step 8's migration:
+writes to a table that only exists after step 8's migration — one that has since
+gained a column (`likely_rate_limit`) the Admin dashboard reads, so a deploy that
+skips this leaves the dashboard unable to render:
 
 ```bash
 DATABASE_PATH=/home/dykmoby/language-learner/data/language-learner.db \

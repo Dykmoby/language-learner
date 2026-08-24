@@ -1,0 +1,1 @@
+ALTER TABLE `health_checks` ADD `likely_rate_limit` integer DEFAULT false NOT NULL;

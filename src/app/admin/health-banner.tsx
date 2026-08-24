@@ -61,12 +61,14 @@ export function HealthBanner({ standing }: { standing: HealthStanding }) {
 
       {/* What the run said, where it failed — including a run that has since
           gone stale, which is red for its own reason but still knows why it
-          failed. Both heuristics stay phrased as guesses, per ADR 0001. */}
+          failed. The first two heuristics stay phrased as guesses, per ADR 0001;
+          the third is muted because a busy API is not a fault of this box. */}
       {check !== null && !check.healthy ? (
         <>
           {check.reason === null ? null : <p className="muted">{ru.health.reason(check.reason)}</p>}
           {check.likelyCredentials ? <p className="error">{ru.health.likelyCredentials}</p> : null}
           {check.likelyEgress ? <p className="error">{ru.health.likelyEgress}</p> : null}
+          {check.likelyRateLimit ? <p className="muted">{ru.health.likelyRateLimit}</p> : null}
         </>
       ) : null}
     </section>

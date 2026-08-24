@@ -61,6 +61,7 @@ function graded(response: GraderResponse, unknownErrorTypes: string[] = []): Gra
     unknownErrorTypes,
     usage: EMPTY_USAGE,
     wallMs: 4900,
+    pushback: null,
   };
 }
 
@@ -197,10 +198,12 @@ test('a failed grading is stored as a failure, with a reason and no Verdict', ()
         failure: {
           kind: 'contract',
           reason: 'feedback_ru missing or not a string',
-          likelyCredentials: false, likelyEgress: false, raw: '{"corrected": "I have a cat."}',
+          likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
+          raw: '{"corrected": "I have a cat."}',
         },
         usage: EMPTY_USAGE,
         wallMs: 5100,
+        pushback: null,
       },
       exercises: s.exercises,
       previousExerciseId: s.exercise.id,
@@ -215,6 +218,67 @@ test('a failed grading is stored as a failure, with a reason and no Verdict', ()
 
     assert.equal(frame.progression.failedAttempts, 0, 'it does not count against the Student');
     assert.equal(frame.progression.revealOffered, false);
+  } finally { s.cleanup(); }
+});
+
+test('a rate-limited grading is busy rather than broken, and loses nothing', () => {
+  // design.md § Failure behaviour with the reason attached. The Student is told
+  // to wait rather than to try again immediately, and everything else about the
+  // failure path holds exactly as it does for any other failure: the answer is
+  // stored, no Verdict is implied, and the attempt does not count.
+  const s = scenario();
+  try {
+    const frame = recordGrading(s.db, {
+      studentId: s.student.id,
+      exerciseId: s.exercise.id,
+      answer: 'i have cat',
+      outcome: {
+        ok: false,
+        failure: {
+          kind: 'sdk',
+          reason: 'API Error: 429 {"type":"error","error":{"type":"rate_limit_error"}}',
+          likelyCredentials: false, likelyEgress: false, likelyRateLimit: true,
+          raw: null,
+        },
+        usage: EMPTY_USAGE,
+        wallMs: 800,
+        pushback: { status: 429, retries: 1, rejected: false },
+      },
+      exercises: s.exercises,
+      previousExerciseId: s.exercise.id,
+    });
+
+    assert.equal(frame.status, 'grading_failed');
+    assert.equal(frame.failure, 'busy', 'the Student is told to wait, not that something is broken');
+    assert.equal(frame.verdict, null, 'and a busy API is still never a wrong answer');
+
+    const row = s.db.select().from(submissions).all()[0]!;
+    assert.equal(row.status, 'grading_failed');
+    assert.equal(row.answer, 'i have cat', 'the Student’s words are kept, so nothing has to be retyped');
+    assert.equal(frame.progression.failedAttempts, 0, 'and it does not count against them');
+  } finally { s.cleanup(); }
+});
+
+test('every other failure says broken, because waiting will not help', () => {
+  const s = scenario();
+  try {
+    const frame = recordGrading(s.db, {
+      studentId: s.student.id,
+      exerciseId: s.exercise.id,
+      answer: 'i have cat',
+      outcome: {
+        ok: false,
+        failure: {
+          kind: 'timeout', reason: 'the call was aborted after 90000ms', raw: null,
+          likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
+        },
+        usage: EMPTY_USAGE, wallMs: 90_000, pushback: null,
+      },
+      exercises: s.exercises,
+      previousExerciseId: s.exercise.id,
+    });
+
+    assert.equal(frame.failure, 'broken');
   } finally { s.cleanup(); }
 });
 
