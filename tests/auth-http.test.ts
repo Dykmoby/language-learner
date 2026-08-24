@@ -163,3 +163,17 @@ test('static assets are reachable while signed out', async () => {
   const response = await client.fetch(asset);
   assert.equal(response.status, 200, 'the login screen can actually render for a signed-out visitor');
 });
+
+test('the typeface is reachable while signed out', async () => {
+  // The sign-in screen is the one screen served to somebody with no session. A
+  // font behind the session gate would be answered with a redirect to the
+  // sign-in screen, leaving the sign-in screen as the only screen in the
+  // application not set in the application's own typeface — and the middleware
+  // matcher is a negative lookahead, which is exactly the kind of thing that is
+  // right until somebody adds the next entry to it.
+  const client = new Client(app.baseUrl);
+  const response = await client.fetch('/fonts/ibm-plex-sans-cyrillic.woff2');
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type') ?? '', /font/);
+});

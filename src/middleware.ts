@@ -31,5 +31,11 @@ export function middleware(request: NextRequest) {
 export const config = {
   runtime: 'nodejs',
   // Static assets stay reachable; everything else goes through the check above.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  //
+  // The typeface is among them, and deliberately so. The sign-in screen is the
+  // one screen served to somebody with no session, and a font gated behind the
+  // session would be answered with a redirect to the sign-in screen — leaving
+  // the sign-in screen as the only screen in the application not set in the
+  // application's own typeface.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|fonts/).*)'],
 };
