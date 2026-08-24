@@ -8,7 +8,7 @@
 
 import { ru } from '../../../ru.ts';
 import type { AttemptSummary } from '../../../tests/wire.ts';
-import { attemptScoreLine } from '../../tests/[testId]/attempts.tsx';
+import { AttemptScore } from '../../tests/[testId]/attempts.tsx';
 
 export type CourseTest = {
   id: number;
@@ -29,7 +29,7 @@ export function CourseTests({ tests }: { tests: CourseTest[] }) {
             <a href={`/tests/${test.id}`}>{test.title}</a>
             <span className="muted">
               {' — '}{ru.test.exerciseCount(test.exerciseCount)}
-              {latest === null ? null : <>{' · '}{ru.test.attemptNumber(latest.attempt)}: {attemptScoreLine(latest)}</>}
+              {latest === null ? null : <>{' · '}{ru.test.attemptNumber(latest.attempt)}: <AttemptScore attempt={latest} /></>}
             </span>
             {latest === null || latest.passed === null ? null : (
               <span className={latest.passed ? 'ok' : 'error'}>

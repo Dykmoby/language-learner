@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { ru } from '../../ru.ts';
 import { MAX_COMMENT_LENGTH } from '../../practice/disputes.ts';
+import { VerdictLine } from './verdict-line.tsx';
 
 type Props = {
   submissionId: number;
@@ -58,9 +59,10 @@ export function DisputeForm({ submissionId, inTest = false, onDisputed }: Props)
 
   if (phase === 'sent') {
     return (
-      <p className="disputed" role="status">
-        {inTest ? ru.dispute.sentInTest : ru.dispute.sent}
-      </p>
+      // Neither a pass nor a fail, and drawn as neither: the objection has its
+      // own hue and its own dotted rail, from the same system the Practice and
+      // the progress bar read.
+      <VerdictLine state="disputed" detail={inTest ? ru.dispute.sentInTest : ru.dispute.sent} />
     );
   }
 

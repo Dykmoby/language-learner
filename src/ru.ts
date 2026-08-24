@@ -39,6 +39,31 @@ export const ru = {
     moveDown: 'Ниже',
   },
 
+  // The six states a judgement can be in, named once.
+  //
+  // design.md § Interface leans on colour to carry these, so each is told apart
+  // three ways over — by hue, by the shape of its rail, and by these words. Any
+  // one of the three has to be enough on its own: the words are what survive a
+  // monochrome screen, and the rail is what survives a reader who cannot
+  // separate two of the hues.
+  //
+  // They are short because they are labels rather than sentences. Where a screen
+  // needs to say more — the Practice congratulating a step, the retry message
+  // after a failed grading — it has its own longer string, and that string is
+  // additional to this one rather than instead of it.
+  states: {
+    correct: 'Верно',
+    partial: 'Частично верно',
+    incorrect: 'Неверно',
+    // Completed With Help: complete, and deliberately not dressed as unaided.
+    help: 'С подсказкой',
+    // Neither a pass nor a fail — it is a question about a judgement.
+    disputed: 'Оспорено',
+    // Not a fault of the answer. design.md § Failure behaviour: a failure must
+    // never be rendered as a wrong answer, and this is the wording half of that.
+    failed: 'Проверка не удалась',
+  },
+
   login: {
     title: 'Вход',
     username: 'Имя пользователя',
@@ -55,10 +80,15 @@ export const ru = {
       `Аккаунт временно заблокирован после пяти неудачных попыток. Повторите вход через ${minutesRu(minutes)}.`,
   },
 
+  // The header that wraps every signed-in screen.
+  chrome: {
+    navLabel: 'Навигация',
+    admin: 'Управление курсами',
+  },
+
   home: {
     signedInAs: (username: string) => `Вы вошли как ${username}.`,
     adminBadge: 'Администратор',
-    adminLink: 'Управление курсами',
   },
 
   // The two Languages taught. Russian is the interface and is never one of them,
@@ -85,7 +115,6 @@ export const ru = {
     draft: 'Черновик — студенты его не видят',
     healthLink: 'Проверка Проверяющего',
     back: 'К управлению курсами',
-    home: 'На главную',
 
     // Creating a Course.
     newCourseTitle: 'Новый курс',
@@ -529,10 +558,11 @@ export const ru = {
     reviewHint: 'Верные задания свёрнуты — разверните, если хотите их посмотреть.',
     showExercise: 'Показать',
     hideExercise: 'Свернуть',
-    correctAnswer: 'Верно',
-    wrongAnswer: 'Неверно',
+    // What a judged Exercise is called comes from `ru.states` — one definition
+    // per state, so a review and a Practice cannot end up using different words
+    // for the same fact. What is left here is the one thing that is not a state:
+    // a batch that has not landed yet, which is not a judgement of anything.
     awaitingAnswer: 'Ещё не проверено',
-    failedAnswer: 'Проверка не удалась',
     yourAnswer: 'Ваш ответ',
     noAnswer: 'Ответа нет',
     referenceAnswer: 'Правильный ответ',

@@ -146,8 +146,16 @@ test('the review says the checking failed, and never that the answer is wrong', 
 
   assert.ok(html.includes(ru.test.gradingFailed), 'it says the checking failed');
   assert.ok(html.includes(ru.test.regrade), 'and offers to try again');
-  assert.ok(!html.includes(ru.test.wrongAnswer), 'and calls nothing wrong');
+  assert.ok(!html.includes(ru.states.incorrect), 'and calls nothing wrong');
   assert.ok(!html.includes(ru.test.passed) && !html.includes(ru.test.failed), 'and reports no result');
+
+  // design.md § Failure behaviour asks for more than different words. Until the
+  // state system existed this path was drawn in the same red as a wrong answer
+  // and told apart by one sentence of Russian — which is not a distinction a
+  // Student reads at a glance, and not one that survives a screen rendering
+  // colour badly.
+  assert.ok(html.includes('state-failed'), 'and is drawn as a failure');
+  assert.ok(!html.includes('state-incorrect'), 'never as a wrong answer');
 });
 
 test('asking again judges the same answers rather than writing new ones', { timeout: 180_000 }, async () => {

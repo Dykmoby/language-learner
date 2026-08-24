@@ -8,6 +8,7 @@
 
 import { ru } from '../../../ru.ts';
 import type { AttemptSummary } from '../../../tests/wire.ts';
+import { stateClass } from '../../shared/verdict-state.ts';
 
 export function attemptScoreLine(attempt: AttemptSummary): string {
   if (attempt.state === 'grading') return ru.test.grading;
@@ -15,6 +16,19 @@ export function attemptScoreLine(attempt: AttemptSummary): string {
   // the merits: neither is shown as a score.
   if (attempt.state === 'grading_failed') return ru.test.notScored;
   return ru.test.score(attempt.correct, attempt.total, attempt.scorePercent ?? 0);
+}
+
+/**
+ * The same line, marked where the reason there is no score is that the grading
+ * failed. In a list of attempts that is easy to skim past as one more grey
+ * clause, and a failed grading is the one thing on this screen the Student can
+ * do something about.
+ */
+export function AttemptScore({ attempt }: { attempt: AttemptSummary }) {
+  const text = attemptScoreLine(attempt);
+  return attempt.state === 'grading_failed'
+    ? <span className={`stateName ${stateClass('failed')}`}>{text}</span>
+    : <>{text}</>;
 }
 
 export function AttemptList({ testId, attempts }: { testId: number; attempts: AttemptSummary[] }) {
@@ -29,7 +43,7 @@ export function AttemptList({ testId, attempts }: { testId: number; attempts: At
           </a>
           <span className="muted">
             {' — '}{new Date(attempt.submittedAt).toLocaleString(ru.locale)}
-            {' · '}{attemptScoreLine(attempt)}
+            {' · '}<AttemptScore attempt={attempt} />
           </span>
           {attempt.passed === null ? null : (
             <span className={attempt.passed ? 'ok' : 'error'}>

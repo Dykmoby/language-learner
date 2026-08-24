@@ -184,7 +184,7 @@ test('a disputed Exercise renders as disputed — not as passed, not as failed',
   const page = await client.fetch(`/lessons/${firstLesson().lesson.id}/practice`);
   const html = await page.text();
 
-  assert.match(html, /segment disputed/, 'the progress bar tells it apart from both');
+  assert.match(html, /segment state-disputed/, 'the progress bar tells it apart from both');
   assert.ok(
     html.includes(ru.practice.disputedCount(1)),
     'and the counts beside the bar say so in words',

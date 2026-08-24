@@ -28,7 +28,9 @@ export default async function TestPage({ params }: { params: Promise<{ testId: s
 
   return (
     <main>
-      <p className="muted"><a href={`/courses/${opened.course.id}`}>{opened.course.title}</a></p>
+      {/* No Course breadcrumb: the header names the open Course and links back
+          to it on every screen, and a Student may only be here at all if they
+          are enrolled in it. */}
       <h1>{opened.test.title}</h1>
       <p className="muted">
         {ru.test.exerciseCount(opened.exercises.length)}

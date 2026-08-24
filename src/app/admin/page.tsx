@@ -63,7 +63,6 @@ export default async function AdminPage() {
       <p className="actions">
         <a href="/admin/health">{ru.admin.healthLink}</a>
       </p>
-      <p><a href="/">{ru.admin.home}</a></p>
     </main>
   );
 }

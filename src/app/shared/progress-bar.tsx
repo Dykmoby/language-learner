@@ -1,18 +1,20 @@
 // The progress bar, drawn from the states the derivation reported.
 //
 // Shared by the Practice, which shows the Lesson being worked, and by the
-// progress screen, which shows every Lesson at once. One component because the
-// segment classes *are* the state names — so a state added to the derivation and
-// not to the stylesheet renders as the neutral default on both screens rather
-// than as the right colour on one and a wrong colour on the other.
+// progress screen, which shows every Lesson at once. One component, and now one
+// state system underneath it: a segment asks `verdict-state` what class carries
+// its state and gets the same hue and the same rail the Practice and the Test
+// review are using for the same fact.
 //
-// Completed With Help is its own segment, not folded in with unaided completions
-// and not left out; a disputed one is neither a pass nor a fail. The segments
-// differ in pattern as well as in colour, so both distinctions survive either
-// theme.
+// A segment is eight pixels tall, which is exactly why the rails are patterns
+// rather than plain fills — at this size a solid green bar and a solid teal one
+// are the same bar. It is also why each one carries its words as an accessible
+// name: the wording is the third distinction, and on a bar it was the one that
+// was missing entirely.
 
 import { ru } from '../../ru.ts';
 import type { ExerciseState } from '../../practice/progress.ts';
+import { stateClass, stateOfExercise, stateWords } from './verdict-state.ts';
 
 export type Segment = { position: number; state: ExerciseState };
 
@@ -20,9 +22,28 @@ export function ProgressBar({ segments }: { segments: readonly Segment[] }) {
   if (segments.length === 0) return null;
   return (
     <ol className="progress" aria-label={ru.practice.title}>
-      {segments.map((segment) => (
-        <li key={segment.position} className={`segment ${segment.state}`} title={String(segment.position)} />
-      ))}
+      {segments.map((segment) => {
+        const state = stateOfExercise(segment.state);
+        // `current` and `not_reached` are not judgements — one is where the
+        // Student is, the other is where they have not been — so neither takes a
+        // state's hue. The bar keeps its own neutral treatment for both.
+        const marker = state === null ? segment.state : stateClass(state);
+        const words = state === null ? null : stateWords(state);
+        const position = ru.practice.position(segment.position, segments.length);
+        const label = words === null ? position : `${position} — ${words}`;
+        return (
+          <li
+            key={segment.position}
+            className={`segment ${marker}`}
+            // A segment has no text of its own to read, so the words are given
+            // as its name rather than only as a tooltip — `title` alone is a
+            // hover, and the third distinction has to hold for somebody who is
+            // not using a mouse.
+            aria-label={label}
+            title={label}
+          />
+        );
+      })}
     </ol>
   );
 }

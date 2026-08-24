@@ -62,7 +62,7 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
                 <time dateTime={entry.createdAt.toISOString()}>
                   {entry.createdAt.toISOString().replace('T', ' ').slice(0, 16)}
                 </time>
-                {' · '}{ru.draftOrigins[entry.origin] ?? entry.origin}
+                {' · '}<span className="madeBy">{ru.draftOrigins[entry.origin] ?? entry.origin}</span>
                 {' · '}{entry.authorUsername === null
                   ? ru.draft.historyAuthorUnknown
                   : ru.draft.historyAuthor(entry.authorUsername)}

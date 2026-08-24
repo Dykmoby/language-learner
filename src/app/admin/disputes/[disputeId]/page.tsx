@@ -6,6 +6,7 @@
 // one of those alone is not a review, which is why none of them is a click away.
 
 import { notFound } from 'next/navigation';
+import { VerdictLine } from '../../../shared/verdict-line.tsx';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import { requireAdmin, idFromParam } from '../../../../admin/guard.ts';
 import { getDatabase } from '../../../../db/index.ts';
@@ -91,7 +92,7 @@ export default async function DisputePage(
       )}
 
       <h2>{ru.disputeReview.comment}</h2>
-      <p className="disputed">{dispute.comment}</p>
+      <VerdictLine state="disputed" words={dispute.comment} />
 
       <ResolveDispute
         disputeId={dispute.id}

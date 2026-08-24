@@ -1,0 +1,90 @@
+/* The typeface, self-hosted.
+   =============================================================================
+
+   IBM Plex — sans and mono from one superfamily, whose Cyrillic was drawn
+   alongside its Latin rather than fitted to it afterwards. Every screen in this
+   application sets Russian chrome around English or Tajik content, so the pairing
+   of the two scripts is not a detail here; under the old `system-ui` stack it was
+   not one typeface but a different one per operating system, and whatever
+   Cyrillic that machine happened to hold.
+
+   Self-hosting is not a preference. Outbound HTTPS leaves this box through a
+   proxy that interactive shells get from the profile and systemd units do not
+   (design.md § Platform), so a font fetched at build or at run time is a network
+   dependency in the one place this project has already been bitten. The files
+   are in `public/fonts`, they are in the repository, and the application serves
+   them. `tests/typeface.test.ts` fails if a URL in here ever names a host.
+
+   Three subsets, and the third is load-bearing. Tajik is written in Cyrillic
+   with six letters outside the basic block — ғ ӣ қ ӯ ҳ ҷ — which live in
+   `cyrillic-ext`. Dropping that file to save 24 KB would render Russian
+   perfectly and turn every Tajik Course into boxes. The test reads the cmap of
+   each file rather than trusting its name.
+
+   The sans is a variable font across the whole 100–700 axis, so one file per
+   subset carries every weight the type scale asks for. The mono is needed at one
+   weight and ships at one weight.
+
+   `font-display: block` rather than `swap`, with the three sans faces preloaded
+   in the root layout: swap is what produces the flash of the fallback being
+   replaced. Blocking briefly on a same-origin file that the document has already
+   asked for is not a wait anybody sees. */
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/ibm-plex-sans-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/ibm-plex-sans-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/ibm-plex-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* The mono covers Cyrillic too, which is the whole reason it is this mono. The
+   error span holds a fragment of the Student's own answer, and a Tajik answer in
+   a face with no Cyrillic would be a row of boxes at exactly the moment the
+   Student is being told what they got wrong. */
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/ibm-plex-mono-400-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/ibm-plex-mono-400-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/ibm-plex-mono-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

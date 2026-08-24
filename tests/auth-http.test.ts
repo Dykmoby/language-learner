@@ -39,9 +39,15 @@ test('correct credentials sign the Student in and land them on a page that prove
   assert.equal(response.status, 303);
   assert.equal(new URL(response.headers.get('location')!, app.baseUrl).pathname, '/');
 
+  // `/` renders nothing of its own: a Student who was working somewhere is put
+  // back there, and one who was not is sent to their Courses.
   const home = await client.fetch('/');
-  assert.equal(home.status, 200);
-  const html = await home.text();
+  assert.equal(home.status, 307);
+  assert.equal(new URL(home.headers.get('location')!, app.baseUrl).pathname, '/courses');
+
+  const landing = await client.fetch('/courses');
+  assert.equal(landing.status, 200);
+  const html = await landing.text();
   assert.ok(html.includes(ru.home.signedInAs(STUDENT.username)), 'the page names the signed-in Student');
 });
 
@@ -103,13 +109,13 @@ test('the session survives across requests and across a browser restart', async 
   const cookie = setCookieFor(response, COOKIE)!;
   assert.match(cookie, /Expires=/i, 'nobody retypes a password every time they sit down to study');
 
-  assert.equal((await client.fetch('/')).status, 200);
-  assert.equal((await client.fetch('/')).status, 200, 'and again on a later request');
+  assert.equal((await client.fetch('/courses')).status, 200);
+  assert.equal((await client.fetch('/courses')).status, 200, 'and again on a later request');
 
   // A restarted browser is a fresh client that still holds the stored cookie.
   const reopened = new Client(app.baseUrl);
   reopened.setRawCookie(COOKIE, /ll_session=([^;]+)/.exec(client.cookieHeader)![1]!);
-  assert.equal((await reopened.fetch('/')).status, 200);
+  assert.equal((await reopened.fetch('/courses')).status, 200);
 });
 
 test('signing out deletes the session, and the old cookie no longer authenticates', async () => {
@@ -162,4 +168,18 @@ test('static assets are reachable while signed out', async () => {
 
   const response = await client.fetch(asset);
   assert.equal(response.status, 200, 'the login screen can actually render for a signed-out visitor');
+});
+
+test('the typeface is reachable while signed out', async () => {
+  // The sign-in screen is the one screen served to somebody with no session. A
+  // font behind the session gate would be answered with a redirect to the
+  // sign-in screen, leaving the sign-in screen as the only screen in the
+  // application not set in the application's own typeface — and the middleware
+  // matcher is a negative lookahead, which is exactly the kind of thing that is
+  // right until somebody adds the next entry to it.
+  const client = new Client(app.baseUrl);
+  const response = await client.fetch('/fonts/ibm-plex-sans-cyrillic.woff2');
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type') ?? '', /font/);
 });

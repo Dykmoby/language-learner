@@ -12,6 +12,7 @@
 // a queue should offer by accident.
 
 import { useState } from 'react';
+import { VerdictLine } from '../../../shared/verdict-line.tsx';
 import { ru } from '../../../../ru.ts';
 import type { DisputeRuling } from '../../../../db/schema.ts';
 
@@ -58,9 +59,14 @@ export function ResolveDispute({ disputeId, ruling, answer }: Props) {
   if (decided) {
     return (
       <div className="result">
-        <p className={decided.ruling === 'upheld' ? 'ok' : 'muted'} role="status">
-          {decided.ruling === 'upheld' ? ru.dispute.upheld : ru.dispute.rejected}
-        </p>
+        {/* A ruling is what became of an objection, not a Verdict on an answer,
+            so it takes the Disputed hue rather than the correct one — the queue
+            screen has always drawn it that way, and an upheld objection painted
+            green was the two screens disagreeing about the same fact. */}
+        <VerdictLine
+          state="disputed"
+          words={decided.ruling === 'upheld' ? ru.dispute.upheld : ru.dispute.rejected}
+        />
         {decided.ruling === 'upheld' && ruling === null ? (
           <p className="muted">
             {decided.variantAdded ? ru.disputeReview.variantAdded : ru.disputeReview.variantAlready}

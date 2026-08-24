@@ -16,6 +16,7 @@ import { errorHistogram, errorsByLesson } from '../../../../progress/errors.ts';
 import { ErrorHistogram } from './histogram.tsx';
 import { ChangeOverTime } from './chart.tsx';
 import { ProgressBar } from '../../../shared/progress-bar.tsx';
+import { stateClass } from '../../../shared/verdict-state.ts';
 import { StudentPicker } from './student-picker.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -137,8 +138,12 @@ export default async function ProgressPage({
                 {' — '}{new Date(attempt.submittedAt).toLocaleString(ru.locale)}
                 {' · '}
                 {attempt.state === 'grading' ? ru.progress.attemptPending
-                  : attempt.state === 'grading_failed' ? ru.progress.attemptFailedGrading
-                  : ru.test.score(attempt.correct, attempt.total, attempt.scorePercent ?? 0)}
+                  : attempt.state === 'grading_failed'
+                    // Marked rather than left as one more grey clause: a failed
+                    // grading is not a low score, and this list is where the two
+                    // are easiest to read as the same thing.
+                    ? <span className={`stateName ${stateClass('failed')}`}>{ru.progress.attemptFailedGrading}</span>
+                    : ru.test.score(attempt.correct, attempt.total, attempt.scorePercent ?? 0)}
               </span>
             </li>
           ))}

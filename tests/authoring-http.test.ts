@@ -98,7 +98,7 @@ test('an Admin creates a Course, a Lesson and an Enrollment, and the Student get
   const admin = await signedIn(ADMIN);
   const student = await signedIn(STUDENT);
 
-  const before = await student.fetch('/');
+  const before = await student.fetch('/courses');
   assert.match(await before.text(), new RegExp(ru.courses.none), 'the Student has no Courses yet');
 
   const created = await postJson(admin, '/api/admin/courses', {
@@ -118,7 +118,7 @@ test('an Admin creates a Course, a Lesson and an Enrollment, and the Student get
 
   // Still nothing on the Student's side: they are not enrolled, and the Lesson
   // has never been published.
-  assert.match(await (await student.fetch('/')).text(), new RegExp(ru.courses.none));
+  assert.match(await (await student.fetch('/courses')).text(), new RegExp(ru.courses.none));
 
   const studentId = studentIdFor(app.databasePath, STUDENT.username);
   const enrolled = await postJson(admin, `/api/admin/courses/${courseId}/enrollments`, { studentId });

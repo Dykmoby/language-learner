@@ -20,6 +20,8 @@ import { ru, errorTypeLabel } from '../../../../../ru.ts';
 import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
 import { DisputeForm } from '../../../../shared/dispute-form.tsx';
+import { stateClass, stateOfVerdict, stateWords, type VerdictState } from '../../../../shared/verdict-state.ts';
+import { VerdictLine } from '../../../../shared/verdict-line.tsx';
 
 /** How often the page asks whether the batch has landed. */
 const POLL_MS = 4000;
@@ -88,6 +90,9 @@ export function AttemptReview({ initial }: { initial: AttemptView }) {
       {view.state === 'scored' ? (
         <>
           <p className="score">{ru.test.score(view.correct, view.total, view.scorePercent ?? 0)}</p>
+          {/* Whether the Test was passed is a fact about the attempt rather than
+              a Verdict on an answer, so it borrows the two hues without the
+              rail — a score is not one of the six states. */}
           <p className={view.passed ? 'ok' : 'error'} role="status">
             {view.passed ? ru.test.passed : ru.test.failed}
           </p>
@@ -103,9 +108,10 @@ export function AttemptReview({ initial }: { initial: AttemptView }) {
 
       {view.state === 'grading_failed' ? (
         <>
-          {/* Never a wrong answer, and it must not read like one: the answers are
-              stored, and asking again costs nothing but the call. */}
-          <p className="error" role="alert">{ru.test.gradingFailed}</p>
+          {/* Never a wrong answer, and now not drawn as one either: its own hue,
+              its own rail, its own words. The answers are stored, and asking
+              again costs nothing but the call. */}
+          <VerdictLine state="failed" role="alert" detail={ru.test.gradingFailed} />
           <p className="actions">
             <button type="button" onClick={() => void regrade()} disabled={regrading}>
               {regrading ? ru.test.regrading : ru.test.regrade}
@@ -128,10 +134,28 @@ export function AttemptReview({ initial }: { initial: AttemptView }) {
   );
 }
 
+/**
+ * Which of the six states this Exercise is in.
+ *
+ * `awaiting_grading` is none of them and returns null: a batch that has not
+ * landed yet is not a judgement, and dressing it as one would be claiming
+ * something nobody has decided. A failed grading *is* one of them, and it is the
+ * reason this function exists — before the state system it fell through to the
+ * same red as a wrong answer with only its Russian to tell the two apart.
+ */
+function stateOf(exercise: AttemptExerciseView): VerdictState | null {
+  if (exercise.status === 'grading_failed') return 'failed';
+  if (exercise.status === 'awaiting_grading') return null;
+  return exercise.verdict === null
+    ? (exercise.correct ? 'correct' : 'incorrect')
+    : stateOfVerdict(exercise.verdict);
+}
+
 function stateLabel(exercise: AttemptExerciseView): string {
-  if (exercise.status === 'awaiting_grading') return ru.test.awaitingAnswer;
-  if (exercise.status === 'grading_failed') return ru.test.failedAnswer;
-  return exercise.correct ? ru.test.correctAnswer : ru.test.wrongAnswer;
+  const state = stateOf(exercise);
+  // Null is the batch not having landed, which is the one thing here that is not
+  // one of the six states and so has no canonical wording of its own.
+  return state === null ? ru.test.awaitingAnswer : stateWords(state);
 }
 
 /** What became of an objection, once one has been made against this judgement. */
@@ -146,13 +170,16 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
   // went wrong, and everything else is one click away.
   const [open, setOpen] = useState(!exercise.correct);
   const wrong = exercise.status === 'graded' && !exercise.correct;
+  const state = stateOf(exercise);
 
   return (
-    <li className={wrong ? 'wrong' : exercise.correct ? 'right' : undefined}>
+    // The state carries the hue and the rail; the review adds only what is about
+    // the review — a correct Exercise is collapsed, so its box is quieter.
+    <li className={state === null ? undefined : stateClass(state)}>
       <p className="muted">
         {ru.test.position(exercise.position, total)}
         {' · '}
-        <span className={wrong ? 'error' : exercise.correct ? 'ok' : 'muted'}>{stateLabel(exercise)}</span>
+        <span className={state === null ? 'muted' : 'stateName'}>{stateLabel(exercise)}</span>
         {' '}
         <button type="button" className="secondary" onClick={() => setOpen(!open)}>
           {open ? ru.test.hideExercise : ru.test.showExercise}
@@ -169,9 +196,12 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
                 const chosen = exercise.answer === choice;
                 const accepted = exercise.acceptedAnswers.includes(choice);
                 return (
+                  // A Deterministic Kind fails at exactly one token, so the
+                  // option carries the state rather than the whole Exercise —
+                  // the same two states, from the same system.
                   <li
                     key={choice}
-                    className={accepted ? 'right' : chosen ? 'wrong' : undefined}
+                    className={accepted ? stateClass('correct') : chosen ? stateClass('incorrect') : undefined}
                   >
                     {choice}
                   </li>
@@ -213,7 +243,7 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
               worth overturning. Only a judgement can be objected to, so an
               unjudged or failed answer offers nothing here. */}
           {exercise.dispute !== null ? (
-            <p className="disputed" role="status">{disputeLabel(exercise.dispute.ruling)}</p>
+            <VerdictLine state="disputed" words={disputeLabel(exercise.dispute.ruling)} />
           ) : wrong ? (
             <DisputeForm submissionId={exercise.submissionId} inTest />
           ) : null}

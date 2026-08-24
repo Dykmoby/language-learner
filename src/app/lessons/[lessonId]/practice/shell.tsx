@@ -21,6 +21,8 @@ import { takeFrames, type ResultFrame, type RevealResult } from '../../../../pra
 import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
 import { DisputeForm } from '../../../shared/dispute-form.tsx';
 import { ProgressBar, type Segment } from '../../../shared/progress-bar.tsx';
+import { stateOfVerdict, type JudgementState } from '../../../shared/verdict-state.ts';
+import { VerdictLine } from '../../../shared/verdict-line.tsx';
 
 export type CurrentExercise = {
   id: number;
@@ -43,6 +45,17 @@ type Props = {
 };
 
 type Phase = 'answering' | 'checking' | 'result' | 'revealed';
+
+/**
+ * What the Practice calls each Verdict, which is not quite what the label calls
+ * it: this is the middle of a Lesson rather than a report on one, so "Верно!"
+ * congratulates where `ru.states.correct` records.
+ */
+const PRACTICE_WORDS: Record<JudgementState, string> = {
+  correct: ru.practice.correct,
+  partial: ru.practice.partiallyCorrect,
+  incorrect: ru.practice.incorrect,
+};
 
 export function PracticeShell({ current, segments, counts, nextLessonId, courseId }: Props) {
   const [phase, setPhase] = useState<Phase>('answering');
@@ -167,11 +180,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     );
   }
 
-  const verdictLabel = result?.verdict === 'correct' ? ru.practice.correct
-    : result?.verdict === 'partially_correct' ? ru.practice.partiallyCorrect
-    : result?.verdict === 'incorrect' ? ru.practice.incorrect
-    : null;
-
+  const verdictState = result?.verdict == null ? null : stateOfVerdict(result.verdict);
   const advancing = result?.status === 'graded' && result.verdict === 'correct';
 
   return (
@@ -199,8 +208,12 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
       {phase === 'checking' ? (
         <div>
           {/* Roughly three seconds pass before the first token arrives. This says
-              what is happening rather than spinning at the Student. */}
-          <p className="muted" role="status">{ru.practice.checking}</p>
+              what is happening rather than spinning at the Student — and it sits
+              in the row the buttons were in, at the height the buttons were, so
+              submitting does not move the answer the Student is still reading. */}
+          <p className="actions" role="status">
+            <span className="muted">{ru.practice.checking}</span>
+          </p>
           {streamed ? <p className="feedback">{streamed}</p> : null}
         </div>
       ) : null}
@@ -208,12 +221,21 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
       {phase === 'result' && result ? (
         <div className="result">
           {result.status === 'grading_failed' ? (
-            // Never a wrong answer, and it must not read like one: the attempt is
-            // not counted and the Exercise stays open.
-            <p className="error" role="alert">{ru.practice.gradingFailed}</p>
+            // Never a wrong answer, and — until now — one sentence of Russian
+            // away from looking exactly like one. It has its own hue, its own
+            // rail and its own words: the attempt is not counted, the Exercise
+            // stays open, and nothing about the Student's answer was judged.
+            <VerdictLine state="failed" role="alert" detail={ru.practice.gradingFailed} />
           ) : (
             <>
-              <p className={result.verdict === 'correct' ? 'ok' : 'error'} role="status">{verdictLabel}</p>
+              {/* The Practice congratulates a step where the canonical label
+                  merely records one, so the wording is its own. The hue and the
+                  rail are not, which is what stops them drifting from what the
+                  Test review and the progress bar mean by the same fact. */}
+              <VerdictLine
+                state={verdictState ?? 'incorrect'}
+                words={PRACTICE_WORDS[verdictState ?? 'incorrect']}
+              />
               {result.feedbackRu ? <p className="feedback">{result.feedbackRu}</p> : null}
               {result.corrected ? (
                 <p className="corrected">{ru.practice.corrected}: <strong>{result.corrected}</strong></p>
@@ -258,7 +280,9 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
 
       {phase === 'revealed' && revealed ? (
         <div className="result">
-          <p className="withHelp" role="status">{ru.practice.revealed}</p>
+          {/* Completed With Help: complete, and neither passed nor failed. It
+              borrows the hue of neither. */}
+          <VerdictLine state="help" words={ru.practice.revealed} />
           <p className="corrected">{ru.practice.corrected}: <strong>{revealed.referenceAnswer}</strong></p>
           <p className="actions">
             <button type="button" onClick={advance}>{ru.practice.next}</button>

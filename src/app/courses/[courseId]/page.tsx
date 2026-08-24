@@ -76,7 +76,9 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
       <p className="actions">
         <a href={`/courses/${course.id}/progress`}>{ru.progress.link}</a>
       </p>
-      <p><a href="/">{ru.course.back}</a></p>
+      {/* No back-link. This one pointed at the home screen, which redirects to
+          the Current Course — and working in a Course is what makes it the
+          Current Course, so it led back here. The header carries the way out. */}
     </main>
   );
 }

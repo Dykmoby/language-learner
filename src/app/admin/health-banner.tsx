@@ -8,14 +8,24 @@
 import { ru } from '../../ru.ts';
 import type { HealthStanding } from '../../ops/health-history.ts';
 
+/**
+ * Four states, and four ways of looking — which they did not have. `unhealthy`
+ * and `stale` were both plain red and told apart by their wording alone, and
+ * they are not the same claim: one says grading was tried and failed, the other
+ * says nobody has tried recently enough for the answer to mean anything. Stale
+ * keeps its red, because a check that passed a week ago is not evidence that
+ * grading works this afternoon, and takes a broken rail — evidence that has
+ * lapsed rather than evidence of a fault.
+ *
+ * `never` is muted and dotted rather than red: an absence of evidence is not a
+ * failure, and a dashboard that cried wolf on a fresh install would be trained
+ * away within a week.
+ */
 const TONE: Record<HealthStanding['state'], string> = {
-  // Nobody has asked yet. Muted rather than red: an absence of evidence is not
-  // a failure, and a dashboard that cried wolf on a fresh install would be
-  // trained away within a week.
-  never: 'muted',
-  healthy: 'ok',
-  unhealthy: 'error',
-  stale: 'error',
+  never: 'bannerNever',
+  healthy: 'bannerHealthy',
+  unhealthy: 'bannerUnhealthy',
+  stale: 'bannerStale',
 };
 
 const HEADLINE: Record<HealthStanding['state'], string> = {

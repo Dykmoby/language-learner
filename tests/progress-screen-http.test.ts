@@ -20,6 +20,7 @@ import {
 } from './helpers/inspect.ts';
 import { submissionErrors, submissions } from '../src/db/schema.ts';
 import { readFileSync } from 'node:fs';
+import { TOKENS_CSS, readStylesheet, themeBlocks } from './helpers/css.ts';
 import type { Frame, ResultFrame } from '../src/practice/wire.ts';
 
 const STUDENTS: SeedAccount[] = Array.from({ length: 26 }, (_, i) => ({
@@ -115,7 +116,7 @@ test('Completed With Help is its own segment rather than folded in', async () =>
     html.includes(ru.progress.breakdown(0, 1, 3)),
     'nothing unaided, one with help — counted apart, not added together',
   );
-  assert.match(html, /segment completed_with_help/, 'and drawn apart on the bar too');
+  assert.match(html, /segment state-help/, 'and drawn apart on the bar too');
 });
 
 test('the Course as a whole is shown on the same terms', async () => {
@@ -367,15 +368,16 @@ test('series are distinguishable without relying on colour alone', async () => {
 });
 
 test('the chart holds in both themes, and adds no charting dependency', () => {
-  const css = readFileSync(new URL('../src/app/globals.css', import.meta.url), 'utf8');
-
-  // Every colour the chart draws with is a token, and every token is redefined
-  // for the dark theme — the same rule the error-highlight states already keep.
+  // Every colour the chart draws with is a token in the token layer, and every
+  // one of them is declared for both themes in its own right — the same rule the
+  // state system keeps, and checked the same way. That the two themes clear the
+  // contrast floor is `design-tokens.test.ts`; that neither theme is missing a
+  // series at all is here, beside the chart that would lose a line.
+  const declared = themeBlocks(readStylesheet(TOKENS_CSS));
   for (let n = 1; n <= 6; n += 1) {
-    const declarations = [...css.matchAll(new RegExp(`--series-${n}:`, 'g'))];
-    assert.equal(declarations.length, 2, `--series-${n} is defined for both themes`);
+    assert.ok(declared.light.has(`--series-${n}`), `--series-${n} is missing from the light theme`);
+    assert.ok(declared.dark.has(`--series-${n}`), `--series-${n} is missing from the dark theme`);
   }
-  assert.match(css, /prefers-color-scheme: dark/);
 
   const manifest = JSON.parse(
     readFileSync(new URL('../package.json', import.meta.url), 'utf8'),

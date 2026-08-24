@@ -231,7 +231,7 @@ export function DraftEditor({
           an Admin wrote every word of and one Claude produced thirty seconds ago
           were indistinguishable here. */}
       {draftOrigin === null ? null : (
-        <p className="muted">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</p>
+        <p><span className="madeBy">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</span></p>
       )}
 
       <label>

@@ -41,13 +41,16 @@ export function ExerciseQuestion({
   /** The answer is in and being judged or explained: show it, do not ask again. */
   answered: boolean;
 }) {
-  const [fragments, setFragments] = useState<string[]>([]);
+  // Positions in `choices` rather than the words themselves. Two identical
+  // fragments in one sentence are two fragments, and telling them apart by value
+  // means guessing which of the two was taken.
+  const [fragments, setFragments] = useState<number[]>([]);
 
-  function useFragments(next: string[]) {
+  function useFragments(next: number[]) {
     setFragments(next);
     // Word order is answered as a sentence like any other: the fragments are how
     // it is built, not what is submitted.
-    onAnswer(next.join(' '));
+    onAnswer(next.map((at) => exercise.choices[at] ?? '').join(' '));
   }
 
   if (exercise.kind === 'fill_gap') {
@@ -133,28 +136,29 @@ function WordOrder({
   choices, fragments, onFragments, disabled,
 }: {
   choices: string[];
-  fragments: string[];
-  onFragments: (value: string[]) => void;
+  fragments: number[];
+  onFragments: (value: number[]) => void;
   disabled: boolean;
 }) {
-  const remaining = [...choices];
-  for (const used of fragments) {
-    const at = remaining.indexOf(used);
-    if (at !== -1) remaining.splice(at, 1);
-  }
+  const used = new Set(fragments);
 
   return (
     <div className="wordOrder">
       <p className="muted">{ru.practice.buildSentence}</p>
-      <p className="built">{fragments.join(' ') || ' '}</p>
+      <p className="built">{fragments.map((at) => choices[at] ?? '').join(' ') || ' '}</p>
+      {/* Every fragment stays where it was put, and a used one goes invisible
+          rather than being taken out of the row. Removing it would reflow the
+          fragments after it and, once the row lost a line, everything below —
+          which is the Practice moving under the Student mid-answer, on the one
+          screen that has to sit still while it is being worked. */}
       <p className="fragments">
-        {remaining.map((fragment, index) => (
+        {choices.map((fragment, index) => (
           <button
             key={`${fragment}-${index}`}
             type="button"
-            className="secondary"
-            disabled={disabled}
-            onClick={() => onFragments([...fragments, fragment])}
+            className={used.has(index) ? 'secondary used' : 'secondary'}
+            disabled={disabled || used.has(index)}
+            onClick={() => onFragments([...fragments, index])}
           >
             {fragment}
           </button>
