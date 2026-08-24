@@ -1,9 +1,14 @@
 /* The component layer.
    =============================================================================
 
-   Consequences only. Every colour, size and step of spacing below names a token
-   from `tokens.css`; none of them is written here. `tests/design-tokens.test.ts`
-   enforces that, which is what keeps the two halves from growing back together.
+   Consequences only. Every colour and every type size below names a token from
+   `tokens.css`, and `tests/design-tokens.test.ts` refuses a rule that writes one
+   of its own — which is what keeps the two halves from growing back together.
+   Spacing names the scale wherever the scale has the step, which is nearly
+   everywhere; what is left is one-off geometry that belongs to a single element
+   and would be a lie as a shared token — the width of a fill-gap field, the
+   height a streaming panel stops growing at, the width below which a chart
+   starts to scroll.
 
    Read the token layer first — it is where the decisions are. */
 
@@ -112,6 +117,7 @@ label span {
 
 input[type='text'],
 input[type='password'],
+input[type='number'],
 select,
 textarea {
   width: 100%;
@@ -124,7 +130,13 @@ textarea {
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius);
 }
-input[type='text'], input[type='password'], select { min-height: var(--control-height); }
+input[type='text'], input[type='password'], input[type='number'], select {
+  min-height: var(--control-height);
+}
+/* An Exercise count and a pass threshold are the two places a number is typed —
+   both in the Admin section, and both narrow enough that a full-width field
+   would say the wrong thing about what is expected. */
+input[type='number'] { width: 8rem; }
 /* Vertical only. A textarea that can be dragged wider than its column is a
    textarea that can be dragged out of the measure it was set in. */
 textarea { resize: vertical; }
@@ -294,9 +306,14 @@ ol.lessons li.locked::marker { color: var(--fg-muted); }
   line-height: var(--leading-tight);
   font-weight: var(--weight-semibold);
 }
-.theory h1, .theory h2 { font-size: var(--text-xl); }
-.theory h3 { font-size: var(--text-lg); }
-/* No size left below the body text, so these change shape instead. */
+.theory h1 { font-size: var(--text-xl); }
+.theory h2 { font-size: var(--text-lg); }
+/* Level three is the body size and is told from body text by its weight, which
+   is the last distinction the scale has to give. */
+.theory h3 { font-size: var(--text-base); }
+/* Below that there is no smaller left to go, so these change shape instead —
+   and they share one treatment on purpose. A Lesson nested six deep has a
+   structure problem that no stylesheet should be pretending to solve. */
 .theory h4, .theory h5, .theory h6 {
   font-size: var(--text-sm);
   text-transform: uppercase;
@@ -361,12 +378,22 @@ ol.lessons li.locked::marker { color: var(--fg-muted); }
 .state-disputed  { --ink: var(--state-disputed-ink);  --wash: var(--state-disputed-wash);  --rail: var(--rail-disputed); }
 .state-failed    { --ink: var(--state-failed-ink);    --wash: var(--state-failed-wash);    --rail: var(--rail-failed); }
 
-/* The rail: the shape half, drawn the same way wherever a state appears. */
-.verdict, .stateBlock {
+/* The rail: the shape half, drawn the same way wherever a state appears.
+   =============================================================================
+
+   Every read of `--ink`, `--wash` or `--rail` below carries a fallback, and that
+   is not belt and braces. A `var()` with no value makes the whole declaration
+   invalid at computed-value time, so `border-left: 4px solid var(--ink)` on an
+   element that turns out to have no state class does not draw a grey border —
+   it draws no border at all, and the mark disappears with nothing to see. The
+   fallback turns a missing class into something visibly neutral instead of into
+   nothing, which is the difference between a bug that is noticed and one that is
+   not. `tests/verdict-states.test.ts` refuses a read without one. */
+.verdict {
   position: relative;
   padding-left: var(--space-4);
 }
-.verdict::before, .stateBlock::before {
+.verdict::before {
   content: '';
   position: absolute;
   left: 0;
@@ -374,14 +401,14 @@ ol.lessons li.locked::marker { color: var(--fg-muted); }
   bottom: 0;
   width: var(--rail-width);
   border-radius: var(--radius-pill);
-  background: var(--rail);
+  background: var(--rail, var(--line-strong));
 }
 
 /* One line that names the state — the Verdict on a Submission, the standing of
    an objection, the fact that a grading failed. */
 .verdict {
   margin: var(--space-4) 0 var(--space-2);
-  color: var(--ink);
+  color: var(--ink, var(--fg));
   font-weight: var(--weight-semibold);
 }
 /* Where the state has more to say than its name: the retry message after a
@@ -392,16 +419,6 @@ ol.lessons li.locked::marker { color: var(--fg-muted); }
   display: block;
   color: var(--fg);
   font-weight: var(--weight-normal);
-}
-
-/* A block carrying a state — an Exercise in the Test review, a panel in the
-   Practice. Tinted as well as railed, because at this size the rail alone is a
-   detail on the edge of something rather than a property of it. */
-.stateBlock {
-  background: var(--wash);
-  border: var(--border-width) solid var(--ink);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-4) var(--space-1) var(--space-5);
 }
 
 /* --- The progress bar --------------------------------------------------------
@@ -423,7 +440,7 @@ ol.progress .segment {
   border-radius: var(--radius-pill);
   background: var(--line);
 }
-ol.progress .segment[class*='state-'] { background: var(--rail); }
+ol.progress .segment[class*='state-'] { background: var(--rail, var(--line-strong)); }
 /* Where the Student is, and where they have not been. Neither is a judgement, so
    neither borrows a state's hue. */
 ol.progress .segment.current { background: var(--accent); }
@@ -487,11 +504,16 @@ input.gap {
   border-left: var(--rail-width) solid var(--state-correct-ink);
   padding-left: var(--space-3);
 }
+/* An Error is a fault, so it is marked in the incorrect hue whatever the Verdict
+   around it was — the answer may be half right, the Error is not.
+   
+   It says so here rather than leaving each screen to add the class, because two
+   of the three screens that show Errors did not: the Test review inherited the
+   hue of whatever state the Exercise was in, and the Admin's Dispute review sat
+   inside no state at all, where the rail did not merely come out grey — the
+   declaration was invalid and drew nothing. */
+.errors { --ink: var(--state-incorrect-ink); --rail: var(--rail-incorrect); }
 .errors ul { list-style: none; padding: 0; }
-/* An Error is a fault, so it is marked in the incorrect hue even under a
-   partially correct Verdict — the answer may be half right, the Error is not.
-   The class is on the list rather than assumed here, so the marking is a
-   decision a screen makes rather than one this rule makes for it. */
 .errors li {
   border-left: var(--rail-width) solid var(--ink);
   padding: var(--space-1) 0 var(--space-1) var(--space-3);
@@ -534,7 +556,8 @@ ol.exercises > li > p:first-child {
 }
 /* A field inside a card sits on the page colour, so it stays a field rather than
    melting into the card around it. */
-ol.exercises input[type='text'], ol.exercises select, ol.exercises textarea { background: var(--bg); }
+ol.exercises input[type='text'], ol.exercises input[type='number'],
+ol.exercises select, ol.exercises textarea { background: var(--bg); }
 
 /* An option, whether it is the Reference Answer, whether it is accepted, and a
    way to remove it — one line, and the line has to hold together as one thing. */
@@ -604,8 +627,8 @@ pre.streaming {
 /* An Exercise in the review carries its state through the system like everything
    else, so this says only how a box wears one. */
 .review ol.exercises > li[class*='state-'] {
-  border-color: var(--ink);
-  background: var(--wash);
+  border-color: var(--ink, var(--line));
+  background: var(--wash, transparent);
 }
 /* The one thing here that is about the review rather than about the state: a
    correct Exercise is collapsed, so its box is quieter than the rest. */
@@ -619,14 +642,14 @@ pre.streaming {
   border: var(--border-width) solid transparent;
 }
 .review ul.choices li[class*='state-'] {
-  border-color: var(--ink);
-  background: var(--wash);
+  border-color: var(--ink, var(--line));
+  background: var(--wash, transparent);
 }
 .review ul.choices li.state-incorrect { text-decoration: line-through; }
 
 /* The state's name, in the state's own colour, on a line that is otherwise
    muted metadata. */
-.stateName { color: var(--ink); font-weight: var(--weight-medium); }
+.stateName { color: var(--ink, var(--fg)); font-weight: var(--weight-medium); }
 
 /* --- Disputes ----------------------------------------------------------------
    An objection is a fact about a judgement rather than a judgement, and it is
@@ -774,9 +797,13 @@ table.spanTable caption { text-align: left; padding-bottom: var(--space-1); }
 }
 .healthBanner.never { border-left-style: dotted; }
 
+/* The sentence that makes the claim, not the box around it. Unhealthy and stale
+   are the same red because both are a refusal to call grading proven; what tells
+   them apart is the edge, which is where the difference actually lies. */
 .healthBanner .bannerHealthy { color: var(--state-correct-ink); font-weight: var(--weight-semibold); }
-.healthBanner .bannerUnhealthy { color: var(--state-incorrect-ink); font-weight: var(--weight-semibold); }
+.healthBanner .bannerUnhealthy,
 .healthBanner .bannerStale { color: var(--state-incorrect-ink); font-weight: var(--weight-semibold); }
+.healthBanner .bannerNever { color: var(--fg-muted); }
 
 /* --- Narrow viewports --------------------------------------------------------
    One breakpoint, and it does three things: it gives the page its space back,

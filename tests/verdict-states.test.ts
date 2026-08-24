@@ -97,6 +97,44 @@ test('a grading failure borrows neither the colour of correct nor of incorrect',
   }
 });
 
+test('no rule reads a state local it cannot be sure of', () => {
+  // The failure this catches is silent, and it happened. `.errors li` drew its
+  // rail with `border-left: 4px solid var(--ink)`, and two of the three screens
+  // that show Errors sat outside any state class — on the Admin's Dispute review
+  // there was no state ancestor at all. A `var()` with no value does not fall
+  // back to grey: it makes the whole declaration invalid at computed-value time,
+  // so the border was not the wrong colour, it was absent.
+  //
+  // So a read of a state local has to be underwritten one of three ways: a
+  // fallback, the same rule declaring it, or an ancestor selector in this
+  // stylesheet declaring it.
+  const rules = parseRules(globalsCss);
+  const LOCAL_READ = /var\(\s*(--ink|--wash|--rail)\s*([,)])/g;
+
+  const declaredBy = (local: string) =>
+    rules.filter((rule) => rule.declarations.some((d) => d.property === local))
+      .map((rule) => rule.selector);
+
+  const unguarded: string[] = [];
+  for (const rule of rules) {
+    for (const { property, value } of rule.declarations) {
+      for (const [, local, after] of value.matchAll(LOCAL_READ)) {
+        if (after === ',') continue;                      // a fallback
+        if (rule.declarations.some((d) => d.property === local)) continue;
+        // An ancestor: `.errors li` is underwritten by `.errors`.
+        const underwritten = declaredBy(local!)
+          .some((selector) => rule.selector.startsWith(`${selector} `));
+        if (!underwritten) unguarded.push(`${rule.selector} { ${property}: ${value} }`);
+      }
+    }
+  }
+
+  assert.deepEqual(
+    unguarded, [],
+    'give the read a fallback, or declare the local on the rule — an unresolved var() draws nothing at all',
+  );
+});
+
 test('no screen keeps a private treatment for a state the system defines', () => {
   // The state tokens are for the state classes. Anything else reaching past them
   // is a screen deciding for itself what a Verdict looks like, which is the
@@ -108,6 +146,7 @@ test('no screen keeps a private treatment for a state the system defines', () =>
     '.error': 'tone, not a Verdict — a refused form, a server that did not answer',
     '.ok': 'tone — a Lesson finished, a Test passed. Neither is a judgement on an answer',
     '.corrected': 'the Reference Answer itself, which is what correct looks like rather than a claim that this answer was',
+    '.errors': 'an Error is a fault whatever the Verdict around it was, so the list sets the incorrect hue for itself rather than inheriting whichever state it happens to sit in',
     '.errors .span': 'the offending fragment inside an Error, which is already inside a state',
     // The Grader's standing is not a judgement on a Student's answer. It has four
     // states of its own — healthy, unhealthy, stale and never run — and two of
@@ -117,8 +156,9 @@ test('no screen keeps a private treatment for a state the system defines', () =>
     '.healthBanner.unhealthy': 'the Grader was asked and failed',
     '.healthBanner.stale': 'nobody has asked recently enough for the answer to mean anything',
     '.healthBanner .bannerHealthy': 'the sentence that makes the claim, not the box around it',
-    '.healthBanner .bannerUnhealthy': 'the sentence that makes the claim',
-    '.healthBanner .bannerStale': 'the sentence that makes the claim',
+    // One rule, because both are the same refusal to call grading proven. What
+    // separates them is the edge, which is where the difference actually is.
+    '.healthBanner .bannerUnhealthy, .healthBanner .bannerStale': 'the sentence that makes the claim',
   };
 
   // Built from the state names rather than from a prefix: `--rail-width` is the

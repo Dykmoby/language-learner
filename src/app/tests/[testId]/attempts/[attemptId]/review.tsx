@@ -20,12 +20,8 @@ import { ru, errorTypeLabel } from '../../../../../ru.ts';
 import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
 import { DisputeForm } from '../../../../shared/dispute-form.tsx';
-import {
-  stateClass,
-  stateOfVerdict,
-  stateWords,
-  type VerdictState,
-} from '../../../../shared/verdict-state.ts';
+import { stateClass, stateOfVerdict, stateWords, type VerdictState } from '../../../../shared/verdict-state.ts';
+import { VerdictLine } from '../../../../shared/verdict-line.tsx';
 
 /** How often the page asks whether the batch has landed. */
 const POLL_MS = 4000;
@@ -115,10 +111,7 @@ export function AttemptReview({ initial }: { initial: AttemptView }) {
           {/* Never a wrong answer, and now not drawn as one either: its own hue,
               its own rail, its own words. The answers are stored, and asking
               again costs nothing but the call. */}
-          <p className={`verdict ${stateClass('failed')}`} role="alert">
-            {stateWords('failed')}
-            <span className="detail">{ru.test.gradingFailed}</span>
-          </p>
+          <VerdictLine state="failed" role="alert" detail={ru.test.gradingFailed} />
           <p className="actions">
             <button type="button" onClick={() => void regrade()} disabled={regrading}>
               {regrading ? ru.test.regrading : ru.test.regrade}
@@ -159,8 +152,9 @@ function stateOf(exercise: AttemptExerciseView): VerdictState | null {
 }
 
 function stateLabel(exercise: AttemptExerciseView): string {
-  if (exercise.status === 'awaiting_grading') return ru.test.awaitingAnswer;
   const state = stateOf(exercise);
+  // Null is the batch not having landed, which is the one thing here that is not
+  // one of the six states and so has no canonical wording of its own.
   return state === null ? ru.test.awaitingAnswer : stateWords(state);
 }
 
@@ -249,9 +243,7 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
               worth overturning. Only a judgement can be objected to, so an
               unjudged or failed answer offers nothing here. */}
           {exercise.dispute !== null ? (
-            <p className={`verdict ${stateClass('disputed')}`} role="status">
-              {disputeLabel(exercise.dispute.ruling)}
-            </p>
+            <VerdictLine state="disputed" words={disputeLabel(exercise.dispute.ruling)} />
           ) : wrong ? (
             <DisputeForm submissionId={exercise.submissionId} inTest />
           ) : null}

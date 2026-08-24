@@ -34,6 +34,14 @@ export const VERDICT_STATES = [
 export type VerdictState = (typeof VERDICT_STATES)[number];
 
 /**
+ * The three a Verdict can be. The other three are facts about a Submission that
+ * no Verdict produces — a Reveal, an objection, a call that never returned — so
+ * saying so in the type keeps a caller from having to handle states that cannot
+ * reach it.
+ */
+export type JudgementState = Extract<VerdictState, 'correct' | 'partial' | 'incorrect'>;
+
+/**
  * The class carrying this state's hue and the shape of its rail.
  *
  * Two of the three distinctions travel together deliberately: a screen cannot
@@ -56,7 +64,7 @@ export function stateWords(state: VerdictState): string {
  * judged, so there is no judgement to map, and the caller has to have noticed
  * that before it gets this far.
  */
-export function stateOfVerdict(verdict: Verdict): VerdictState {
+export function stateOfVerdict(verdict: Verdict): JudgementState {
   return verdict === 'correct' ? 'correct'
     : verdict === 'partially_correct' ? 'partial'
       : 'incorrect';

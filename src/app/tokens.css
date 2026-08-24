@@ -181,7 +181,7 @@
 }
 
 /* --- Type -------------------------------------------------------------------
-   IBM Plex, self-hosted and subset — see the @font-face block in `globals.css`
+   IBM Plex, self-hosted and subset — see the @font-face blocks in `fonts.css`
    and `public/fonts/README.md`. Sans and mono come from one superfamily whose
    Cyrillic was drawn alongside its Latin, which is the whole requirement: every
    screen here sets Russian chrome around English or Tajik content, and a stack

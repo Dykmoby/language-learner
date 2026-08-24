@@ -22,7 +22,7 @@ import type { HealthStanding } from '../../ops/health-history.ts';
  * away within a week.
  */
 const TONE: Record<HealthStanding['state'], string> = {
-  never: 'muted',
+  never: 'bannerNever',
   healthy: 'bannerHealthy',
   unhealthy: 'bannerUnhealthy',
   stale: 'bannerStale',

@@ -29,13 +29,18 @@ export function ProgressBar({ segments }: { segments: readonly Segment[] }) {
         // state's hue. The bar keeps its own neutral treatment for both.
         const marker = state === null ? segment.state : stateClass(state);
         const words = state === null ? null : stateWords(state);
+        const position = ru.practice.position(segment.position, segments.length);
+        const label = words === null ? position : `${position} — ${words}`;
         return (
           <li
             key={segment.position}
             className={`segment ${marker}`}
-            title={words === null
-              ? ru.practice.position(segment.position, segments.length)
-              : `${ru.practice.position(segment.position, segments.length)} — ${words}`}
+            // A segment has no text of its own to read, so the words are given
+            // as its name rather than only as a tooltip — `title` alone is a
+            // hover, and the third distinction has to hold for somebody who is
+            // not using a mouse.
+            aria-label={label}
+            title={label}
           />
         );
       })}

@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getDatabase } from './db/index.ts';
 import { findSessionStudent } from './auth/session.ts';
 import { config as appConfig } from './config.ts';
-import { PATHNAME_HEADER } from './app/shared/open-course.ts';
+import { PATHNAME_HEADER } from './app/shared/request-path.ts';
 
 const PUBLIC_PATHS = new Set(['/login', '/api/login']);
 

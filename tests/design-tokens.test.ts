@@ -109,11 +109,15 @@ function nonTextPairings(): Pairing[] {
  * new colour cannot arrive without somebody choosing which of the three it is.
  */
 const EXEMPT: Record<string, string> = {
-  // WCAG 1.4.11 covers what is needed to understand the content. A hairline
-  // between two rows is not: removing it entirely loses nothing but tidiness,
-  // which is exactly the test of a decorative boundary. Anything a Student has
-  // to find in order to act on it is drawn in --line-strong instead.
-  '--line': 'a decorative separator, never the edge of a control',
+  // WCAG 1.4.11 covers what is needed to understand the content, and this token
+  // is used for two things that are not: a hairline between two rows, which can
+  // be removed entirely without losing anything but tidiness, and the unfilled
+  // part of a progress bar. The second is the one worth stating — what carries
+  // the bar's meaning is the segments that *are* filled, and the counts beside
+  // it say the same thing in words. Raising the track to 3:1 would make an empty
+  // bar shout louder than a full one. Anything a Student has to find in order to
+  // act on it is drawn in --line-strong instead.
+  '--line': 'a hairline that separates, and the unfilled part of a bar — never a mark and never the edge of a control',
   // Surfaces, measured above as backgrounds rather than as foregrounds.
   '--bg': 'a surface — checked as the background of every pairing above',
   '--surface': 'a surface',

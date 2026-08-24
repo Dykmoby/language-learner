@@ -198,7 +198,7 @@ Russian strings live in a single central `ru.ts` dictionary — no i18n library,
 
 Restrained visual identity. Typography carries more weight here than in most apps because every screen sets Cyrillic beside Latin, and the error-highlight states need a colour system that holds in both light and dark themes. No gamification — streak mechanics are built to retain strangers.
 
-**Built in step 9.** A token layer (`src/app/tokens.css`) holds the palette, the type scale and the spacing scale; `globals.css` holds consequences and writes no colour, size or step of its own. The contrast floor is enforced rather than intended: a pure test resolves every `var()` chain and `color-mix()` wash the way a browser would and computes WCAG contrast for each pairing in both themes, at 4.5:1 for text and 3:1 for a control edge or a chart line.
+**Built in step 9.** A token layer (`src/app/tokens.css`) holds the palette, the type scale and the spacing scale; `globals.css` holds consequences and writes no colour and no type size of its own, which is the part a test enforces. One-off geometry stays where it is used — a shared token for the width of one field would be a lie about how many places need it. The contrast floor is enforced rather than intended: a pure test resolves every `var()` chain and `color-mix()` wash the way a browser would and computes WCAG contrast for each pairing in both themes, at 4.5:1 for text and 3:1 for a control edge or a chart line.
 
 The typeface is **IBM Plex Sans and Mono**, self-hosted and subset to Latin, Cyrillic and Cyrillic Extended — the third of those is load-bearing, because Tajik's ғ ӣ қ ӯ ҳ ҷ live outside the basic Cyrillic block. Self-hosting is the same decision § Platform makes twice over: a font fetched at build or run time is a network dependency in the one place this project has already been bitten. The test reads the character map out of each woff2 rather than trusting its name.
 
@@ -240,7 +240,7 @@ The **header** wraps every signed-in screen from the root layout and carries the
 
    The rest is a design that can be checked. Colour is a token layer with a measured contrast floor; type is one self-hosted superfamily whose Cyrillic was drawn beside its Latin, with the Tajik letters proved present by reading the font's own character map; the six Verdict states are one system told apart by hue, rail shape and wording, where two of them previously had no visual treatment at all and `grading_failed` was drawn in the same red as a wrong answer — on a path step 1 measured at one call in twenty-four. The health banner had the same fault at the other end of the application: four names, two appearances.
 
-   Two rules are guarded rather than remembered: no screen writes a colour or a size of its own, and no gamification — checked as vocabulary, because a badge arrives named before it arrives drawn.
+   Two rules are guarded rather than remembered: no screen writes a colour of its own or an inline font size, and no gamification — checked as vocabulary, because a badge arrives named before it arrives drawn.
 
 ## Measured baseline
 

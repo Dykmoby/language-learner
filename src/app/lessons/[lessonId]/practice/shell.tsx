@@ -21,7 +21,8 @@ import { takeFrames, type ResultFrame, type RevealResult } from '../../../../pra
 import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
 import { DisputeForm } from '../../../shared/dispute-form.tsx';
 import { ProgressBar, type Segment } from '../../../shared/progress-bar.tsx';
-import { stateClass, stateOfVerdict, stateWords } from '../../../shared/verdict-state.ts';
+import { stateOfVerdict, type JudgementState } from '../../../shared/verdict-state.ts';
+import { VerdictLine } from '../../../shared/verdict-line.tsx';
 
 export type CurrentExercise = {
   id: number;
@@ -44,6 +45,17 @@ type Props = {
 };
 
 type Phase = 'answering' | 'checking' | 'result' | 'revealed';
+
+/**
+ * What the Practice calls each Verdict, which is not quite what the label calls
+ * it: this is the middle of a Lesson rather than a report on one, so "Верно!"
+ * congratulates where `ru.states.correct` records.
+ */
+const PRACTICE_WORDS: Record<JudgementState, string> = {
+  correct: ru.practice.correct,
+  partial: ru.practice.partiallyCorrect,
+  incorrect: ru.practice.incorrect,
+};
 
 export function PracticeShell({ current, segments, counts, nextLessonId, courseId }: Props) {
   const [phase, setPhase] = useState<Phase>('answering');
@@ -168,15 +180,6 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     );
   }
 
-  // The Practice says more than the state's name — "Верно!" congratulates a step
-  // where the label merely records one — so the wording here is the Practice's
-  // own. The hue and the rail come from the state system, so those cannot drift
-  // from what the Test review and the progress bar mean by the same fact.
-  const verdictLabel = result?.verdict === 'correct' ? ru.practice.correct
-    : result?.verdict === 'partially_correct' ? ru.practice.partiallyCorrect
-    : result?.verdict === 'incorrect' ? ru.practice.incorrect
-    : null;
-
   const verdictState = result?.verdict == null ? null : stateOfVerdict(result.verdict);
   const advancing = result?.status === 'graded' && result.verdict === 'correct';
 
@@ -222,21 +225,23 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
             // away from looking exactly like one. It has its own hue, its own
             // rail and its own words: the attempt is not counted, the Exercise
             // stays open, and nothing about the Student's answer was judged.
-            <p className={`verdict ${stateClass('failed')}`} role="alert">
-              {stateWords('failed')}
-              <span className="detail">{ru.practice.gradingFailed}</span>
-            </p>
+            <VerdictLine state="failed" role="alert" detail={ru.practice.gradingFailed} />
           ) : (
             <>
-              <p className={`verdict ${stateClass(verdictState ?? 'incorrect')}`} role="status">
-                {verdictLabel}
-              </p>
+              {/* The Practice congratulates a step where the canonical label
+                  merely records one, so the wording is its own. The hue and the
+                  rail are not, which is what stops them drifting from what the
+                  Test review and the progress bar mean by the same fact. */}
+              <VerdictLine
+                state={verdictState ?? 'incorrect'}
+                words={PRACTICE_WORDS[verdictState ?? 'incorrect']}
+              />
               {result.feedbackRu ? <p className="feedback">{result.feedbackRu}</p> : null}
               {result.corrected ? (
                 <p className="corrected">{ru.practice.corrected}: <strong>{result.corrected}</strong></p>
               ) : null}
               {result.errors.length > 0 ? (
-                <div className={`errors ${stateClass('incorrect')}`}>
+                <div className="errors">
                   <h2>{ru.practice.errorsTitle}</h2>
                   <ul>
                     {result.errors.map((error, index) => (
@@ -277,7 +282,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
         <div className="result">
           {/* Completed With Help: complete, and neither passed nor failed. It
               borrows the hue of neither. */}
-          <p className={`verdict ${stateClass('help')}`} role="status">{ru.practice.revealed}</p>
+          <VerdictLine state="help" words={ru.practice.revealed} />
           <p className="corrected">{ru.practice.corrected}: <strong>{revealed.referenceAnswer}</strong></p>
           <p className="actions">
             <button type="button" onClick={advance}>{ru.practice.next}</button>

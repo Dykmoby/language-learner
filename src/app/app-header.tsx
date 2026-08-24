@@ -24,7 +24,8 @@ import { headers } from 'next/headers';
 import { ru } from '../ru.ts';
 import { currentStudent } from '../auth/current-student.ts';
 import { getDatabase } from '../db/index.ts';
-import { PATHNAME_HEADER, openCourse } from './shared/open-course.ts';
+import { openCourse } from './shared/open-course.ts';
+import { PATHNAME_HEADER } from './shared/request-path.ts';
 
 export async function AppHeader() {
   const student = await currentStudent();

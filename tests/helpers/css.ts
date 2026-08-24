@@ -69,7 +69,9 @@ export function parseRules(css: string): Rule[] {
       }
       rules.push({
         at: preludes.length > 0 ? preludes.join(' ') : null,
-        selector: prelude,
+        // A selector list wrapped across lines is still one selector list, and a
+        // test that looks one up should not have to know where it was wrapped.
+        selector: prelude.replace(/\s+/g, ' '),
         declarations: parseDeclarations(body),
       });
       continue;

@@ -23,9 +23,6 @@ import { enrolledCourses } from '../../practice/lessons.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
-/** The header the middleware puts the request path in. */
-export const PATHNAME_HEADER = 'x-pathname';
-
 function idFrom(pathname: string, segment: string): number | null {
   const match = new RegExp(`^/${segment}/(\\d+)(?:/|$)`).exec(pathname);
   if (!match) return null;
