@@ -42,7 +42,7 @@ test('the Admin landing page leads to the health check; a Student sees no way in
   // asserted: a link into the section, and the check inside it.
   const admin = new Client(app.baseUrl);
   await admin.signIn(ADMIN.username, ADMIN.password);
-  const adminHtml = await (await admin.fetch('/')).text();
+  const adminHtml = await (await admin.fetch('/courses')).text();
   assert.ok(adminHtml.includes('href="/admin"'), 'the Admin is offered the section');
   assert.ok(adminHtml.includes(ru.home.adminBadge), 'and is shown the Admin badge');
 
@@ -51,7 +51,7 @@ test('the Admin landing page leads to the health check; a Student sees no way in
 
   const student = new Client(app.baseUrl);
   await student.signIn(STUDENT.username, STUDENT.password);
-  const html = await (await student.fetch('/')).text();
+  const html = await (await student.fetch('/courses')).text();
   assert.ok(!html.includes('/admin'), 'a Student is offered neither the section nor the check');
   assert.ok(!html.includes(ru.home.adminBadge), 'and is not shown the Admin badge');
 });

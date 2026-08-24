@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ru } from '../ru.ts';
+import { AppHeader } from './app-header.tsx';
 import './fonts.css';
 import './tokens.css';
 import './globals.css';
@@ -32,7 +33,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <link key={href} rel="preload" href={href} as="font" type="font/woff2" crossOrigin="anonymous" />
         ))}
       </head>
-      <body>{children}</body>
+      <body>
+        {/* Every signed-in screen, Student and Admin alike. It renders nothing
+            for a request with no session, which is what keeps it off the
+            sign-in screen without the sign-in screen having to know. */}
+        <AppHeader />
+        {children}
+      </body>
     </html>
   );
 }

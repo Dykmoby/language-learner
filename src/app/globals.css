@@ -21,7 +21,59 @@ body {
 main {
   max-width: var(--measure);
   margin: 0 auto;
-  padding: var(--space-7) var(--space-4);
+  padding: var(--space-6) var(--space-4) var(--space-7);
+}
+
+/* --- The header --------------------------------------------------------------
+   Quiet on purpose. This is a private application for two people who will sit in
+   front of it for an hour at a time, so the chrome states where you are and how
+   to leave and then stops asking for attention: one hairline, one surface a shade
+   off the page, and no colour of its own.
+
+   It does not stick. A bar that follows a Student down a Lesson's Theory is a bar
+   that is in the way for the twenty minutes they are reading it, and everything
+   here is one scroll from the top. */
+
+.appHeader {
+  background: var(--surface);
+  border-bottom: var(--border-width) solid var(--line);
+}
+.appHeader > div {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.appHeader .appName {
+  color: var(--fg);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+/* Which Course is open, set apart from the application's own name by weight and
+   by a separator rather than by a second colour. */
+.appHeader .openCourse {
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+.appHeader .openCourse::before {
+  content: '·';
+  margin-right: var(--space-3);
+  color: var(--line-strong);
+}
+.appHeader nav {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+.appHeader nav a { font-size: var(--text-sm); }
+.appHeader form { margin: 0; }
+.appHeader button {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
 }
 
 h1 {

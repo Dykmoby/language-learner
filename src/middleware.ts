@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getDatabase } from './db/index.ts';
 import { findSessionStudent } from './auth/session.ts';
 import { config as appConfig } from './config.ts';
+import { PATHNAME_HEADER } from './app/shared/open-course.ts';
 
 const PUBLIC_PATHS = new Set(['/login', '/api/login']);
 
@@ -19,7 +20,17 @@ export function middleware(request: NextRequest) {
 
   const sessionId = request.cookies.get(appConfig.session.cookieName)?.value;
   if (sessionId && findSessionStudent(getDatabase().db, sessionId)) {
-    return NextResponse.next();
+    // The header wraps every signed-in screen from the root layout, which
+    // receives no route parameters and so cannot know which Course is open. The
+    // path is the one thing this function certainly knows, so it hands it on.
+    //
+    // `set` rather than `append`: a client sending this header of its own has it
+    // overwritten here, so what the layout reads is always what was requested.
+    // It is still treated as a claim on the other side — enrolment decides what
+    // a Student is shown, not a header.
+    const forwarded = new Headers(request.headers);
+    forwarded.set(PATHNAME_HEADER, pathname);
+    return NextResponse.next({ request: { headers: forwarded } });
   }
 
   const login = request.nextUrl.clone();

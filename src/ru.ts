@@ -80,10 +80,15 @@ export const ru = {
       `Аккаунт временно заблокирован после пяти неудачных попыток. Повторите вход через ${minutesRu(minutes)}.`,
   },
 
+  // The header that wraps every signed-in screen.
+  chrome: {
+    navLabel: 'Навигация',
+    admin: 'Управление курсами',
+  },
+
   home: {
     signedInAs: (username: string) => `Вы вошли как ${username}.`,
     adminBadge: 'Администратор',
-    adminLink: 'Управление курсами',
   },
 
   // The two Languages taught. Russian is the interface and is never one of them,
@@ -110,7 +115,6 @@ export const ru = {
     draft: 'Черновик — студенты его не видят',
     healthLink: 'Проверка Проверяющего',
     back: 'К управлению курсами',
-    home: 'На главную',
 
     // Creating a Course.
     newCourseTitle: 'Новый курс',

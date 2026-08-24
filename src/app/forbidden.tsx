@@ -8,7 +8,10 @@ export default function Forbidden() {
     <main>
       <h1>{ru.course.locked}</h1>
       <p className="error" role="alert">{ru.course.lockedRefusal}</p>
-      <p><a href="/">{ru.course.back}</a></p>
+      {/* `/courses` rather than `/`: the home screen redirects into the Current
+          Course, which for a Student who has just been refused a locked Lesson
+          is the Course they were refused it in. */}
+      <p><a href="/courses">{ru.course.back}</a></p>
     </main>
   );
 }

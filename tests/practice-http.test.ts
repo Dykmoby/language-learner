@@ -84,9 +84,10 @@ function course(title: string) {
 test('a Student with no Current Course lands on their Courses rather than an error', async () => {
   const client = await signedIn();
   const response = await client.fetch('/');
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 307, 'the home screen is a signpost, not a screen');
+  assert.equal(new URL(response.headers.get('location')!, app.baseUrl).pathname, '/courses');
 
-  const html = await response.text();
+  const html = await (await client.fetch('/courses')).text();
   assert.ok(html.includes(ru.courses.title), 'the landing names what it is showing');
   assert.ok(html.includes(ENGLISH_A1.title), 'and lists the Course they are enrolled in');
 });
