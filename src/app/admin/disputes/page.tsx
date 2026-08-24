@@ -12,6 +12,7 @@ import { ru } from '../../../ru.ts';
 import { requireAdmin } from '../../../admin/guard.ts';
 import { getDatabase } from '../../../db/index.ts';
 import { pendingDisputes, resolvedDisputes, type QueuedDispute } from '../../../admin/disputes.ts';
+import { stateClass } from '../../shared/verdict-state.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,7 @@ function QueueRow({ entry }: { entry: QueuedDispute }) {
       {dispute.ruling === null ? null : (
         <>
           <br />
-          <span className="disputed">
+          <span className={`stateName ${stateClass('disputed')}`}>
             {dispute.ruling === 'upheld' ? ru.dispute.upheld : ru.dispute.rejected}
           </span>
         </>

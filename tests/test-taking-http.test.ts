@@ -157,7 +157,7 @@ test('a faultless attempt reviews with every Exercise collapsed', async () => {
   const html = await page.text();
 
   assert.ok(html.includes(ru.test.passed), '100% clears the threshold');
-  assert.ok(html.includes(ru.test.correctAnswer), 'each Exercise says it was right');
+  assert.ok(html.includes(ru.states.correct), 'each Exercise says it was right');
   assert.ok(html.includes(ru.test.showExercise), 'and offers to open it');
   assert.ok(
     !html.includes(ru.test.hideExercise),
@@ -173,13 +173,13 @@ test('a wrong Exercise reviews open, marked, and with the right option beside it
   const page = await client.fetch(`/tests/${testId}/attempts/${attemptId}`);
   const html = await page.text();
 
-  assert.ok(html.includes(ru.test.wrongAnswer), 'it says which one went wrong');
+  assert.ok(html.includes(ru.states.incorrect), 'it says which one went wrong');
   assert.ok(html.includes(ru.test.hideExercise), 'and that one is open');
   assert.ok(html.includes(EXERCISES[1]!.prompt), 'so its prompt is rendered');
   // The chosen option is marked wrong and the accepted one right — the shape a
   // Deterministic Exercise fails in, where the token is exactly the point.
-  assert.match(html, /class="wrong">the</, 'the option that was chosen is marked');
-  assert.match(html, /class="right">an</, 'and the one that was correct is too');
+  assert.match(html, /class="state-incorrect">the</, 'the option that was chosen is marked');
+  assert.match(html, /class="state-correct">an</, 'and the one that was correct is too');
   assert.ok(html.includes(ru.test.referenceAnswer), 'the attempt is closed, so the answer is shown');
 });
 

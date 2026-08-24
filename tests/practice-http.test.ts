@@ -360,8 +360,10 @@ test('Reveal shows the Reference Answer, moves the Student on, and records Compl
   assert.equal(rows.at(-1)?.guardedVerdict, null, 'a revealed Exercise was never judged correct');
 
   const html = await (await client.fetch(`/lessons/${first!.lesson.id}/practice`)).text();
-  assert.ok(html.includes('completed_with_help'),
+  assert.ok(html.includes('segment state-help'),
     'and it is its own segment in the progress bar, not folded in with the rest');
+  assert.ok(html.includes(ru.states.help),
+    'named on the segment too — the wording has to carry it on its own');
   assert.ok(html.includes(ru.practice.withHelpCount(1)));
 });
 

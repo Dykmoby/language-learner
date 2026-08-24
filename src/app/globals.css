@@ -161,10 +161,78 @@ ol.lessons li.locked { color: var(--fg-muted); }
   overflow-x: auto;
 }
 
+/* --- The state system --------------------------------------------------------
+   design.md § Interface, and the whole of what used to be four screens each
+   inventing its own vocabulary for the same six facts.
+
+   Six states: correct, partially correct, incorrect, Completed With Help,
+   Disputed, and grading failed. Each is told apart three ways over — by hue, by
+   the shape of its rail, and by its Russian wording — and any one of the three is
+   enough on its own. That is not thoroughness for its own sake: it is what makes
+   the distinction survive a monochrome screen, either theme, and a reader who
+   cannot separate two of the hues.
+
+   A state class carries the first two. It sets three locals and nothing else, so
+   the same six classes serve a one-line Verdict, a tinted block, and a 8px
+   segment of the progress bar without any of them redefining what a state looks
+   like. `src/app/shared/verdict-state.ts` is the same vocabulary in code, and
+   `tests/verdict-states.test.ts` fails if the two fall out of step. */
+
+.state-correct   { --ink: var(--state-correct-ink);   --wash: var(--state-correct-wash);   --rail: var(--rail-correct); }
+.state-partial   { --ink: var(--state-partial-ink);   --wash: var(--state-partial-wash);   --rail: var(--rail-partial); }
+.state-incorrect { --ink: var(--state-incorrect-ink); --wash: var(--state-incorrect-wash); --rail: var(--rail-incorrect); }
+.state-help      { --ink: var(--state-help-ink);      --wash: var(--state-help-wash);      --rail: var(--rail-help); }
+.state-disputed  { --ink: var(--state-disputed-ink);  --wash: var(--state-disputed-wash);  --rail: var(--rail-disputed); }
+.state-failed    { --ink: var(--state-failed-ink);    --wash: var(--state-failed-wash);    --rail: var(--rail-failed); }
+
+/* The rail: the shape half, drawn the same way wherever a state appears. */
+.verdict, .stateBlock {
+  position: relative;
+  padding-left: var(--space-4);
+}
+.verdict::before, .stateBlock::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--rail-width);
+  border-radius: var(--radius-pill);
+  background: var(--rail);
+}
+
+/* One line that names the state — the Verdict on a Submission, the standing of
+   an objection, the fact that a grading failed. */
+.verdict {
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+/* Where the state has more to say than its name: the retry message after a
+   failed grading, or what an objection unblocked. Set in the body colour rather
+   than the state's, because a paragraph of coloured text is harder to read than
+   a paragraph of text. */
+.verdict .detail {
+  display: block;
+  color: var(--fg);
+  font-weight: var(--weight-normal);
+}
+
+/* A block carrying a state — an Exercise in the Test review, a panel in the
+   Practice. Tinted as well as railed, because at this size the rail alone is a
+   detail on the edge of something rather than a property of it. */
+.stateBlock {
+  background: var(--wash);
+  border: var(--border-width) solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-4) var(--space-1) var(--space-5);
+}
+
 /* --- The progress bar --------------------------------------------------------
    The Practice's bar over one Lesson and the progress screen's bar over all of
-   them are the same component, so the segment classes *are* the state names.
-   Both hue and pattern come from the state system below. */
+   them are the same component, drawing on the same six classes. A segment is too
+   small for a wash, so it is painted with the rail — which is exactly why the
+   rails are patterns rather than plain fills. */
 
 ol.progress {
   display: flex;
@@ -179,9 +247,9 @@ ol.progress .segment {
   border-radius: var(--radius-pill);
   background: var(--line);
 }
-ol.progress .segment.completed { background: var(--rail-correct); }
-ol.progress .segment.completed_with_help { background: var(--rail-help); }
-ol.progress .segment.disputed { background: var(--rail-disputed); }
+ol.progress .segment[class*='state-'] { background: var(--rail); }
+/* Where the Student is, and where they have not been. Neither is a judgement, so
+   neither borrows a state's hue. */
 ol.progress .segment.current { background: var(--accent); }
 
 /* --- The Exercise being asked ------------------------------------------------ */
@@ -232,11 +300,13 @@ input.gap {
   border-left: var(--rail-width) solid var(--state-correct-ink);
   padding-left: var(--space-3);
 }
-.withHelp { color: var(--state-help-ink); font-weight: var(--weight-semibold); }
-
 .errors ul { list-style: none; padding: 0; }
+/* An Error is a fault, so it is marked in the incorrect hue even under a
+   partially correct Verdict — the answer may be half right, the Error is not.
+   The class is on the list rather than assumed here, so the marking is a
+   decision a screen makes rather than one this rule makes for it. */
 .errors li {
-  border-left: var(--rail-width) solid var(--state-incorrect-ink);
+  border-left: var(--rail-width) solid var(--ink);
   padding: var(--space-1) 0 var(--space-1) var(--space-3);
   margin-bottom: var(--space-3);
 }
@@ -296,35 +366,38 @@ pre.streaming {
   font-weight: var(--weight-semibold);
   margin: var(--space-2) 0 var(--space-1);
 }
-.review ol.exercises > li.wrong {
-  border-color: var(--state-incorrect-ink);
-  background: var(--state-incorrect-wash);
+/* An Exercise in the review carries its state through the system like everything
+   else, so this says only how a box wears one. */
+.review ol.exercises > li[class*='state-'] {
+  border-color: var(--ink);
+  background: var(--wash);
 }
-.review ol.exercises > li.right { border-style: dashed; }
+/* The one thing here that is about the review rather than about the state: a
+   correct Exercise is collapsed, so its box is quieter than the rest. */
+.review ol.exercises > li.state-correct { border-style: dashed; background: none; }
+
+/* A Deterministic Kind fails at exactly one token, so the option carries the
+   state — the right one marked, and the chosen wrong one struck through. */
 .review ul.choices li {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   border: var(--border-width) solid transparent;
 }
-.review ul.choices li.right {
-  border-color: var(--state-correct-ink);
-  background: var(--state-correct-wash);
+.review ul.choices li[class*='state-'] {
+  border-color: var(--ink);
+  background: var(--wash);
 }
-.review ul.choices li.wrong {
-  border-color: var(--state-incorrect-ink);
-  background: var(--state-incorrect-wash);
-  text-decoration: line-through;
-}
+.review ul.choices li.state-incorrect { text-decoration: line-through; }
+
+/* The state's name, in the state's own colour, on a line that is otherwise
+   muted metadata. */
+.stateName { color: var(--ink); font-weight: var(--weight-medium); }
 
 /* --- Disputes ----------------------------------------------------------------
-   An objection is a fact about a judgement rather than a judgement, so it is
-   marked out from the answer beside it without being coloured as right or wrong. */
+   An objection is a fact about a judgement rather than a judgement, and it is
+   marked out by the state system like every other state rather than by a private
+   dashed border that only this screen knew about. */
 
-.disputed {
-  border-left: var(--rail-width) dashed var(--state-disputed-ink);
-  padding: var(--space-1) 0 var(--space-1) var(--space-3);
-  color: var(--state-disputed-ink);
-}
 .disputeForm { margin: var(--space-3) 0; }
 .disputeForm textarea { max-width: var(--measure); }
 
