@@ -119,12 +119,25 @@ textarea {
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius);
 }
+input[type='text'], input[type='password'], select { min-height: var(--control-height); }
+/* Vertical only. A textarea that can be dragged wider than its column is a
+   textarea that can be dragged out of the measure it was set in. */
+textarea { resize: vertical; }
+
+/* One visible focus ring for every control, and it is the accent rather than the
+   browser's own — which differs per browser and, in one of them, is a colour
+   this palette has no say over. */
+:where(input, select, textarea, button, a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 input[type='file'] { font-family: inherit; font-size: var(--text-base); color: var(--fg); }
 
 button {
   font-family: inherit;
   font-size: var(--text-base);
+  min-height: var(--control-height);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
   cursor: pointer;
@@ -140,10 +153,12 @@ button.secondary {
 }
 
 a.button {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
   font-family: inherit;
   font-size: var(--text-base);
+  min-height: var(--control-height);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
   color: var(--accent-on);
@@ -151,11 +166,15 @@ a.button {
   border: var(--border-width) solid transparent;
 }
 
+/* A row that holds controls, and holds its height whether or not it currently
+   has any: the Practice replaces its buttons with a line of status while the
+   Grader reads, and that must not move the answer above it. */
 .actions {
   display: flex;
   gap: var(--space-3);
   flex-wrap: wrap;
   align-items: center;
+  min-height: var(--control-height);
 }
 
 /* The Exercise forms put several controls on one line — an option, whether it is
@@ -182,17 +201,85 @@ label.inline span {
 .ok { color: var(--state-correct-ink); }
 .muted { color: var(--fg-muted); }
 
+/* --- Sign in -----------------------------------------------------------------
+   The one screen with no header, no session and nothing else on it, so it is the
+   one screen that can afford to be mostly space. It is also the first thing
+   anybody sees of this application, which is the whole argument for the card:
+   everything after it is a working surface, and this is not one. */
+
+main.signIn {
+  max-width: var(--measure-narrow);
+  padding-top: var(--space-7);
+}
+main.signIn h1 { margin-bottom: var(--space-2); }
+main.signIn .lead { color: var(--fg-muted); margin: 0 0 var(--space-6); }
+main.signIn form {
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+main.signIn button { width: 100%; justify-content: center; }
+
 /* --- Lists ------------------------------------------------------------------ */
 
-ul.cards, ol.lessons { padding-left: var(--space-5); }
+/* Rows rather than bullets. A Course is a list of things to be picked from, and
+   a hairline between them is what makes it scannable at a glance; the Lessons
+   keep their numbers, because their order is what unlocks what. */
+ul.cards, ol.lessons { padding-left: var(--space-5); margin: 0 0 var(--space-5); }
 ul.cards { list-style: none; padding-left: 0; }
-ul.cards li, ol.lessons li { margin-bottom: var(--space-2); }
+ul.cards > li, ol.lessons > li {
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--line);
+}
+ul.cards > li:last-child, ol.lessons > li:last-child { border-bottom: none; }
 ol.lessons li.locked { color: var(--fg-muted); }
+ol.lessons li.locked::marker { color: var(--fg-muted); }
 
-/* --- Theory ------------------------------------------------------------------ */
+/* --- Theory ------------------------------------------------------------------
+   Long-form reading, and set as such rather than as interface text that happens
+   to be long. A Student sits with a Lesson's Theory for a quarter of an hour, so
+   it gets the narrow measure typography asks for, the looser rhythm, and a
+   heading hierarchy that separates rather than decorates.
 
-.theory { line-height: var(--leading-prose); }
-.theory h2 { margin-top: var(--space-6); }
+   The hierarchy has to be legible with the colour taken away, so it is carried
+   by size, weight and space, and the two smallest levels change shape rather
+   than shrinking further — at the fourth level there is no smaller left to go. */
+
+.theory {
+  max-width: var(--measure-prose);
+  line-height: var(--leading-prose);
+}
+.theory > * { margin: 0; }
+.theory > * + * { margin-top: var(--space-4); }
+
+.theory h1, .theory h2, .theory h3, .theory h4, .theory h5, .theory h6 {
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-semibold);
+}
+.theory h1, .theory h2 { font-size: var(--text-xl); }
+.theory h3 { font-size: var(--text-lg); }
+/* No size left below the body text, so these change shape instead. */
+.theory h4, .theory h5, .theory h6 {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+.theory > h1, .theory > h2, .theory > h3 { margin-top: var(--space-6); }
+.theory > h4, .theory > h5, .theory > h6 { margin-top: var(--space-5); }
+/* A rule above a top-level section, and only where it separates something from
+   something — never under the Lesson's own title. */
+.theory > h1:not(:first-child), .theory > h2:not(:first-child) {
+  border-top: var(--border-width) solid var(--line);
+  padding-top: var(--space-5);
+}
+
+.theory ul, .theory ol { padding-left: var(--space-5); }
+.theory li + li { margin-top: var(--space-2); }
+.theory img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.theory a { text-underline-offset: 0.15em; }
+
 .theory table { border-collapse: collapse; margin: var(--space-4) 0; }
 .theory th, .theory td {
   border: var(--border-width) solid var(--line);
@@ -306,7 +393,11 @@ ol.progress .segment.current { background: var(--accent); }
 
 /* --- The Exercise being asked ------------------------------------------------ */
 
-.prompt { font-size: var(--text-lg); margin: var(--space-5) 0; }
+.prompt {
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  margin: var(--space-5) 0;
+}
 .given {
   padding: var(--space-2) var(--space-3);
   border: var(--border-width) dashed var(--line-strong);
@@ -323,13 +414,20 @@ ul.choices label {
 }
 ul.choices label span { color: var(--fg); font-size: var(--text-base); margin: 0; }
 
+/* Two lines' worth from the start, so the sentence being built does not push the
+   fragments down the moment it wraps. */
 .wordOrder .built {
-  min-height: 1.6em;
+  min-height: calc(var(--leading-normal) * 2em);
   padding: var(--space-2) var(--space-3);
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius);
+  background: var(--bg);
 }
-.wordOrder .fragments { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.wordOrder .fragments { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+/* A used fragment keeps its place and stops being visible. Taking it out of the
+   row would reflow every fragment after it — and the whole screen below, once
+   the row lost a line — while the Student is mid-answer. */
+.wordOrder .fragments .used { visibility: hidden; }
 
 /* A fill-gap Exercise is one sentence with a hole in it, so the input sits in
    the hole rather than on a line of its own underneath. */
@@ -570,3 +668,29 @@ table.spanTable caption { text-align: left; padding-bottom: var(--space-1); }
 .healthBanner p:last-child { margin-bottom: 0; }
 .healthBanner.unhealthy, .healthBanner.stale { border-left-color: var(--state-incorrect-ink); }
 .healthBanner.healthy { border-left-color: var(--state-correct-ink); }
+
+/* --- Narrow viewports --------------------------------------------------------
+   One breakpoint, and it does three things: it gives the page its space back,
+   it lets the header's controls sit under the name they belong to rather than
+   squeezing beside it, and it lets a table scroll on its own instead of pushing
+   the whole document sideways.
+
+   A Theory table is written by an Admin and can be any width, so it is the one
+   element here that cannot be made to fit — which is exactly why it is given a
+   scroll of its own rather than allowed to widen the body. */
+
+@media (max-width: 40rem) {
+  main { padding: var(--space-5) var(--space-4) var(--space-6); }
+  .appHeader > div { padding: var(--space-3) var(--space-4); row-gap: var(--space-2); }
+  .appHeader nav { margin-left: 0; width: 100%; }
+
+  .theory table, table.histogram {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* The measure is the viewport now; the token was the smaller of the two. */
+  .theory { max-width: 100%; }
+  svg.chart { min-width: 22rem; }
+}

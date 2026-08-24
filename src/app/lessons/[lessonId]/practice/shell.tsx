@@ -205,8 +205,12 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
       {phase === 'checking' ? (
         <div>
           {/* Roughly three seconds pass before the first token arrives. This says
-              what is happening rather than spinning at the Student. */}
-          <p className="muted" role="status">{ru.practice.checking}</p>
+              what is happening rather than spinning at the Student — and it sits
+              in the row the buttons were in, at the height the buttons were, so
+              submitting does not move the answer the Student is still reading. */}
+          <p className="actions" role="status">
+            <span className="muted">{ru.practice.checking}</span>
+          </p>
           {streamed ? <p className="feedback">{streamed}</p> : null}
         </div>
       ) : null}

@@ -125,7 +125,7 @@ const EXEMPT: Record<string, string> = {
 /** Tokens that are not colours: the type scale, the spacing scale, the rails. */
 const NON_COLOUR_PREFIXES = [
   '--font-', '--text-', '--weight-', '--leading-', '--measure',
-  '--space-', '--radius', '--border-width', '--rail-',
+  '--space-', '--radius', '--border-width', '--control-', '--rail-',
 ];
 
 function isColourToken(name: string): boolean {

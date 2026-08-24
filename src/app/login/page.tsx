@@ -28,8 +28,9 @@ export default async function LoginPage({
   const message = messageFor(await searchParams);
 
   return (
-    <main>
-      <h1>{ru.login.title}</h1>
+    <main className="signIn">
+      <h1>{ru.appName}</h1>
+      <p className="lead">{ru.login.title}</p>
       {message ? <p className="error" role="alert">{message}</p> : null}
       <form method="post" action="/api/login">
         <label>

@@ -216,6 +216,9 @@
      narrow measure typography asks for. An Admin reads a Lesson's worth of
      Exercise forms, which is a table of controls rather than prose and suffocates
      at the same width. */
+  /* The sign-in form, which is a column of two fields and has no business being
+     as wide as a Lesson. */
+  --measure-narrow: 24rem;
   --measure-prose: 36rem;
   --measure: 44rem;
   --measure-wide: 64rem;
@@ -241,4 +244,9 @@
      with. Named because three screens have to agree on them. */
   --rail-width: 4px;
   --border-width: 1px;
+
+  /* Every control is this tall, and so is every row that holds one. That is what
+     lets the Practice swap a row of buttons for a line of status without the
+     answer the Student is still reading moving up the screen. */
+  --control-height: 2.6rem;
 }
