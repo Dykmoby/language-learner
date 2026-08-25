@@ -21,6 +21,7 @@ function check(overrides: Partial<HealthCheckRow> = {}): HealthCheckRow {
     reason: null,
     likelyCredentials: false,
     likelyEgress: false,
+    likelyRateLimit: false,
     source: 'timer',
     ranAt: new Date(NOW.getTime() - 60_000),
     ...overrides,

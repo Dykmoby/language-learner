@@ -384,6 +384,28 @@ test('an Admin sees every Dispute awaiting a decision, with the Student and the 
   assert.ok(html.includes(DETERMINISTIC_COURSE.title), 'and which Course');
 });
 
+test('the queue also says how often the Coherence Guard fired', async () => {
+  // Beside the Dispute figures rather than on a screen of its own: a guard
+  // firing and an upheld objection are the two ways this system records that the
+  // Grader was wrong.
+  //
+  // Every Submission this suite can make is a Deterministic Check — a hermetic
+  // test cannot make a live model disagree with its own error list — so what is
+  // asserted here is the reading an application in that state must give: the
+  // panel is present and says plainly that nothing has been judged, rather than
+  // rendering empty or claiming a rate over answers the guard never saw. The
+  // counting itself is pinned in `guard-firings.test.ts`, over rows.
+  const { client, result } = await toldTheyAreWrong();
+  await dispute(client, result.submissionId!);
+
+  const admin = await asAdmin();
+  const html = await (await admin.fetch('/admin/disputes')).text();
+
+  assert.ok(html.includes(ru.coherenceGuard.title), 'the panel is on the queue screen');
+  assert.ok(html.includes(ru.coherenceGuard.nothingJudged),
+    'and an application the Grader has judged nothing in says so');
+});
+
 test('one Dispute opens with everything the decision has to be made against', async () => {
   const { client, result } = await toldTheyAreWrong();
   await dispute(client, result.submissionId!, 'Я уверен, что «the» здесь допустимо.');

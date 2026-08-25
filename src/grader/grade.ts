@@ -19,7 +19,7 @@ import {
 } from './contract.ts';
 import {
   callClaude, EMPTY_USAGE,
-  type CallFailure, type CallOutcome, type ClaudeUsage,
+  type ApiPushback, type CallFailure, type CallOutcome, type ClaudeUsage,
 } from '../claude/harness.ts';
 import { config } from '../config.ts';
 
@@ -51,6 +51,13 @@ export type GradingFailure = {
    * Error: 403 Request not allowed" — which points at exactly the wrong thing.
    */
   likelyEgress: boolean;
+  /**
+   * The API said "not now" rather than "no" — a 429, a 529, or the subscription's
+   * own window. It excludes the other two: a call the API pushed back on got as
+   * far as the API, so neither the credentials nor the egress path is what went
+   * wrong. See the harness, where it is read off the call rather than guessed.
+   */
+  likelyRateLimit: boolean;
   raw: string | null;
 };
 
@@ -67,8 +74,13 @@ export type GradingOutcome =
       unknownErrorTypes: string[];
       usage: GraderUsage;
       wallMs: number;
+      /** What the API said about load, if anything. Null on a call it never met. */
+      pushback: ApiPushback | null;
     }
-  | { ok: false; failure: GradingFailure; usage: GraderUsage; wallMs: number };
+  | {
+      ok: false; failure: GradingFailure; usage: GraderUsage; wallMs: number;
+      pushback: ApiPushback | null;
+    };
 
 export type GradingHandle = {
   /** Text deltas, buffered from the start so a late subscriber misses nothing. */
@@ -98,10 +110,10 @@ export function grade(request: GradeRequest): GradingHandle {
     return {
       deltas: (async function* () {})(),
       result: Promise.resolve({
-        ok: false, wallMs: 0, usage: EMPTY_USAGE,
+        ok: false, wallMs: 0, usage: EMPTY_USAGE, pushback: null,
         failure: {
           kind: 'refused', reason: refusal, raw: null,
-          likelyCredentials: false, likelyEgress: false,
+          likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
         },
       }),
     };
@@ -124,19 +136,21 @@ export function grade(request: GradeRequest): GradingHandle {
 }
 
 function judge(outcome: CallOutcome, request: GradeRequest): GradingOutcome {
-  const { wallMs, usage } = outcome;
-  if (!outcome.ok) return { ok: false, wallMs, usage, failure: asGradingFailure(outcome.failure) };
+  const { wallMs, usage, pushback } = outcome;
+  if (!outcome.ok) {
+    return { ok: false, wallMs, usage, pushback, failure: asGradingFailure(outcome.failure) };
+  }
 
   const parsed = parseGraderOutput(outcome.text);
   if (!parsed.ok) {
     // Measured at roughly 1 call in 24. This path is load-bearing, not defensive.
     return {
-      ok: false, wallMs, usage,
+      ok: false, wallMs, usage, pushback,
       // A contract failure means the call reached the model and came back. It
-      // says nothing about credentials or the network.
+      // says nothing about credentials, the network, or how busy the API is.
       failure: {
         kind: 'contract', reason: parsed.reason, raw: parsed.raw,
-        likelyCredentials: false, likelyEgress: false,
+        likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
       },
     };
   }
@@ -152,6 +166,7 @@ function judge(outcome: CallOutcome, request: GradeRequest): GradingOutcome {
     ok: true,
     wallMs,
     usage,
+    pushback,
     response: parsed.value,
     proposedVerdict: parsed.value.verdict,
     guarded: coherenceGuard(parsed.value.verdict, parsed.value.errors),

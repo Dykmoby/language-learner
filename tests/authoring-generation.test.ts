@@ -484,7 +484,10 @@ function callFailed(
     wallMs: 1,
     failure: {
       kind: 'call',
-      call: { kind, reason: 'no', raw, likelyCredentials: false, likelyEgress: false },
+      call: {
+        kind, reason: 'no', raw,
+        likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
+      },
     },
   };
 }

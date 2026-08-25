@@ -20,6 +20,10 @@ const NOT_INTERFACE_TEXT: Record<string, string> = {
     'the fixed known input of the health check — content handed to the Grader, never rendered',
   'practice/deterministic-check.ts':
     'the ё → е normalisation: those are characters in an algorithm, not a message',
+  'ops/verdict-stability.ts':
+    'the fixed cases the measurement grades — content handed to the Grader, never rendered',
+  'ops/concurrency-probe.ts':
+    'the fixed answer the probe grades under load — content handed to the Grader, never rendered',
 };
 
 function sourceFiles(dir: string): string[] {

@@ -30,6 +30,17 @@ export type ProgressionView = {
   revealOffered: boolean;
 };
 
+/**
+ * Which of the two things a failed grading is, in the only terms a Student can
+ * act on: the Проверяющий is busy and will answer shortly, or something is
+ * wrong and retrying now is as likely to fail again.
+ *
+ * Deliberately not the Grader's failure kind. 'timeout' and 'contract' and 'sdk'
+ * are facts about this application, and none of them changes what the Student
+ * should do next — which is the only question the screen is answering.
+ */
+export type FailureShape = 'busy' | 'broken';
+
 export type ResultFrame = {
   t: 'result';
   status: 'graded' | 'grading_failed';
@@ -44,6 +55,8 @@ export type ResultFrame = {
   submissionId: number | null;
   /** Null on a failed grading: there was no judgement, and none may be implied. */
   verdict: Verdict | null;
+  /** Why nothing was judged. Null on a graded frame, where nothing failed. */
+  failure: FailureShape | null;
   feedbackRu: string | null;
   corrected: string | null;
   errors: ErrorView[];

@@ -97,8 +97,40 @@ export type CallFailure = {
    * Error: 403 Request not allowed" — which points at exactly the wrong thing.
    */
   likelyEgress: boolean;
+  /**
+   * The API said "not now" rather than "no". Better evidence than the other two:
+   * the SDK announces a 429 or a 529 as an `api_retry` message carrying the
+   * status, and a subscription limit as a `rate_limit_event` — so this is read
+   * off the call where it can be, and falls back to the error text where the
+   * failure arrived without either.
+   *
+   * It excludes the other two rather than sitting beside them. A call the API
+   * rate-limited reached the API, which means the credentials were readable and
+   * the request left the box; blaming either would send whoever is reading this
+   * looking in exactly the wrong place — the trap the egress heuristic was added
+   * to avoid, at the other end.
+   */
+  likelyRateLimit: boolean;
   /** Whatever text had arrived when it failed. Never content — evidence. */
   raw: string | null;
+};
+
+/**
+ * What the API said about load, where it said anything at all.
+ *
+ * Carried on **both** arms, because the interesting case is the one that
+ * succeeded: the SDK retries a 429 or a 529 on its own, so a call that came back
+ * fine after two retries is a call that hit the limit and papered over it. A
+ * measurement that only looked at failures could not tell that apart from a
+ * system nothing pushed back on.
+ */
+export type ApiPushback = {
+  /** 429, 529, whatever the SDK named — null where it named none. */
+  status: number | null;
+  /** How many times the SDK retried before it got through, or gave up. */
+  retries: number;
+  /** The subscription's own limit rejecting the call outright, not a busy API. */
+  rejected: boolean;
 };
 
 /**
@@ -109,8 +141,15 @@ export type CallFailure = {
  * degradation #36 exists to avoid.
  */
 export type CallOutcome =
-  | { ok: true; text: string; sessionId: string | null; usage: ClaudeUsage; wallMs: number }
-  | { ok: false; failure: CallFailure; sessionId: string | null; usage: ClaudeUsage; wallMs: number };
+  | {
+      ok: true; text: string; sessionId: string | null; usage: ClaudeUsage; wallMs: number;
+      /** Null where the API never pushed back. See ApiPushback. */
+      pushback: ApiPushback | null;
+    }
+  | {
+      ok: false; failure: CallFailure; sessionId: string | null; usage: ClaudeUsage; wallMs: number;
+      pushback: ApiPushback | null;
+    };
 
 export type CallHandle = {
   /** Text deltas, buffered from the start so a late subscriber misses nothing. */
@@ -262,11 +301,88 @@ function credentialsLookUnreachable(): boolean {
   }
 }
 
-function diagnose(reason: string): { likelyCredentials: boolean; likelyEgress: boolean } {
+/**
+ * A busy API, in the error text.
+ *
+ * The weaker of the two ways this is recognised, and the fallback: where the
+ * call reported an `api_retry` or a `rate_limit_event` the answer is already
+ * known and this is not consulted. It exists because a failure can arrive as
+ * nothing but a line of text — a thrown SDK error, a result that is an error
+ * subtype — and a 429 in that line is still a 429.
+ *
+ * The session and usage limits are here because [ADR 0001](../../docs/adr/0001-claude-agent-sdk-as-grading-engine.md)'s
+ * credentials are a subscription rather than an API key: the limit that stops
+ * this application first is the plan's own window, and it does not announce
+ * itself with a status code. Measured on 2026-08-24, that failure arrives as
+ * *"Claude Code returned an error result: You've hit your session limit · resets
+ * 11:10pm"* — which matches none of the API-shaped patterns above it.
+ */
+export function looksRateLimited(reason: string): boolean {
+  return /\b(429|529)\b/.test(reason)
+    || /rate[ _-]?limit/i.test(reason)
+    || /\boverloaded\b/i.test(reason)
+    || /too many requests/i.test(reason)
+    || /\b(session|usage|weekly) limit\b/i.test(reason);
+}
+
+/**
+ * The two statuses that mean the API pushed back, and not one more.
+ *
+ * The SDK retries 500s and 502s too, and neither is the API saying "not now": a
+ * proxy answering 502 is the egress failure ADR 0001 warns about, and reading it
+ * as a rate limit would suppress the guess that is actually right. Its own
+ * function because the rule is one line and was wrong in an earlier draft of it.
+ */
+export function isPushbackStatus(status: unknown): boolean {
+  return status === 429 || status === 529;
+}
+
+/**
+ * What an error result says, as one line.
+ *
+ * The subtype alone says almost nothing — `error_during_execution` covers a rate
+ * limit and a crash alike — and the sentence that does say something travels
+ * separately. Both are needed, because this line becomes the failure's `reason`,
+ * and the reason is what the heuristics read.
+ */
+export function errorResultReason(subtype: unknown, result: unknown): string {
+  const detail = typeof result === 'string' ? result.trim() : '';
+  return `result subtype=${String(subtype)}${detail === '' ? '' : `: ${detail}`}`;
+}
+
+export type Hints = { likelyCredentials: boolean; likelyEgress: boolean; likelyRateLimit: boolean };
+
+/**
+ * Which of the three guesses a failure supports.
+ *
+ * Exported for its test, and it earns that: the three are mutually exclusive by
+ * construction rather than by coincidence, and the property worth pinning — that
+ * a 429 on a box with an unreadable HOME still does not blame the credentials —
+ * cannot be provoked through a live call on demand.
+ */
+export function diagnose(reason: string, pushback: ApiPushback | null): Hints {
+  // A pushback seen during the call is not automatically why it ended: the SDK
+  // retries a 429 itself, so one can sit in the history of a call that got
+  // through and then failed for a reason of its own. An auth-shaped failure is
+  // the case where that matters — 403 and 401 are never rate limits, and letting
+  // a stale retry outrank them would hide the egress failure ADR 0001 records
+  // as the one that presents as something else.
+  //
+  // A subscription rejection is different: nothing proceeded past it.
+  const pushbackEndedIt = pushback !== null && (pushback.rejected || !looksAuthShaped(reason));
+
+  // Ordered, not independent. A call the API pushed back on reached the API,
+  // which means the credentials were readable and the request left the box —
+  // so the other two guesses are not merely unsupported here, they are wrong,
+  // and the whole point of this heuristic is that they stop being offered.
+  if (looksRateLimited(reason) || pushbackEndedIt) {
+    return { likelyCredentials: false, likelyEgress: false, likelyRateLimit: true };
+  }
   const unreachable = credentialsLookUnreachable();
   return {
     likelyCredentials: unreachable,
     likelyEgress: !unreachable && looksAuthShaped(reason),
+    likelyRateLimit: false,
   };
 }
 
@@ -275,9 +391,10 @@ function callFailure(
   kind: CallFailureKind,
   reason: string,
   raw: string | null,
-  hints?: { likelyCredentials: boolean; likelyEgress: boolean },
+  pushback: ApiPushback | null,
+  hints?: Hints,
 ): CallFailure {
-  return { kind, reason, raw, ...(hints ?? diagnose(reason)) };
+  return { kind, reason, raw, ...(hints ?? diagnose(reason, pushback)) };
 }
 
 // --- The call ----------------------------------------------------------------
@@ -336,7 +453,8 @@ export function callClaude(request: ClaudeRequest): CallHandle {
       wallMs: 0,
       sessionId: null,
       usage: EMPTY_USAGE,
-      failure: callFailure('sdk', error instanceof Error ? error.message : String(error), null),
+      pushback: null,
+      failure: callFailure('sdk', error instanceof Error ? error.message : String(error), null, null),
     }))
     .finally(() => deltas.close());
 
@@ -364,6 +482,19 @@ async function runQuery(
   let usage = EMPTY_USAGE;
   let sessionId: string | null = null;
   let sdkError: string | null = null;
+  // What the API said about load, accumulated as the call runs. The SDK retries
+  // a 429 or a 529 itself and says so on the wire, so this is read rather than
+  // guessed — and it survives a call that then succeeded, which is the case a
+  // failure-only view cannot see.
+  let pushback: ApiPushback | null = null;
+
+  const notePushback = (status: number | null, rejected: boolean): void => {
+    pushback = {
+      status: status ?? pushback?.status ?? null,
+      retries: (pushback?.retries ?? 0) + (rejected ? 0 : 1),
+      rejected: rejected || (pushback?.rejected ?? false),
+    };
+  };
 
   try {
     // Imported lazily: the SDK spawns a subprocess and reads ~/.claude, and no
@@ -379,6 +510,27 @@ async function runQuery(
       // session, and that is the one a conversation resumes from.
       if (typeof message.session_id === 'string') sessionId = message.session_id;
 
+      // A 429 or a 529 the SDK is retrying past, and only those two. The SDK
+      // retries 500s and 502s as well, and they are not the API pushing back —
+      // a proxy answering 502 is exactly the egress failure ADR 0001 warns
+      // about, and reading it as a rate limit would suppress the guess that is
+      // actually right.
+      if (message.type === 'system' && message.subtype === 'api_retry') {
+        const status = (message as Record<string, any>).error_status;
+        if (isPushbackStatus(status)) notePushback(status as number, false);
+      }
+
+      // The subscription's own window, which is the limit this application meets
+      // first: ADR 0001's credentials are a plan rather than an API key. Not
+      // counted where overage is still carrying the call — the SDK models the
+      // plan's answer and the overage's separately, and a window that says no
+      // while credits say yes has not stopped anything.
+      if (message.type === 'rate_limit_event') {
+        const info = (message as Record<string, any>).rate_limit_info;
+        const carried = info?.overageStatus === 'allowed' || info?.overageStatus === 'allowed_warning';
+        if (info?.status === 'rejected' && !carried) notePushback(null, true);
+      }
+
       const delta = textDeltaOf(message);
       if (delta) deltas.push(delta);
 
@@ -390,7 +542,11 @@ async function runQuery(
       if (message.type === 'result') {
         const asResult = message as Record<string, any>;
         usage = usageFrom(asResult, model);
-        if (asResult.is_error) sdkError = `result subtype=${asResult.subtype}`;
+        // The text as well as the subtype: the session limit measured on
+        // 2026-08-24 arrives here as prose with no status code in it, and a
+        // reason reading "result subtype=error_during_execution" is unreadable
+        // by every heuristic there is.
+        if (asResult.is_error) sdkError = errorResultReason(asResult.subtype, asResult.result);
         if (!text && typeof asResult.result === 'string') text = asResult.result;
       }
     }
@@ -403,15 +559,22 @@ async function runQuery(
       wallMs,
       sessionId,
       usage,
+      pushback,
       // Neither a timeout nor an abandonment is evidence about credentials or
-      // egress, so neither one guesses.
+      // egress, so neither one guesses at those. A timeout does say something
+      // about load, though, where the API was seen pushing back before the clock
+      // ran out: a call spent waiting out a 429 and then aborted is the busy case
+      // wearing a timeout's clothes, and reporting it as a plain timeout would
+      // hide the one thing that explains it.
       failure: stopped
         ? wasAbandoned()
-          ? callFailure('aborted', 'the call was abandoned by its caller', text || null,
-                        { likelyCredentials: false, likelyEgress: false })
-          : callFailure('timeout', `the call was aborted after ${timeoutMs}ms`, text || null,
-                        { likelyCredentials: false, likelyEgress: false })
-        : callFailure('sdk', error instanceof Error ? error.message : String(error), text || null),
+          ? callFailure('aborted', 'the call was abandoned by its caller', text || null, pushback,
+                        { likelyCredentials: false, likelyEgress: false, likelyRateLimit: false })
+          : callFailure('timeout', `the call was aborted after ${timeoutMs}ms`, text || null, pushback,
+                        { likelyCredentials: false, likelyEgress: false,
+                          likelyRateLimit: pushback !== null })
+        : callFailure('sdk', error instanceof Error ? error.message : String(error), text || null,
+                      pushback),
     };
   } finally {
     clearTimeout(timer);
@@ -421,10 +584,10 @@ async function runQuery(
 
   if (sdkError || !text) {
     return {
-      ok: false, wallMs, sessionId, usage,
-      failure: callFailure('sdk', sdkError ?? 'the model produced no text', text || null),
+      ok: false, wallMs, sessionId, usage, pushback,
+      failure: callFailure('sdk', sdkError ?? 'the model produced no text', text || null, pushback),
     };
   }
 
-  return { ok: true, text, sessionId, usage, wallMs };
+  return { ok: true, text, sessionId, usage, wallMs, pushback };
 }

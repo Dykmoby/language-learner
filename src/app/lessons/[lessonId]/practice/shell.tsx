@@ -225,7 +225,15 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
             // away from looking exactly like one. It has its own hue, its own
             // rail and its own words: the attempt is not counted, the Exercise
             // stays open, and nothing about the Student's answer was judged.
-            <VerdictLine state="failed" role="alert" detail={ru.practice.gradingFailed} />
+            //
+            // Two sentences behind the one state, because a busy API and a
+            // broken one ask for opposite things from the Student: one is worth
+            // waiting out, and the other is not going to change in ten seconds.
+            <VerdictLine
+              state="failed"
+              role="alert"
+              detail={result.failure === 'busy' ? ru.practice.gradingBusy : ru.practice.gradingFailed}
+            />
           ) : (
             <>
               {/* The Practice congratulates a step where the canonical label

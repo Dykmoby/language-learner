@@ -34,6 +34,12 @@ export type HealthResult = {
   likelyCredentials: boolean;
   /** Also a heuristic: credentials readable, but the request never left the box. */
   likelyEgress: boolean;
+  /**
+   * The API said "not now". Not a guess about the box at all, and it excludes
+   * the other two: a rate-limited call reached the API, so nothing is wrong with
+   * either the credentials or the egress path.
+   */
+  likelyRateLimit: boolean;
   /** Shown to the Admin so a green result can still be eyeballed. */
   detail: {
     verdict: string | null;
@@ -55,6 +61,7 @@ export async function runHealthCheck(): Promise<HealthResult> {
       reason: outcome.failure.reason,
       likelyCredentials: outcome.failure.likelyCredentials,
       likelyEgress: outcome.failure.likelyEgress,
+      likelyRateLimit: outcome.failure.likelyRateLimit,
       detail: {
         verdict: null, errorCount: null,
         contextTokens: outcome.usage.contextTokens,
@@ -73,6 +80,7 @@ export async function runHealthCheck(): Promise<HealthResult> {
     reason: null,
     likelyCredentials: false,
     likelyEgress: false,
+    likelyRateLimit: false,
     detail: {
       verdict: outcome.guarded.verdict,
       errorCount: outcome.response.errors.length,

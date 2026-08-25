@@ -47,6 +47,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const guesses = [
         result.likelyCredentials ? 'likely credentials' : null,
         result.likelyEgress ? 'likely egress' : null,
+        result.likelyRateLimit ? 'likely rate limit' : null,
       ].filter((guess) => guess !== null);
       console.error(
         `health check: UNHEALTHY in ${seconds}s — ${result.reason ?? 'no reason given'}`

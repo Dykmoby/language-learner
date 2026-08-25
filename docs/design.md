@@ -134,6 +134,10 @@ Stable in storage, Russian labels rendered at display time.
 
 A failed or timed-out grading persists the Submission with `status: 'grading_failed'`, shows the Student a Russian retry message, and leaves the Exercise unlocked. **A failure must never be rendered as a wrong answer.**
 
+**Busy is not broken.** Where the API pushed back — a 429, a 529, or the subscription's own window — the Student is told the Проверяющий is busy and asked to wait, rather than being told to try again immediately into the same wall. It is the same failure path in every other respect: the answer is stored, no Verdict is implied, the attempt does not count. The distinction reaches the browser as `busy` or `broken` rather than as the Grader's failure kind, because `timeout`/`contract`/`sdk` are facts about this application and none of them changes what the Student should do next.
+
+A **Test** batch that fails this way behaves exactly as any other failed batch does — the answers stay stored and the attempt is re-gradable without re-entry — but its review keeps the one wording, because a batch's failure is read back from a persisted row and the classification is not stored on one. Worth revisiting if a busy API is ever met there in practice; it has not been.
+
 This path is **load-bearing, not defensive**: step 1 measured roughly one contract failure in 24 calls (~4%) — an intermittent parse failure on the longest output.
 
 Grading runs to completion server-side and persists regardless of whether the client is still listening. Even at the measured 4-7s per call, a closed tab must never lose a Submission.
@@ -167,6 +171,8 @@ Review screen shows every Exercise with correct ones collapsed. Grader-judged Ex
 The Admin review screen shows the Exercise, Reference Answer, Student's answer, the Grader's Errors, and the Student's comment. One click promotes the answer to an Accepted Variant, which then flows into future Grader context as teacher-confirmed.
 
 This is the only closed feedback loop in the system: the Grader measurably improves through use, without prompt engineering.
+
+Beside the queue, **how often the Coherence Guard fired**: the number of Submissions whose guarded Verdict differs from the proposed one, and which way the guard moved it. A guard firing and an upheld Dispute are the two ways this system records that the Grader was wrong — one caught by a rule, one caught by a person — so they are read in one place. It is a read of the two columns [ADR 0003](./adr/0003-verdict-authority-split.md) already requires, over Grader-judged Submissions only: a Deterministic Check writes both columns from one comparison and can never disagree with itself.
 
 ## Progress and statistics
 
@@ -215,7 +221,7 @@ The **header** wraps every signed-in screen from the root layout and carries the
   restores Lessons whose images are gone. Step 8's backup has to cover both.
 - Weekly copy pulled off the Pi manually onto another device.
 - Per-Course JSON export as the human-readable, restore-anywhere format.
-- Periodic health check: a lightweight grading call against a fixed known input. On failure the Admin dashboard shows a red banner — otherwise the first person to discover expired credentials is a student mid-Lesson. **Built in step 8**: every run is recorded, the dashboard reads the latest without running one, and a result too old to be evidence is red as *stale* rather than green.
+- Periodic health check: a lightweight grading call against a fixed known input. On failure the Admin dashboard shows a red banner — otherwise the first person to discover expired credentials is a student mid-Lesson. **Built in step 8**: every run is recorded, the dashboard reads the latest without running one, and a result too old to be evidence is red as *stale* rather than green. A rate-limited run names itself as one rather than as a credentials problem. The banner stays red — grading really is not working while the API is saying no — but the line explaining why is muted rather than red, because a busy API is not a fault of this box and is not something to go and fix.
 
 ## Build order
 
@@ -225,7 +231,13 @@ The **header** wraps every signed-in screen from the root layout and carries the
 4. **Authoring** — **done 2026-08-21.** Forms per Exercise Kind, markdown Theory with image upload, and content that comes into being through the screens rather than only through the seed script: a Course, a Lesson, an Enrollment, and the order of the Lessons in a Course. A Lesson created here starts unpublished and is absent from a Student's Course until someone publishes it — an empty published Lesson would sit in the middle of sequential unlocking. Draft history is a surface over the append-only rows step 4's first half already wrote; restoring appends rather than truncates, and never publishes.
 5. **Generation and Refinement** — **done 2026-08-21.** One SDK harness behind both the Grader and the author, with its own concurrency lane so a Generation can never occupy a grading slot. The Author's contract is pure and tested without a model — the prompt an Admin's inputs become, the parse back into a Lesson document, the existing validity rules applied to Claude's Exercises, and the Kind mix measured against what was asked for. Generation and Refinement stream on the wire the Practice already uses, carrying the Theory instead of a Verdict. A generated Draft is marked as such wherever Drafts are shown, and publishing one asks first — naming how many Reference Answers nobody has read since Claude wrote them. The live-model happy path stays a manual check on the Pi, for the reason steps 2 and 3 left theirs there.
 6. **Tests** — **done 2026-08-22.** A Test authored through the same per-Kind forms a Lesson's Practice uses, published the way a Lesson is, and sat in one screen that judges nothing until it is submitted. The Deterministic half is settled in code at submission and the Grader-judged half goes out in one call, with its own timeout and a contract that binds each judgement to the Exercise it names. The score is a percentage against the Test's threshold, every attempt is kept, and nothing about any of it touches Lesson unlocking. The review shows every Exercise with the correct ones collapsed, marks a wrong option beside the right one, and shows a failed batch as a failure rather than as a wrong answer. The live-model happy path stays a manual check on the Pi, for the reason steps 2, 3 and 5 left theirs there.
-7. **Progress, charts, Disputes.**
+7. **Progress, charts, Disputes** — **done 2026-08-22.** The one closed feedback loop in this system, and the screens that say whether it is working.
+
+   A Dispute unblocks progression the moment it is made: an Exercise that holds a Student until somebody wakes up and looks at it is an Exercise that ends the study session. It reads as *disputed* rather than as passed or failed, because it is neither and rendering it as either would claim something nobody has decided. And it is a fact **about** a judgement rather than an edit to one — nothing here writes to `submissions`, so the two Verdicts [ADR 0003](./adr/0003-verdict-authority-split.md) stores stay intact and the progress derivation takes the objections as a second input rather than reading a status off a row.
+
+   Upholding promotes the Student's answer to an Accepted Variant, and every Grader call already carries those as teacher-confirmed context — so the Grader gets better at that Exercise the moment the button is pressed, with nobody touching a prompt. It reaches a Practice's single call and a Test's batch alike. It also reached a gap: CONTEXT.md says a Deterministic Check compares against Reference Answers *and* Accepted Variants, and it did not, which would have left the loop open for half the Exercise Kinds.
+
+   Then three views over the same rows, each showing more than the last, so who may look at whose is answered once in one module rather than three times: a Student sees their own record, an Admin sees any Student's, and everything else is a 404. Per-Lesson completion with Completed With Help as its own segment, an Error Type histogram scoped to the Course — the two enums share Russian words for different grammar, so only the stable enum value is ever grouped on — and change over a span of Lessons the browser can re-choose without a round trip.
 8. **Operations** — **done 2026-08-23.** The three things that were only ever going to be written down until something wrote them down: a nightly backup, a health check that runs unattended, and a Course that can leave the box.
 
    The backup is one dated set holding **both** halves of the state — an online `.backup()` of the database and a copy of `UPLOAD_DIR` — written into `<name>.partial` and renamed only once it is whole, so nothing half-written can be mistaken for a good set at three in the morning. The online backup is not fussiness: the drill against the live database found a 116 KB `.db` beside a 197 KB un-checkpointed WAL, and a `cp` of the `.db` alone would have restored a database missing every session and Submission since the last checkpoint — *cleanly*, which is worse. Retention prunes sets older than 14 days by their own names and touches nothing it does not recognise, because the destination is a directory in somebody's home. The restore has been performed rather than described: a real set, restored into a scratch location, opens with `integrity_check` ok, no foreign-key violations, and both accounts readable.
@@ -284,9 +296,56 @@ Findings that shaped the design:
 - **Quality held.** All three planted English errors caught with correct Error Types every run; the Tajik case matched [ADR 0002](./adr/0002-grader-model-per-language.md)'s ground truth.
 - Later runs benefited from a **warm prompt cache**, so cold-start numbers will be slightly worse.
 
+### Verdict stability at the boundary, 2026-08-24
+
+40 calls from this Pi — four cases, both Grader models, five identical calls each — through `src/ops/verdict-stability.ts`, which is repeatable and takes `--runs N`. Both models grade every case, deliberately crossing [ADR 0002](./adr/0002-grader-model-per-language.md)'s per-Language assignment: the question is how stable one model is on one input, and answering it per Language would rest each half on one model's temperament.
+
+| case | model | proposed | guarded | guard fired | error list |
+|---|---|---|---|---|---|
+| two faults, still communicates | sonnet-5 | partially_correct ×3 | partially_correct ×3 | 0 | 2 different lists |
+| two faults, still communicates | opus-5 | partially_correct ×5 | partially_correct ×5 | 0 | identical |
+| three faults, meaning intact | sonnet-5 | incorrect ×3, partially_correct ×2 | same | 0 | 2 different lists |
+| three faults, meaning intact | opus-5 | **incorrect ×3, partially_correct ×2** | same | 0 | **identical** |
+| control: the Reference Answer | sonnet-5 | correct ×5 | correct ×5 | 0 | identical (none) |
+| control: the Reference Answer | opus-5 | correct ×5 | correct ×5 | 0 | identical (none) |
+| control: does not attempt the task | sonnet-5 | incorrect ×5 | incorrect ×5 | 0 | identical |
+| control: does not attempt the task | opus-5 | incorrect ×5 | incorrect ×5 | 0 | identical |
+
+- **The anecdote reproduces, on a different model and a different case.** Opus 5 on the three-fault case returned `incorrect` ×3 and `partially_correct` ×2 **with a byte-identical error list every run** — `article:to shop`, `irregular_verb:buyed`, `tense:go`. The reasoning is reproducible; the label on top of it is not.
+- **It is a boundary phenomenon, not a general one.** Both controls returned the same Verdict five times out of five on both models, with identical error lists. A correct answer and an answer that does not attempt the task are never in doubt.
+- **The two models are unstable in different ways.** Opus held its error list and moved the label; Sonnet moved both — it found two different sets of faults for the same answer on the same case, which is a different problem with a different fix.
+- **The Coherence Guard fired zero times in 40 calls**, on top of zero in the 24 of step 1. It is not what is moving the label, and it never was: every run was coherent.
+- **Contract failures held at the measured rate.** 2 of 40 calls (5%) failed to parse, both on the same Sonnet case, against ~1 in 24 (4%) in step 1. § Failure behaviour's path is load-bearing, as it says.
+- Wall times 3.8-8.0s, with one 18.6s outlier on Sonnet. The band is the step-1 band; the outlier is one call in forty.
+- 40 calls cost $0.30.
+
+### Both lanes under load, 2026-08-24
+
+Six grading calls and one authoring call launched in the same instant, through `src/ops/concurrency-probe.ts`. The first real concurrent measurement this project has: every number before it was sequential.
+
+| lane | calls | ok | queued behind the limit | the call itself |
+|---|---|---|---|---|
+| grading (limit 2) | 6 | 6 | 4ms, 101ms, 5.6s, 6.3s, 10.8s, 11.6s | 4.9-6.3s |
+| authoring (limit 1) | 1 | 1 | 100ms | 5.2s |
+
+- **The API pushed back on nothing.** No 429, no 529, no subscription rejection, and no SDK retry — at a burst this box can produce, the limit is never reached. What *was* reached, an hour earlier and by accident: the plan's own session window, which stopped a call outright. That is the limit this application meets first, and it does not arrive with a status code — see § Failure behaviour.
+- **The lanes are separate under load, measured rather than argued.** The authoring call took its permit in 100ms while four grading calls sat queued behind a full grading lane. An Admin's Generation cannot be starved by Students, and Students cannot be starved by a Generation.
+- **The queue is the wait, not the API.** Concurrency cost the calls themselves nothing — 4.9-6.3s each, inside the step-1 band — but the sixth Student in the queue waited 11.6s before their call started, and 17s in total. At `GRADER_CONCURRENCY=2` that is the shape of a busy afternoon: not failures, but a queue. Worth raising the limit only against a measurement that shows the API tolerating it.
+- Sonnet wrapped its JSON in markdown fences on 6 of 6 calls, as step 1 found. The parser tolerates it, and logs it.
+
 ## Open risks
 
 - The Tajik Error Type enum is unreviewed by a Tajik speaker.
-- The Verdict is unstable at the `partially_correct`/`incorrect` boundary — not only between models but **run to run within one model**: five identical calls returned `partially_correct` ×3 and `incorrect` ×2, with an identical error list every time. Progression is unaffected, since neither Verdict advances the Student, but the label the Student reads is not reproducible. The Coherence Guard fixes incoherence, not this. See [ADR 0003](./adr/0003-verdict-authority-split.md).
-- Rate-limit behaviour under real concurrent use is unmeasured — every call measured so far has been sequential.
-- The Coherence Guard's code path is untested against real incoherence: it did not fire once in 24 calls.
+- **The Verdict is unstable at the `partially_correct`/`incorrect` boundary, and now measured rather than anecdotal.** § Verdict stability at the boundary: Opus 5 returned `incorrect` ×3 and `partially_correct` ×2 on five identical calls with a byte-identical error list every run, and Sonnet 5 split the same case the same way. Both controls were stable five out of five. So the substance is reproducible and the label is not — and it is confined to the boundary.
+
+  **Is it worth acting on?** The honest answer is that it costs less than it looks like it costs. Progression is untouched: neither Verdict advances the Student ([§ Progression](#progression)), the Exercise stays current either way, and the Errors and the corrected sentence — which is what a Student actually learns from — are the stable part. What moves is one Russian word, between two answers that both mean "not yet". A Student who resubmits the same answer can read a different word, and nothing in the interface promises they will not.
+
+  The options, none of them chosen here:
+
+  1. **Leave it, and say so.** The label is a summary of the Errors; the Errors are reproducible.
+  2. **Derive the label rather than trust it** — extend the Coherence Guard from "no Errors forces correct" to a rule over the Error count, making the label a function of the stable part. This buys reproducibility with the model's judgement about severity, which is exactly what the guard has so far refused to overrule.
+  3. **Stop drawing the distinction for the Student** — one non-correct state, with the Errors carrying the detail. The narrowest change to what a person reads, and the largest to what the interface is.
+
+  Measure before choosing: five runs per cell is directional, and case selection was ours.
+- **Rate-limit behaviour is measured at the load this box can produce, which turned out not to be enough to reach the limit.** § Both lanes under load: six grading calls and an authoring call at once drew no 429, no 529 and no SDK retry. The limit this application actually meets first is the subscription's own session window, observed on 2026-08-24 — and it arrives with no status code in it, as *"You've hit your session limit"*. That case is now classified as itself: a rate limit is not a credentials failure, the Admin is not sent to check `~/.claude`, and a Student is told the Проверяющий is busy rather than that something is broken. What remains unmeasured is behaviour at a load this Pi cannot generate.
+- **The Coherence Guard still has not been seen firing on real output** — zero in the 24 calls of step 1, zero in the 40 of § Verdict stability. What has changed is that a firing would now be seen: the Disputes screen reports how many Submissions carry a guarded Verdict differing from the proposed one and which way it moved, read off the two columns [ADR 0003](./adr/0003-verdict-authority-split.md) already requires. The open question is no longer "would anybody notice" but "has it happened yet", and that is a number that accrues.

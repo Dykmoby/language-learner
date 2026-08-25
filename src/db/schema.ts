@@ -422,11 +422,15 @@ export const healthChecks = sqliteTable('health_checks', {
   wallMs: integer('wall_ms').notNull(),
   // Null on a healthy run — there was nothing to explain.
   reason: text('reason'),
-  // Both heuristics, kept as the check reports them. ADR 0001: neither failure
-  // presents as what it is, so the guess is stored as a guess and rendered as
-  // one.
+  // All three heuristics, kept as the check reports them. ADR 0001: neither the
+  // credentials failure nor the egress one presents as what it is, so the guess
+  // is stored as a guess and rendered as one.
   likelyCredentials: integer('likely_credentials', { mode: 'boolean' }).notNull().default(false),
   likelyEgress: integer('likely_egress', { mode: 'boolean' }).notNull().default(false),
+  // The third, and the one with better evidence behind it: the SDK announces a
+  // 429 or a 529 on the wire. Defaulted false so every run recorded before this
+  // column existed reads as "not known to be a rate limit", which is what it is.
+  likelyRateLimit: integer('likely_rate_limit', { mode: 'boolean' }).notNull().default(false),
   source: text('source', { enum: HEALTH_CHECK_SOURCES }).notNull(),
   ranAt: integer('ran_at', { mode: 'timestamp_ms' }).notNull(),
 }, (t) => [index('health_checks_ran_at_idx').on(t.ranAt)]);
