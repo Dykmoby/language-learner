@@ -5,13 +5,51 @@ Everything here is applied by hand, once. Build-order step 2 in [`../docs/design
 ## Order
 
 1. `npm ci && npm run build`
-2. `sudo ./install-service.sh` — installs `/etc/language-learner.env` from `../.env.example` and the systemd unit, then enables and starts it.
+2. `sudo ./install-service.sh` — installs `/etc/language-learner.env` from `../.env.example`, the systemd unit and the rebuild watcher below, then enables and starts them.
 3. Seed the two accounts (see below).
 4. Append `Caddyfile.snippet` to `/etc/caddy/Caddyfile` and reload Caddy.
 5. Install the fail2ban filter and jail from `fail2ban/`.
 6. Put the DuckDNS token in `/etc/duckdns.env` and enable `duckdns-update.timer`.
 7. `sudo ./install-timers.sh` — the nightly backup and the periodic health check
    (build-order step 8; see below).
+
+## Rebuilding: the restart is not optional, so it is not manual
+
+`next start` reads `.next` once, at boot, and serves those manifests from memory
+for the life of the process. A `npm run build` under a running server therefore
+does not take effect — worse, it takes *half* effect. The server goes on emitting
+HTML that names the previous build's chunk hashes while the only files on disk
+are the new ones. Chunks whose content did not change keep their hash and keep
+working, so the page loads and its JavaScript runs; the stylesheet, which did
+change, 500s. What that looks like is the application with no CSS at all, which
+is not what a stale process looks like when you are guessing.
+
+`install-service.sh` installs a watcher, so the restart is a consequence of
+building rather than a step someone has to remember:
+
+- **`language-learner-restart.path`** watches `.next/BUILD_ID` — the one file
+  `next build` writes exactly once per build.
+- **`language-learner-restart.service`** runs
+  `/usr/local/bin/language-learner-restart-after-build.sh`, which waits for
+  `.next` to go quiet before touching anything. `BUILD_ID` is *not* the last file
+  written: the manifests `next start` reads at boot land after it, and restarting
+  the moment it changed would hand the new process a half-written one. Then
+  `systemctl try-restart` — `try-`, so a service that was deliberately stopped
+  stays stopped rather than being started by somebody's build.
+
+The deploy loop is therefore `git pull && npm ci && npm run build`, with nothing
+after it. Watch the restart land:
+
+```bash
+journalctl -u language-learner-restart.service -u language-learner -f
+```
+
+By hand, if the watcher is disabled or the build was copied in rather than made
+here:
+
+```bash
+sudo systemctl restart language-learner
+```
 
 ## Seeding accounts
 
@@ -177,6 +215,12 @@ that fails silently.
 
 ## Traps this step actually hit
 
+**A rebuild without a restart presents as a page with no CSS**, not as a stale
+page — which is the thing you would actually be looking for. Written down here
+because the symptom is what gets searched for at the time; the mechanism, and the
+watcher that now prevents it, are under
+[Rebuilding](#rebuilding-the-restart-is-not-optional-so-it-is-not-manual).
+
 **The outbound proxy is as load-bearing as `HOME`.** Interactive shells on this box
 get `HTTP_PROXY`/`HTTPS_PROXY` from the profile; systemd units do not. Without them
 every Grader call fails with `Failed to authenticate. API Error: 403 Request not
@@ -206,6 +250,7 @@ curl -I https://language-learner.duckdns.org/login        # 200, valid cert
 curl -I http://language-learner.duckdns.org/login         # 308 to https
 sudo fail2ban-client status caddy-language-learner        # jail is reading the log
 systemctl is-enabled caddy fail2ban language-learner      # all enabled at boot
+systemctl is-active language-learner-restart.path         # the rebuild watcher is armed
 ```
 
 Then sign in as the Admin and press the health-check button. A green result with a

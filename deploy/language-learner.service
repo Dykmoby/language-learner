@@ -27,6 +27,14 @@ ExecStart=/home/dykmoby/.nvm/versions/node/v24.17.0/bin/node node_modules/next/d
 Restart=always
 RestartSec=3
 
+# Next exits 143 on SIGTERM, and systemd counts a non-zero exit as a failure
+# unless told otherwise — so every ordinary stop wrote "Failed with result
+# 'exit-code'" into the journal. That was harmless while restarts were rare.
+# Once language-learner-restart.path made them routine, it became a false alarm
+# sitting in the one journal somebody reads while working out why a deploy went
+# wrong, which is the worst place to keep one.
+SuccessExitStatus=143
+
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=language-learner

@@ -1,0 +1,25 @@
+[Unit]
+Description=Watch for a new build of Language Learner
+
+[Path]
+# The dependency that makes the divergence impossible. `next start` reads .next
+# once, at boot, so a build landing under a running server serves the old
+# build's HTML against the new build's files — see restart-after-build.sh for
+# what that looks like from a browser.
+#
+# BUILD_ID is the file to watch because `next build` writes it exactly once,
+# where the chunks are written in their hundreds. PathChanged fires on
+# close-after-write and on creation, which is what makes it survive `next build`
+# clearing .next and putting it back: systemd falls back to watching the nearest
+# existing parent until the file exists again.
+#
+# PathChanged, unlike PathExists, does not count as met merely because the file
+# is already there, so enabling this unit does not itself provoke a restart.
+PathChanged=/home/dykmoby/language-learner/.next/BUILD_ID
+
+# Also the default, being the same name with .service. Stated because the whole
+# unit is one line of intent and half of it would otherwise be implicit.
+Unit=language-learner-restart.service
+
+[Install]
+WantedBy=paths.target

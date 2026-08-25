@@ -1,0 +1,23 @@
+[Unit]
+Description=Restart Language Learner onto the build that just landed
+
+[Service]
+Type=oneshot
+
+# The one unit here that is not User=dykmoby. Its entire job is `systemctl
+# try-restart`, which the service user cannot do; and the script lives in
+# /usr/local/bin, root-owned, rather than being run out of the repo, so that a
+# root unit is not executing a file the service user can rewrite.
+ExecStart=/usr/local/bin/language-learner-restart-after-build.sh
+
+# The script waits up to 180s for .next to stop changing and gives up rather
+# than restart into a half-written build. This is the ceiling on top of that.
+TimeoutStartSec=300
+
+# No Restart=. Giving up means something is still writing .next — either a build
+# that is taking longer than the ceiling or something that never stops — and
+# retrying would restart into the same mess.
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=language-learner-restart
