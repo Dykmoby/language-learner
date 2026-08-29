@@ -14,6 +14,30 @@ const nextConfig: NextConfig = {
     // 404 would lie: the Student can see the Lesson listed in their Course.
     authInterrupts: true,
   },
+
+  // Everything under public/ is served with `Cache-Control: public, max-age=0`,
+  // which for the three preloaded woff2 files means a blocking revalidation
+  // round trip each, on every navigation, over a home uplink — before any text
+  // is painted. They also fed the fail2ban jail three 304s per page view; see
+  // deploy/fail2ban/filter.d/caddy-language-learner.conf.
+  //
+  // The filenames are not content-hashed, so `immutable` is a promise this repo
+  // has to keep by hand: changing a font file means renaming it, not overwriting
+  // it. That is the trade — a font the two of them fetch once instead of thirty
+  // times a session, against a rename on the day a font actually changes.
+  async headers() {
+    return [
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
