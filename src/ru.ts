@@ -37,6 +37,10 @@ export const ru = {
     // once and the two screens cannot end up saying different words for it.
     moveUp: 'Выше',
     moveDown: 'Ниже',
+    // The way back out of a confirmation. One definition, because a screen that
+    // asks twice before doing something irreversible should offer the same word
+    // for "no" every time it asks.
+    cancel: 'Отмена',
   },
 
   // The six states a judgement can be in, named once.
@@ -78,6 +82,34 @@ export const ru = {
       `Слишком много неудачных попыток. Подождите ${secondsRu(seconds)} и попробуйте снова.`,
     lockedOut: (minutes: number) =>
       `Аккаунт временно заблокирован после пяти неудачных попыток. Повторите вход через ${minutesRu(minutes)}.`,
+  },
+
+  // Choosing your own password: the forced first change after an Admin handed
+  // out a Temporary Password, and the voluntary one afterwards. One screen, and
+  // the lead sentence is the only thing that tells the two apart.
+  password: {
+    title: 'Смена пароля',
+    // Says why the rest of the application is not reachable, rather than leaving
+    // a Student to discover it by trying.
+    forcedLead:
+      'Вам выдали временный пароль. Придумайте свой: пока вы этого не сделаете, остальные страницы закрыты.',
+    voluntaryLead: 'Здесь можно сменить пароль на новый.',
+    // The same field, named for what the Student is actually holding.
+    temporaryField: 'Временный пароль',
+    currentField: 'Текущий пароль',
+    newField: 'Новый пароль',
+    confirmField: 'Новый пароль ещё раз',
+    // The number here is the one the rules enforce, and a test asserts the two
+    // agree — a hint that promises a different limit from the one that refuses is
+    // worse than no hint.
+    lengthHint: 'Новый пароль — не короче 8 символов.',
+    submit: 'Сменить пароль',
+    changed: 'Пароль изменён.',
+    onward: 'Продолжить',
+    // Said before it happens rather than discovered afterwards on the other
+    // device.
+    otherSessionsHint:
+      'После смены пароля вход на остальных устройствах перестанет действовать.',
   },
 
   // The header that wraps every signed-in screen.
@@ -151,6 +183,51 @@ export const ru = {
     enrolledAlready: 'Записан',
     enrolledNow: 'Студент записан на курс.',
     noStudents: 'Нет ни одного аккаунта.',
+    // Taking the Enrollment away. The message says what was *not* removed,
+    // because that is the part nobody would assume.
+    withdraw: 'Убрать с курса',
+    withdrawing: 'Удаление с курса…',
+    withdrawnNow: 'Студент убран с курса. Его ответы в курсе сохранены.',
+
+    // Accounts: a screen of its own, reached from the dashboard.
+    accountsLink: 'Аккаунты',
+    accountsTitle: 'Аккаунты',
+    // The list, under the screen's own title. Named separately rather than
+    // repeating the title as its own first heading.
+    accountsListTitle: 'Все аккаунты',
+    accountsHint:
+      'Аккаунты создаются только здесь: зарегистрироваться самостоятельно нельзя.',
+    enrollmentCount: (n: number) => `${n} ${plural(n, 'курс', 'курса', 'курсов')}`,
+    accountCreatedAt: (when: string) => `создан ${when}`,
+    temporaryPasswordStanding:
+      'Временный пароль ещё не сменён: пока это не сделано, студент не может открыть ни одного урока.',
+
+    newAccountTitle: 'Новый студент',
+    newAccountHint:
+      'Новый аккаунт — всегда студент без прав администратора. Пароль система придумает сама и покажет один раз.',
+    usernameField: 'Имя пользователя',
+    createAccount: 'Создать аккаунт',
+    creatingAccount: 'Создание аккаунта…',
+
+    // The Temporary Password panel. It exists to be read out and then forgotten
+    // by the screen, and every line of it says so.
+    temporaryPasswordTitle: 'Временный пароль',
+    temporaryPasswordFor: (username: string) => `Аккаунт «${username}» создан. Временный пароль:`,
+    temporaryPasswordOnce:
+      'Пароль показан один раз и нигде не сохраняется. Передайте его студенту сейчас — увидеть его снова будет негде.',
+    temporaryPasswordRule:
+      'При первом входе студент обязан сменить его на свой: до этого ни одна страница ему не откроется.',
+
+    // Deleting an account. The warning names what goes with it, because nothing
+    // in this application restores an account afterwards.
+    deleteAccount: 'Удалить аккаунт',
+    confirmDeleteAccount: 'Да, удалить',
+    deletingAccount: 'Удаление…',
+    deleteWarning: (username: string) =>
+      `Вместе с аккаунтом «${username}» будут удалены все его ответы, попытки и споры. Это необратимо.`,
+    accountDeleted: (username: string) => `Аккаунт «${username}» удалён.`,
+    cannotDeleteSelfHint: 'Свой аккаунт удалить нельзя.',
+    cannotDeleteAdminHint: 'Аккаунт администратора отсюда удалить нельзя.',
 
     // Tests, listed beside the Lessons of the same Course.
     testsTitle: 'Проверочные работы',
@@ -226,6 +303,31 @@ export const ru = {
     course_not_found: 'Курс не найден. Обновите страницу.',
     student_not_found: 'Студент не найден. Обновите страницу.',
     order_mismatch: 'Порядок уроков устарел. Обновите страницу и попробуйте снова.',
+  },
+
+  // Why an account could not be made, removed, or given a new password — keyed
+  // by the stable code, the same split as everywhere else. A test asserts every
+  // code has exactly one entry here, and that the two numbers written into these
+  // sentences are the two the rules actually enforce.
+  accountFaults: {
+    username_empty: 'Введите имя пользователя.',
+    username_too_long: 'Имя пользователя длиннее 32 символов. Сократите его.',
+    // Named for what actually goes wrong rather than for the rule: a space is
+    // invisible in the list and invisible in the sign-in field, and the sign-in
+    // screen deliberately never says which half was wrong.
+    username_has_space:
+      'В имени пользователя не должно быть пробелов: их не видно ни в списке, ни при входе.',
+    username_taken: 'Такое имя пользователя уже занято. Выберите другое.',
+    account_not_found: 'Аккаунт не найден. Обновите страницу.',
+    cannot_delete_self: 'Свой собственный аккаунт удалить нельзя.',
+    // The rule is stated rather than hidden behind «нельзя», because the reason
+    // is the useful part: nothing in the interface can grant the role back.
+    cannot_delete_admin:
+      'Аккаунт администратора нельзя удалить из интерфейса: роль выдаётся скриптом на сервере, и вернуть её отсюда будет нечем.',
+    password_too_short: 'Новый пароль короче 8 символов.',
+    password_mismatch: 'Новый пароль и его повтор не совпадают.',
+    password_unchanged: 'Новый пароль совпадает с текущим. Придумайте другой.',
+    current_password_wrong: 'Текущий пароль введён неверно.',
   },
 
   health: {
@@ -983,18 +1085,20 @@ export function errorTypeLabel(type: string): string {
   return ru.errorTypes[type] ?? type;
 }
 
-// A fault code is about the Lesson, about one of its Exercises, or about a write
-// in the Admin section, and the form that shows it does not care which. An
+// A fault code is about the Lesson, about one of its Exercises, about a write in
+// the Admin section or about an account, and the form that shows it does not
+// care which. An
 // unknown code is shown as it came, for the same reason an unknown Error Type
 // is: dropping it would hide a real fault from the person who has to fix it.
 export function faultMessage(code: string): string {
   const lessonLevel: Record<string, string> = ru.documentFaults;
   const exerciseLevel: Record<string, string> = ru.exerciseFaults;
   const authoring: Record<string, string> = ru.authoringFaults;
+  const accounts: Record<string, string> = ru.accountFaults;
   const uploads: Record<string, string> = ru.uploadRefusals;
   const generation: Record<string, string> = ru.generationFaults;
   const tests: Record<string, string> = ru.testFaults;
   const imports: Record<string, string> = ru.importFaults;
-  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code]
+  return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code] ?? accounts[code]
     ?? uploads[code] ?? generation[code] ?? tests[code] ?? imports[code] ?? code;
 }

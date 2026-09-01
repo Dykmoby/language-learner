@@ -805,6 +805,42 @@ table.spanTable caption { text-align: left; padding-bottom: var(--space-1); }
 .healthBanner .bannerStale { color: var(--state-incorrect-ink); font-weight: var(--weight-semibold); }
 .healthBanner .bannerNever { color: var(--fg-muted); }
 
+/* --- The Temporary Password panel --------------------------------------------
+   The one thing on any screen in this application that exists to be read out
+   loud and then lost. It is shown once, in the response to the request that
+   generated it, and nothing anywhere can produce it again — so the panel is
+   drawn to be noticed and the password itself is drawn to be transcribed
+   without a mistake.
+
+   Monospace, spaced, and a size up: the alphabet already drops the characters
+   that are read back as one another, and this is the other half of that — the
+   difference between `rn` and `m` is the font's job, not the reader's. */
+
+.issuedPassword {
+  background: var(--surface);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin: 0 0 var(--space-5);
+  max-width: var(--measure);
+}
+.issuedPassword h3 { margin-top: 0; }
+.issuedPassword p { margin-bottom: var(--space-3); }
+.issuedPassword p:last-child { margin-bottom: 0; }
+
+.temporaryPassword code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  letter-spacing: 0.08em;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  display: inline-block;
+  /* Selecting it is how it gets copied, and a double-click should take the
+     whole thing rather than one hyphenated group. */
+  user-select: all;
+}
+
 /* --- Narrow viewports --------------------------------------------------------
    One breakpoint, and it does three things: it gives the page its space back,
    it lets the header's controls sit under the name they belong to rather than

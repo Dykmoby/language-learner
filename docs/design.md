@@ -28,7 +28,8 @@ Public on the internet, so:
 - App login only. No Caddy `basic_auth` in front — a second gate on top of a session login is daily friction that protects nothing.
 - In-app login throttle with exponential backoff, lockout after 5 failures.
 - fail2ban on the Caddy log to absorb the noise floor before it reaches Node.
-- Two seeded accounts via CLI script, argon2id hashes, httpOnly session cookies. **No registration route exists.** `igor` holds the Admin role.
+- Two seeded accounts via CLI script, argon2id hashes, httpOnly session cookies. **No registration route exists** — nobody makes an account for themselves. `igor` holds the Admin role, and the CLI script is still the only thing that grants it.
+- An Admin can make and remove further Student accounts from the Admin section. A new one is created with a generated **Temporary Password**, shown to the Admin exactly once and stored only as a hash; the account can reach nothing but the change-password screen until its owner replaces it. Changing a password ends every other session of that account. An Admin account cannot be deleted through the interface — the role is granted on the box, and nothing in the interface could grant it back.
 - Student input is fenced as data inside the Grader prompt and marked as never-to-be-followed. It is **not** filtered — filtering would mangle legitimate answers, and with two trusted accounts, manipulating the Grader is self-sabotage rather than a breach.
 
 ## Content model

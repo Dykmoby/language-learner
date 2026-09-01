@@ -1,0 +1,1 @@
+ALTER TABLE `students` ADD `password_is_temporary` integer DEFAULT false NOT NULL;

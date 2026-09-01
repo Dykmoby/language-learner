@@ -14,6 +14,10 @@ _Avoid_: user, learner, pupil
 A role held by a Student that additionally grants authoring rights over Courses. The Admin is a Student too, not a separate account.
 _Avoid_: teacher, owner, superuser
 
+**Temporary Password**:
+The generated password an Admin hands a newly created Student. Known to two people from the moment it exists, so the account can do nothing but replace it until the Student has.
+_Avoid_: initial password, default password, one-time password
+
 ### Learning structure
 
 **Language**:

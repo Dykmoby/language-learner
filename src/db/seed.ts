@@ -1,5 +1,11 @@
-// The only way an account ever comes into existence. There is no route that
-// makes one — account creation is deliberately not a web surface at all.
+// How the first accounts come into existence, and the only thing that grants the
+// Admin role.
+//
+// It is no longer the only way an account is ever made: an Admin creates further
+// Students from the Admin section, and `src/auth/accounts.ts` is what does it.
+// What has not changed is that nobody makes an account for themselves — there is
+// still no registration route — and that the Admin role is granted here, on the
+// box, and nowhere else. An account made through the web is always a Student.
 
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';

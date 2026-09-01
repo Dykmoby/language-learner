@@ -14,12 +14,33 @@ import { PATHNAME_HEADER } from './app/shared/request-path.ts';
 
 const PUBLIC_PATHS = new Set(['/login', '/api/login']);
 
+// The only three things an account holding a Temporary Password may reach.
+//
+// A Temporary Password is known to the Admin who generated it as well as to the
+// Student it was given to, so the account is not yet anybody's in particular.
+// Until that stops being true it can do exactly three things: read the screen
+// that says so, replace the password, and leave. Everything else — a Lesson, a
+// Submission, the Admin section — is answered with a redirect to the first.
+//
+// Enforced here rather than on each screen for the reason the session check is:
+// a rule that every page has to remember is a rule the next page will forget.
+const PASSWORD_CHANGE_PATHS = new Set(['/password', '/api/password', '/api/logout']);
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
 
   const sessionId = request.cookies.get(appConfig.session.cookieName)?.value;
-  if (sessionId && findSessionStudent(getDatabase().db, sessionId)) {
+  const student = sessionId ? findSessionStudent(getDatabase().db, sessionId) : null;
+
+  if (student) {
+    if (student.passwordIsTemporary && !PASSWORD_CHANGE_PATHS.has(pathname)) {
+      const change = request.nextUrl.clone();
+      change.pathname = '/password';
+      change.search = '';
+      return NextResponse.redirect(change);
+    }
+
     // The header wraps every signed-in screen from the root layout, which
     // receives no route parameters and so cannot know which Course is open. The
     // path is the one thing this function certainly knows, so it hands it on.
