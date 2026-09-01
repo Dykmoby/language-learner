@@ -213,10 +213,11 @@ export function submitAttempt(
       let corrected: string | null = null;
 
       if (isDeterministic(exercise.kind)) {
-        // The authored list and the Accepted Variants alike — CONTEXT.md
+        // The authored values and the Accepted Variants alike — CONTEXT.md
         // § Deterministic Check names both, and a Test judges in code exactly as
-        // a Practice does.
-        const outcome = deterministicCheck(answer, acceptedAnswersFor(tx, exercise), {
+        // a Practice does, against the sole position each Exercise has.
+        const [accepted] = acceptedAnswersFor(tx, exercise);
+        const outcome = deterministicCheck(answer, accepted ?? [], {
           caseSensitive: exercise.caseSensitive,
         });
         status = 'graded';

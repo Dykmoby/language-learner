@@ -173,7 +173,10 @@ export function openDispute(db: Db, disputeId: number): OpenedDispute | null {
     course,
     exercise: found.exercise,
     submission: found.submission,
-    accepted: acceptedAnswers(found.exercise, variantsOf(db, found.exercise.id)),
+    // Flattened for the screen, which asks what this Exercise already accepts
+    // rather than where: an Admin resolving a Dispute reads a list. #85 is where
+    // a variant gains a position and this becomes a question about gaps.
+    accepted: acceptedAnswers(found.exercise, variantsOf(db, found.exercise.id)).flat(),
     errors,
     origin: lesson
       ? { kind: 'lesson', title: lesson.title }
