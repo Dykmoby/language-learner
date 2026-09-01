@@ -20,7 +20,7 @@ import { seedCourseContent } from '../src/content/seed-content.ts';
 import { DETERMINISTIC_COURSE } from './helpers/fixtures.ts';
 import { acceptedVariants, courses, exercises, exerciseSets, lessons } from '../src/db/schema.ts';
 import { createTest, saveTest, publishTest } from '../src/admin/tests.ts';
-import { assembleCourseExport, type CourseExport } from '../src/admin/course-export.ts';
+import { assembleCourseExport, COURSE_EXPORT_VERSION, type CourseExport } from '../src/admin/course-export.ts';
 import { importCourse } from '../src/admin/course-import.ts';
 import { imageUrl, isStoredImageName } from '../src/content/uploads.ts';
 import { DEFAULT_GRADER_MODEL } from '../src/content/course-options.ts';
@@ -212,6 +212,54 @@ test('a name in the file can never become part of a path', () => {
     for (const name of readdirSync(target.uploadDir)) {
       assert.ok(isStoredImageName(name), `${name} is not a name this application generated`);
     }
+  } finally {
+    target.cleanup();
+  }
+});
+
+test('a file written before accepted answers became per-gap still imports', () => {
+  // The one tolerance in the codebase for the flat shape, and it is permanent:
+  // an export is a restore format, so a version 1 file has to keep reading after
+  // every later change to what an Exercise holds.
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    const asVersionOne = JSON.stringify({
+      ...file,
+      version: 1,
+      lessons: file.lessons.map((lesson) => ({
+        ...lesson,
+        document: {
+          ...lesson.document,
+          exercises: lesson.document.exercises.map((exercise) => ({
+            ...exercise,
+            acceptedAnswers: (exercise.acceptedAnswers ?? []).flat(),
+          })),
+        },
+      })),
+      tests: file.tests.map((entry) => ({
+        ...entry,
+        document: {
+          ...entry.document,
+          exercises: entry.document.exercises.map((exercise) => ({
+            ...exercise,
+            acceptedAnswers: (exercise.acceptedAnswers ?? []).flat(),
+          })),
+        },
+      })),
+    });
+
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, asVersionOne);
+    assert.ok(result.ok, `import refused: ${JSON.stringify(result.ok ? [] : result.faults)}`);
+
+    const reexported = assembleCourseExport(target.db, result.course.id, target.uploadDir)!;
+    assert.equal(reexported.version, COURSE_EXPORT_VERSION, 'and it comes back out in the current format');
+    assert.deepEqual(
+      reexported.lessons.map((l) => l.document.exercises),
+      file.lessons.map((l) => l.document.exercises),
+      'every flat list arrived as the single position it always was',
+    );
+    assert.deepEqual(reexported.tests, file.tests, 'a Test\'s Exercises the same way');
   } finally {
     target.cleanup();
   }
