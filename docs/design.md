@@ -64,7 +64,7 @@ Applied in order: trim → collapse internal whitespace → case-insensitive →
 
 Stripping the trailing punctuation uncovers any space that sat before it, so that step trims its own tail — otherwise `I have a cat .` fails against `I have a cat`, which marks typography rather than language.
 
-Each Exercise stores an **array** of accepted answers plus an optional `caseSensitive` flag, needed for "put the word in the correct form" where capitalisation is the point. Word order matches an exact sequence against one or more accepted orders.
+Each Exercise stores accepted answers as **one list per position** — one entry for each place in the prompt the student answers, holding every value accepted there — plus an optional `caseSensitive` flag, needed for "put the word in the correct form" where capitalisation is the point. An Exercise with one place to answer is the special case: one position, several accepted values. Word order matches an exact sequence against one or more accepted orders.
 
 **No typo tolerance.** In a language-learning app, tolerating a misspelling teaches the misspelling.
 

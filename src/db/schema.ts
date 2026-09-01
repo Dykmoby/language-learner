@@ -133,14 +133,9 @@ export const exercises = sqliteTable('exercises', {
   referenceAnswer: text('reference_answer').notNull(),
   // Deterministic Check Kinds only: one list per position, because a prompt may
   // have several places to answer and each has its own accepted values. Unused
-  // by Grader-judged Kinds.
-  //
-  // The union is temporary and belongs to #82. Rows written before this change
-  // hold one flat list of whole answers; `acceptedPositions` is the one place
-  // that knows, and the migration that wraps them narrows this back to
-  // `string[][]`.
+  // by Grader-judged Kinds, which store no positions at all.
   acceptedAnswers: text('accepted_answers', { mode: 'json' })
-    .$type<string[] | string[][]>().notNull().default([]),
+    .$type<string[][]>().notNull().default([]),
   caseSensitive: integer('case_sensitive', { mode: 'boolean' }).notNull().default(false),
   // What the Student is offered rather than what is accepted: the options of a
   // multiple choice, the fragments of a word order, in the order they are shown.
