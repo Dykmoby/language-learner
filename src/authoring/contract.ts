@@ -64,12 +64,19 @@ export type GenerationRequest = {
 /**
  * The cap on a Lesson's Practice.
  *
- * Not arbitrary at either end: nought Exercises is not a Practice, and past
- * twenty the wait grows without the Lesson getting better — the Kind mix is what
- * makes a Practice useful, not its length.
+ * Not arbitrary at either end: nought Exercises is not a Practice, and past a
+ * hundred the request stops being a Lesson and becomes a workbook — one call's
+ * worth of output that no Admin will read through before publishing.
+ *
+ * The old cap was twenty, on the reasoning that length does not make a Practice
+ * useful. That is still true, and it is advice rather than a rule: an Admin
+ * building a revision Lesson out of a term's vocabulary has a reason to ask for
+ * sixty, and the cap's job is to refuse the impossible, not the unwise. What
+ * grows with the count is the wait — `AUTHORING_TIMEOUT_MS` is the knob that
+ * has to keep up with it, not this number.
  */
 export const MIN_EXERCISES = 1;
-export const MAX_EXERCISES = 20;
+export const MAX_EXERCISES = 100;
 
 /**
  * How much earlier-Lesson context is worth paying for.
