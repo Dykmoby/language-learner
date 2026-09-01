@@ -104,7 +104,7 @@ async function answer(client: Client, exerciseId: number, text: string): Promise
   const response = await client.fetch(`/api/exercises/${exerciseId}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: text }),
+    body: JSON.stringify({ answers: [text] }),
   });
   assert.ok(response.ok, `answering ${exerciseId} was refused with ${response.status}`);
 
@@ -166,7 +166,7 @@ test('disputing unblocks progression immediately: the next Exercise is available
   const early = await client.fetch(`/api/exercises/${exercises[1]!.id}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: 'an' }),
+    body: JSON.stringify({ answers: ['an'] }),
   });
   assert.equal(early.status, 409, 'Exercises are worked in order until something moves');
 
@@ -300,8 +300,8 @@ async function sitAndFail(client: Client): Promise<AttemptView> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       answers: [
-        { exerciseId: testExerciseIds[0]!, answer: 'a' },
-        { exerciseId: testExerciseIds[1]!, answer: 'the' },
+        { exerciseId: testExerciseIds[0]!, answers: ['a'] },
+        { exerciseId: testExerciseIds[1]!, answers: ['the'] },
       ],
     }),
   });

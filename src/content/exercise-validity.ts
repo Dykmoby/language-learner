@@ -13,12 +13,15 @@
 // split the Error Type enum makes for the same reason: only the label ever
 // changes, and the rule has to survive that.
 //
-// Pure by construction, and asserted so by a test: the single import is the
-// normalisation these rules are judged against, because a rule that compared
-// answers differently from the Deterministic Check would pass Exercises the
-// Student then failed.
+// Pure by construction, and asserted so by a test. Both imports are things a
+// rule has to agree with exactly rather than approximate: the normalisation,
+// because a rule that compared answers differently from the Deterministic Check
+// would pass Exercises the Student then failed; and where the gaps are, because
+// a rule that counted them differently from the screen would pass an Exercise
+// that renders a number of inputs nothing judges.
 
 import { normaliseAnswer } from '../practice/deterministic-check.ts';
+import { gapCount } from './gaps.ts';
 
 // The single definition of what Kinds exist. It lives here rather than in the
 // schema for the same reason the Grader's contract owns LANGUAGES and VERDICTS:
@@ -83,6 +86,7 @@ export type AcceptedAnswers = readonly (readonly string[])[];
 
 export const EXERCISE_FAULTS = [
   'prompt_empty',
+  'gap_count_mismatch',
   'too_many_fragments',
   'reference_answer_empty',
   'accepted_answers_required',
@@ -188,20 +192,37 @@ export function exerciseFaults(exercise: AuthoredExercise): ExerciseFault[] {
   const caseSensitive = exercise.caseSensitive ?? false;
 
   // Held to the same standard as an answer: a value that normalises away is
-  // absent, whatever the raw string looked like.
-  //
-  // Flattened, because every rule below asks about a *value* — is it on offer,
-  // do the fragments tile it, has it been written twice — and every Exercise has
-  // one position for them to sit in. #83 is where a gap count has to agree with
-  // a position count and these become questions about positions.
-  const accepted = (exercise.acceptedAnswers ?? []).flat().filter((value) => !isBlank(value));
+  // absent, whatever the raw string looked like. The positions are kept — an
+  // empty one is a gap nobody has written an answer for, which is a fault about
+  // that gap rather than a shorter Exercise.
+  const positions = (exercise.acceptedAnswers ?? [])
+    .map((values) => values.filter((value) => !isBlank(value)));
+  // Flattened where the rule asks about a *value* rather than about where it
+  // sits: is it on offer, do the fragments tile it. Both of those belong to
+  // Kinds with exactly one place to answer.
+  const accepted = positions.flat();
   const choices = (exercise.choices ?? []).filter((value) => !isBlank(value));
 
   if (isBlank(exercise.prompt)) faults.push({ code: 'prompt_empty' });
   if (isBlank(exercise.referenceAnswer)) faults.push({ code: 'reference_answer_empty' });
 
   if (isDeterministic(exercise.kind)) {
-    if (accepted.length === 0) faults.push({ code: 'accepted_answers_required' });
+    // Per position, not across them: an Exercise that accepts something at its
+    // first gap and nothing at its second cannot be answered, and saying only
+    // that it has *some* accepted answer would wave it through.
+    if (positions.length === 0 || positions.some((values) => values.length === 0)) {
+      faults.push({ code: 'accepted_answers_required' });
+    } else {
+      // How many places this Exercise asks a Student to answer. A fill-gap's
+      // prompt says so and may say three; every other Kind has exactly one, and
+      // a second list of accepted values on one of those is an answer nothing
+      // would ever compare against.
+      //
+      // Skipped where there are no positions at all: `accepted_answers_required`
+      // has already said that, and saying it twice is not saying it louder.
+      const places = exercise.kind === 'fill_gap' ? gapCount(exercise.prompt) : 1;
+      if (positions.length !== places) faults.push({ code: 'gap_count_mismatch' });
+    }
   } else if (accepted.length > 0) {
     faults.push({ code: 'accepted_answers_not_allowed' });
   }
@@ -242,12 +263,17 @@ export function exerciseFaults(exercise: AuthoredExercise): ExerciseFault[] {
   // Two accepted answers the Deterministic Check cannot tell apart are one
   // answer written twice. Named rather than silently deduplicated: an author who
   // meant to add a second form wrote something that has no effect.
-  const seen = new Map<string, string>();
-  for (const answer of accepted) {
-    const key = normaliseAnswer(answer, { caseSensitive });
-    const first = seen.get(key);
-    if (first === undefined) seen.set(key, answer);
-    else faults.push({ code: 'duplicate_accepted_answers', offending: answer });
+  //
+  // Within a position, never across them. Two gaps of one sentence accepting the
+  // same word is ordinary — «___ have ___ dog» takes «a» at neither or at one —
+  // and a rule that compared them would refuse the sentence for being consistent.
+  for (const values of positions) {
+    const seen = new Set<string>();
+    for (const answer of values) {
+      const key = normaliseAnswer(answer, { caseSensitive });
+      if (seen.has(key)) faults.push({ code: 'duplicate_accepted_answers', offending: answer });
+      else seen.add(key);
+    }
   }
 
   return faults;

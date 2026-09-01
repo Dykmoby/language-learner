@@ -92,7 +92,7 @@ after(() => {
 
 function submit(answers: readonly string[]): number {
   const result = submitAttempt(handle.db, studentId, testId, exerciseIds.map((exerciseId, index) => ({
-    exerciseId, answer: answers[index] ?? '',
+    exerciseId, answers: [answers[index] ?? ''],
   })));
   assert.ok(result.ok);
   return result.attemptId;

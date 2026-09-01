@@ -19,13 +19,19 @@ import type { DisputeRuling } from '../../../../db/schema.ts';
 type Props = {
   disputeId: number;
   ruling: DisputeRuling | null;
-  /** Shown on the confirmation, because it is what became an Accepted Variant. */
-  answer: string;
+  /**
+   * Shown on the confirmation, because it is what became an Accepted Variant.
+   *
+   * One value per gap: what a fill-gap promotes is the words, not the sentence
+   * they were written into, and a confirmation naming the sentence would name
+   * something no Exercise now accepts.
+   */
+  values: string[];
 };
 
 type Outcome = { ruling: DisputeRuling; variantAdded: boolean };
 
-export function ResolveDispute({ disputeId, ruling, answer }: Props) {
+export function ResolveDispute({ disputeId, ruling, values }: Props) {
   const [decided, setDecided] = useState<Outcome | null>(
     ruling === null ? null : { ruling, variantAdded: false },
   );
@@ -70,7 +76,7 @@ export function ResolveDispute({ disputeId, ruling, answer }: Props) {
         {decided.ruling === 'upheld' && ruling === null ? (
           <p className="muted">
             {decided.variantAdded ? ru.disputeReview.variantAdded : ru.disputeReview.variantAlready}
-            {decided.variantAdded ? <> <strong>{answer}</strong></> : null}
+            {decided.variantAdded ? <> <strong>{values.join(', ')}</strong></> : null}
           </p>
         ) : null}
         <p><a href="/admin/disputes">{ru.disputeReview.back}</a></p>

@@ -22,6 +22,12 @@ const OK: AuthoredExercise = {
   referenceAnswer: 'I have a cat.',
 };
 
+// A fill-gap says in its prompt how many places there are to answer, so a row
+// about one has to carry a prompt with as many gaps as it has positions —
+// otherwise every such row also reports `gap_count_mismatch`, which is a
+// different rule and has its own table below.
+const ONE_GAP = 'Вставьте артикль: I have ___ apple.';
+
 function codes(exercise: Partial<AuthoredExercise>): ExerciseFaultCode[] {
   return exerciseFaults({ ...OK, ...exercise }).map((f) => f.code).sort();
 }
@@ -63,7 +69,7 @@ test('a Deterministic Check Kind needs at least one accepted answer', () => {
     },
     {
       what: 'fill-gap with one accepted answer is complete',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: [['an']] },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'an', acceptedAnswers: [['an']] },
       expect: [],
     },
     {
@@ -215,7 +221,7 @@ test('a Grader-judged Kind carries neither choices nor accepted answers', () => 
     },
     {
       what: 'fill-gap has no options to offer either — only multiple choice and word order do',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: [['an']], choices: ['a', 'an'] },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'an', acceptedAnswers: [['an']], choices: ['a', 'an'] },
       expect: ['choices_not_allowed'],
     },
   ]);
@@ -225,27 +231,27 @@ test('two accepted answers that collapse to the same string are an authoring mis
   runTable([
     {
       what: 'differing only by case, which the Deterministic Check folds away',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', 'IS']] },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'is', acceptedAnswers: [['is', 'IS']] },
       expect: ['duplicate_accepted_answers'],
     },
     {
       what: 'differing only by a trailing full stop',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', 'is.']] },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'is', acceptedAnswers: [['is', 'is.']] },
       expect: ['duplicate_accepted_answers'],
     },
     {
       what: 'differing only by ё, which normalises to е',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'ещё', acceptedAnswers: [['ещё', 'еще']] },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'ещё', acceptedAnswers: [['ещё', 'еще']] },
       expect: ['duplicate_accepted_answers'],
     },
     {
       what: 'under caseSensitive, case is no longer folded and the pair is two real answers',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', 'IS']], caseSensitive: true },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'is', acceptedAnswers: [['is', 'IS']], caseSensitive: true },
       expect: [],
     },
     {
       what: 'genuinely different answers are not duplicates',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', "'s", '’s']] },
+      exercise: { kind: 'fill_gap', prompt: ONE_GAP, referenceAnswer: 'is', acceptedAnswers: [['is', "'s", '’s']] },
       expect: [],
     },
   ]);
@@ -287,8 +293,8 @@ test('the validity rules stay pure', () => {
   const imports = [...source.matchAll(/^\s*import[\s\S]*?from\s+'([^']+)';/gm)].map((m) => m[1]!);
   assert.deepEqual(
     imports,
-    ['../practice/deterministic-check.ts'],
-    'the only dependency is the normalisation the rules are judged against',
+    ['../practice/deterministic-check.ts', './gaps.ts'],
+    'the only dependencies are the normalisation and the gaps the rules are judged against',
   );
   assert.ok(!/\bnode:(fs|net|http|child_process|sqlite)\b/.test(source), 'no I/O module reference');
   assert.ok(!/drizzle/.test(source), 'no database reference');
@@ -331,4 +337,121 @@ test('a word order with more fragments than can be checked is refused, not waved
     }),
     ['fragments_do_not_build_answer'],
   );
+});
+
+// --- Gaps and positions ------------------------------------------------------
+
+test('the prompt says how many places there are to answer, and the answers must agree', () => {
+  runTable([
+    {
+      what: 'three gaps and three lists of accepted values',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: '___ have ___ cat and ___ dog.',
+        referenceAnswer: 'I have a cat and a dog.',
+        acceptedAnswers: [['I'], ['a'], ['a']],
+      },
+      expect: [],
+    },
+    {
+      what: 'a second gap nothing judges — one input would have nothing behind it',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: '___ have ___ cat.',
+        referenceAnswer: 'I have a cat.',
+        acceptedAnswers: [['I']],
+      },
+      expect: ['gap_count_mismatch'],
+    },
+    {
+      what: 'a list of accepted values with no gap to sit in',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: 'I have ___ cat.',
+        referenceAnswer: 'I have a cat.',
+        acceptedAnswers: [['a'], ['cat']],
+      },
+      expect: ['gap_count_mismatch'],
+    },
+    {
+      what: 'a fill-gap whose prompt has no gap at all cannot be rendered',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: 'Вставьте артикль.',
+        referenceAnswer: 'a',
+        acceptedAnswers: [['a']],
+      },
+      expect: ['gap_count_mismatch'],
+    },
+    {
+      what: 'a gap with nothing accepted at it is named as such, not as a count',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: '___ have ___ cat.',
+        referenceAnswer: 'I have a cat.',
+        acceptedAnswers: [['I'], []],
+      },
+      expect: ['accepted_answers_required'],
+    },
+    {
+      what: 'a gap holding only whitespace is a gap with nothing accepted at it',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: '___ have ___ cat.',
+        referenceAnswer: 'I have a cat.',
+        acceptedAnswers: [['I'], ['  ']],
+      },
+      expect: ['accepted_answers_required'],
+    },
+    {
+      what: 'a multiple choice has exactly one place to answer, whatever its prompt says',
+      exercise: {
+        kind: 'multiple_choice',
+        prompt: 'Выберите вариант: I have ___ apple.',
+        referenceAnswer: 'an',
+        acceptedAnswers: [['an'], ['a']],
+        choices: ['a', 'an', 'the'],
+      },
+      expect: ['gap_count_mismatch'],
+    },
+    {
+      what: 'a word order likewise — one ordering, not one per word',
+      exercise: {
+        kind: 'word_order',
+        prompt: 'Составьте предложение: is / a / this / cat',
+        referenceAnswer: 'This is a cat',
+        acceptedAnswers: [['This is a cat'], ['This is a cat']],
+        choices: ['is', 'a', 'this', 'cat'],
+      },
+      expect: ['gap_count_mismatch'],
+    },
+  ]);
+});
+
+test('the same word accepted at two different gaps is not a duplicate', () => {
+  // Duplicates are compared within a position and never across them. «a» at both
+  // gaps of one sentence is ordinary English, and a rule that compared the two
+  // would refuse the sentence for being consistent.
+  runTable([
+    {
+      what: 'the same value at two gaps',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: 'I have ___ cat and ___ dog.',
+        referenceAnswer: 'I have a cat and a dog.',
+        acceptedAnswers: [['a'], ['a']],
+      },
+      expect: [],
+    },
+    {
+      what: 'written twice at one gap is still an authoring mistake',
+      exercise: {
+        kind: 'fill_gap',
+        prompt: 'I have ___ cat and ___ dog.',
+        referenceAnswer: 'I have a cat and a dog.',
+        acceptedAnswers: [['a', 'A'], ['a']],
+      },
+      expect: ['duplicate_accepted_answers'],
+    },
+  ]);
 });

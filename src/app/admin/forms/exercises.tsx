@@ -23,9 +23,10 @@ import {
   EXERCISE_KINDS, isDeterministic, offersChoices, type ExerciseKind,
 } from '../../../content/exercise-validity.ts';
 import {
-  blankExercise, discardedByKindChange, removeChoice, renameChoice, withKind,
+  blankExercise, discardedByKindChange, removeChoice, renameChoice, withKind, withPrompt,
   type DocumentExercise,
 } from '../../../content/lesson-document.ts';
+import { gapCount } from '../../../content/gaps.ts';
 import { movedWithin } from '../../../content/ordering.ts';
 import type { Pending } from './pending.ts';
 
@@ -141,10 +142,14 @@ export function ExerciseList({
                 <textarea
                   rows={2}
                   value={exercise.prompt}
-                  onChange={(e) => replace(index, { ...exercise, prompt: e.target.value })}
+                  // Through `withPrompt`, because for a fill-gap the prompt is
+                  // what says how many places there are to answer: adding a
+                  // `___` adds a box below, and removing one takes its box away.
+                  onChange={(e) => replace(index, withPrompt(exercise, e.target.value))}
                   disabled={disabled}
                 />
               </label>
+              {exercise.kind === 'fill_gap' ? <p className="muted">{ru.draft.gapHint}</p> : null}
 
               {offersChoices(exercise.kind) ? (
                 <ChoiceFields
@@ -174,19 +179,11 @@ export function ExerciseList({
 
               {isDeterministic(exercise.kind) && exercise.kind !== 'multiple_choice' ? (
                 <>
-                  <label>
-                    <span>
-                      {exercise.kind === 'word_order' ? ru.draft.acceptedOrders : ru.draft.acceptedAnswers}
-                    </span>
-                    <textarea
-                      rows={3}
-                      // The Exercise's one gap. #83 is where a prompt with
-                      // several of them gets a box per gap.
-                      value={linesOf(exercise.acceptedAnswers?.[0])}
-                      onChange={(e) => replace(index, { ...exercise, acceptedAnswers: [toLines(e.target.value)] })}
-                      disabled={disabled}
-                    />
-                  </label>
+                  <AcceptedFields
+                    exercise={exercise}
+                    disabled={disabled}
+                    onChange={(next) => replace(index, next)}
+                  />
                   <label className="inline">
                     <input
                       type="checkbox"
@@ -257,6 +254,62 @@ export function ExerciseList({
           {ru.draft.addExercise}
         </button>
       </p>
+    </>
+  );
+}
+
+/**
+ * The values accepted at each place this Exercise asks a Student to answer.
+ *
+ * A word order has one, and so has a fill-gap with one gap; a fill-gap with
+ * three gaps has three, in the order the sentence is read. The boxes come from
+ * the *prompt* rather than from the stored lists, so what an author sees is what
+ * a Student will be shown — and the write back is the whole list every time, so
+ * a box nobody has typed in is an empty position rather than a missing one.
+ */
+function AcceptedFields({ exercise, disabled, onChange }: {
+  exercise: DocumentExercise;
+  disabled: boolean;
+  onChange: (next: DocumentExercise) => void;
+}) {
+  // A word order is arranged rather than filled in: it has one place to answer
+  // whatever its prompt happens to contain.
+  const places = exercise.kind === 'fill_gap' ? gapCount(exercise.prompt) : 1;
+  const accepted = exercise.acceptedAnswers ?? [];
+  const several = places > 1;
+
+  function write(at: number, raw: string) {
+    onChange({
+      ...exercise,
+      acceptedAnswers: Array.from(
+        { length: places },
+        (_, i) => (i === at ? toLines(raw) : [...(accepted[i] ?? [])]),
+      ),
+    });
+  }
+
+  // Nowhere to answer at all. The validity rules name it — a fill-gap whose
+  // prompt has no `___` cannot be rendered — and a box here would invite an
+  // answer to a question that has no place for one.
+  if (places === 0) return <p className="muted">{ru.draft.noGaps}</p>;
+
+  return (
+    <>
+      {Array.from({ length: places }, (_, at) => (
+        <label key={at}>
+          <span>
+            {exercise.kind === 'word_order' ? ru.draft.acceptedOrders
+              : several ? ru.draft.acceptedAnswersAtGap(at + 1)
+                : ru.draft.acceptedAnswers}
+          </span>
+          <textarea
+            rows={3}
+            value={linesOf(accepted[at])}
+            onChange={(e) => write(at, e.target.value)}
+            disabled={disabled}
+          />
+        </label>
+      ))}
     </>
   );
 }

@@ -21,6 +21,10 @@ let app: BootedApp;
 let courseId: number;
 let testId: number;
 let exerciseIds: number[] = [];
+// A Test of its own for the multi-gap Exercise: the file's other Test is scored
+// out of three, and a fourth Exercise would move every percentage in it.
+let gapsTestId: number;
+let gapsExerciseId: number;
 
 const EXERCISES = [
   {
@@ -77,12 +81,50 @@ before(async () => {
 
   exerciseIds = testsOf(app.databasePath, DETERMINISTIC_COURSE.title)
     .find((entry) => entry.test.id === testId)!.exercises.map((exercise) => exercise.id);
+
+  const gapsCreated = await admin.fetch(`/api/admin/courses/${courseId}/tests`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title: 'Работа с пропусками' }),
+  });
+  gapsTestId = ((await gapsCreated.json()) as { testId: number }).testId;
+
+  const gapsSaved = await admin.fetch(`/api/admin/tests/${gapsTestId}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      title: 'Работа с пропусками',
+      passThreshold: 80,
+      exercises: [{
+        kind: 'fill_gap',
+        prompt: 'Заполните пропуски: ___ have ___ apple.',
+        referenceAnswer: 'I have an apple.',
+        acceptedAnswers: [['I'], ['an']],
+        choices: [],
+        caseSensitive: false,
+      }],
+    }),
+  });
+  assert.equal(gapsSaved.status, 200, 'a multi-gap Exercise is saveable in a Test');
+  await admin.fetch(`/api/admin/tests/${gapsTestId}/publish`, { method: 'POST' });
+
+  gapsExerciseId = testsOf(app.databasePath, DETERMINISTIC_COURSE.title)
+    .find((entry) => entry.test.id === gapsTestId)!.exercises[0]!.id;
 }, { timeout: 180_000 });
 
 after(async () => { await app?.stop(); });
 
-function answers(given: readonly string[]): { answers: Array<{ exerciseId: number; answer: string }> } {
-  return { answers: exerciseIds.map((exerciseId, index) => ({ exerciseId, answer: given[index] ?? '' })) };
+// One value per gap per Exercise. A bare string is the list of one that every
+// Exercise with a single place to answer sends.
+function answers(
+  given: readonly (string | readonly string[])[],
+): { answers: Array<{ exerciseId: number; answers: string[] }> } {
+  return {
+    answers: exerciseIds.map((exerciseId, index) => {
+      const written = given[index] ?? '';
+      return { exerciseId, answers: typeof written === 'string' ? [written] : [...written] };
+    }),
+  };
 }
 
 async function submit(client: Client, given: readonly string[]): Promise<number> {
@@ -269,4 +311,59 @@ test('another Student’s attempt, an unpublished Test and a Course not theirs a
   const mine = await submit(client, ['a', 'an', 'This is a cat']);
   const asAdmin = await admin.fetch(`/tests/${testId}/attempts/${mine}`);
   assert.equal(asAdmin.status, 404, 'even an Admin reads their own attempts only');
+});
+
+// --- #83: a multi-gap Exercise inside a Test ----------------------------------
+
+async function sitGapsTest(client: Client, written: readonly string[]): Promise<AttemptView> {
+  const response = await client.fetch(`/api/tests/${gapsTestId}/attempts`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ answers: [{ exerciseId: gapsExerciseId, answers: [...written] }] }),
+  });
+  assert.equal(response.status, 200);
+  const { attemptId } = await response.json() as { attemptId: number };
+
+  const review = await client.fetch(`/api/tests/${gapsTestId}/attempts/${attemptId}`);
+  assert.equal(review.status, 200);
+  return ((await review.json()) as { view: AttemptView }).view;
+}
+
+test('a multi-gap Exercise is answered in a Test and judged gap by gap', async () => {
+  const client = await signedIn(STUDENT);
+
+  // The same component asks the question in a Test as in a Practice, so the
+  // inputs are the prompt's gaps here too.
+  const page = await (await client.fetch(`/tests/${gapsTestId}`)).text();
+  assert.equal((page.match(/class="gap"/g) ?? []).length, 2, 'one input per gap');
+  const promptHtml = page.match(/<p class="prompt">[\s\S]*?<\/p>/)![0];
+  assert.ok(!promptHtml.includes('___'), 'and no gap printed as literal text');
+
+  const partly = await sitGapsTest(client, ['I', 'the']);
+  const [answered] = partly.exercises;
+  assert.equal(answered!.verdict, 'partially_correct');
+  assert.deepEqual(answered!.gaps, [true, false], 'which gap was not accepted');
+  assert.deepEqual(answered!.answerGaps, ['I', 'the']);
+  assert.equal(answered!.answer, 'Заполните пропуски: I have the apple.',
+    'the answer is stored and shown as the sentence, never as the two words');
+  assert.equal(answered!.correct, false, 'partially correct does not score as correct');
+  assert.equal(partly.scorePercent, 0);
+
+  const whole = await sitGapsTest(client, ['I', 'an']);
+  assert.equal(whole.exercises[0]!.verdict, 'correct');
+  assert.deepEqual(whole.exercises[0]!.gaps, [true, true]);
+  assert.equal(whole.scorePercent, 100);
+});
+
+test('the review shows a multi-gap answer as a sentence, with the wrong gap marked', async () => {
+  const client = await signedIn(STUDENT);
+  const view = await sitGapsTest(client, ['I', 'the']);
+
+  const html = await (await client.fetch(`/tests/${gapsTestId}/attempts/${view.attemptId}`)).text();
+
+  assert.ok(html.includes('state-correct'), 'the gap that was accepted');
+  assert.ok(html.includes('state-incorrect'), 'and the one that was not');
+  // The pieces of the sentence, with the answers in place of the gaps.
+  assert.ok(html.includes(' have '), 'the sentence is rebuilt around the answers');
+  assert.ok(html.includes('I have an apple.'), 'and the Reference Answer is shown whole');
 });

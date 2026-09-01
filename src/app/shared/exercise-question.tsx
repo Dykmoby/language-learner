@@ -7,14 +7,21 @@
 // a Test — because an Exercise is met the same way in either, and two renderings
 // of a word order would eventually disagree about what a fragment is. Every
 // branch on Exercise Kind lives here and nowhere else: whatever asks the question
-// receives a string.
+// receives one value per gap.
 //
 // The prompt and the input are one component because for a fill-gap they are one
-// sentence — the gap belongs in the text, not on a line of its own underneath it.
+// sentence — the gaps belong in the text, not on a line of their own underneath
+// it. A prompt with three gaps is three inputs sitting where the gaps sit, filled
+// left to right in the order the sentence is read; where they are is decided by
+// ../../content/gaps.ts, which is the same module the validity rules count them
+// with, so the number of inputs on the screen can never disagree with the number
+// of accepted answer lists behind them.
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { ru } from '../../ru.ts';
 import type { ExerciseKind } from '../../db/schema.ts';
+import { pieces } from '../../content/gaps.ts';
+import { stateClass } from './verdict-state.ts';
 
 export type AskedExercise = {
   /** What makes this Exercise's radio group its own when several are on a page. */
@@ -24,61 +31,87 @@ export type AskedExercise = {
   choices: string[];
 };
 
-/** Where a fill-gap Exercise wants its input. */
-const GAP = '___';
-
 // Composition, translation and open writing are answered in prose; the Kinds
 // judged in code are answered by choosing or arranging.
 const WRITTEN_KINDS: ExerciseKind[] = ['composition', 'translation', 'open_writing'];
 
 export function ExerciseQuestion({
-  exercise, answer, onAnswer, disabled, answered,
+  exercise, answers, onAnswer, disabled, answered, gaps = [],
 }: {
   exercise: AskedExercise;
-  answer: string;
-  onAnswer: (value: string) => void;
+  /** One value per gap, in reading order — a list of one where there is one gap. */
+  answers: string[];
+  onAnswer: (values: string[]) => void;
   disabled: boolean;
   /** The answer is in and being judged or explained: show it, do not ask again. */
   answered: boolean;
+  /**
+   * Which gaps were accepted, once something has judged them. Empty until then,
+   * and empty on everything the Grader judges.
+   *
+   * Three gaps are three facts, and «неверно» without saying which of them makes
+   * the next attempt a re-guess of all three.
+   */
+  gaps?: readonly boolean[];
 }) {
   // Positions in `choices` rather than the words themselves. Two identical
   // fragments in one sentence are two fragments, and telling them apart by value
   // means guessing which of the two was taken.
   const [fragments, setFragments] = useState<number[]>([]);
 
+  const answer = answers[0] ?? '';
+
   function useFragments(next: number[]) {
     setFragments(next);
     // Word order is answered as a sentence like any other: the fragments are how
     // it is built, not what is submitted.
-    onAnswer(next.map((at) => exercise.choices[at] ?? '').join(' '));
+    onAnswer([next.map((at) => exercise.choices[at] ?? '').join(' ')]);
   }
 
   if (exercise.kind === 'fill_gap') {
-    // The prompt carries the gap as ___, so the input goes where the gap is.
-    const [before, ...rest] = exercise.prompt.split(GAP);
-    const after = rest.join(GAP);
-    const field = answered
-      ? <span className="given inline">{answer}</span>
-      : (
-        <input
-          type="text"
-          className="gap"
-          value={answer}
-          disabled={disabled}
-          autoComplete="off"
-          aria-label={ru.practice.answer}
-          onChange={(event) => onAnswer(event.target.value)}
-        />
-      );
+    // The prompt carries its gaps as ___, so N gaps split it into N + 1 pieces
+    // and an input goes between each neighbouring pair.
+    const parts = pieces(exercise.prompt);
 
-    return rest.length === 0
-      ? (
-        <>
-          <p className="prompt">{exercise.prompt}</p>
-          {field}
-        </>
-      )
-      : <p className="prompt">{before}{field}{after}</p>;
+    return (
+      <p className="prompt">
+        {parts.map((part, at) => (
+          <Fragment key={at}>
+            {part}
+            {at === parts.length - 1 ? null : answered ? (
+              // Marked where something has judged this gap, plain where nothing
+              // has. A partly right answer says which part it was, so the second
+              // attempt is about the gap that was wrong rather than all of them.
+              <span
+                className={gaps[at] === undefined ? 'given inline' : `given inline ${stateClass(gaps[at] ? 'correct' : 'incorrect')}`}
+              >
+                {answers[at] ?? ''}
+              </span>
+            ) : (
+              <input
+                type="text"
+                className="gap"
+                value={answers[at] ?? ''}
+                disabled={disabled}
+                autoComplete="off"
+                // Numbered, because a screen reader announcing «Ваш ответ» three
+                // times in one sentence says nothing about which gap it is on.
+                aria-label={parts.length === 2 ? ru.practice.answer : ru.practice.gapAt(at + 1)}
+                onChange={(event) => {
+                  // The whole list every time: a gap nobody has typed in yet is
+                  // an empty answer at that gap rather than a missing one, and
+                  // the array has to be as long as the sentence for the second
+                  // gap's value to be the second gap's value.
+                  const next = Array.from({ length: parts.length - 1 }, (_, i) => answers[i] ?? '');
+                  next[at] = event.target.value;
+                  onAnswer(next);
+                }}
+              />
+            )}
+          </Fragment>
+        ))}
+      </p>
+    );
   }
 
   return (
@@ -99,7 +132,7 @@ export function ExerciseQuestion({
                   value={choice}
                   checked={answer === choice}
                   disabled={disabled}
-                  onChange={() => onAnswer(choice)}
+                  onChange={() => onAnswer([choice])}
                 />
                 <span>{choice}</span>
               </label>
@@ -124,7 +157,7 @@ export function ExerciseQuestion({
             rows={exercise.kind === 'open_writing' ? 6 : 3}
             value={answer}
             disabled={disabled}
-            onChange={(event) => onAnswer(event.target.value)}
+            onChange={(event) => onAnswer([event.target.value])}
           />
         </label>
       ) : null}

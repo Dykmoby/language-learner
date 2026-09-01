@@ -27,7 +27,10 @@ type Props = {
 type Phase = 'answering' | 'confirming' | 'submitting';
 
 export function TestShell({ testId, exercises, attempts, courseId }: Props) {
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  // One list per Exercise, holding one value per gap in reading order. The Test
+  // keeps them until they are sent, so changing one before submitting costs
+  // nothing and reaches nobody.
+  const [answers, setAnswers] = useState<Record<number, string[]>>({});
   const [phase, setPhase] = useState<Phase>('answering');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -40,7 +43,10 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
     );
   }
 
-  const unanswered = exercises.filter((exercise) => (answers[exercise.exerciseId] ?? '').trim() === '');
+  // Nothing written at any of its gaps. Asked of the values rather than of the
+  // sentence they build, which still reads as the prompt.
+  const unanswered = exercises.filter((exercise) =>
+    (answers[exercise.exerciseId] ?? []).every((value) => value.trim() === ''));
 
   async function send() {
     setPhase('submitting');
@@ -52,7 +58,7 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
         body: JSON.stringify({
           answers: exercises.map((exercise) => ({
             exerciseId: exercise.exerciseId,
-            answer: answers[exercise.exerciseId] ?? '',
+            answers: answers[exercise.exerciseId] ?? [],
           })),
         }),
       });
@@ -97,9 +103,9 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
                 prompt: exercise.prompt,
                 choices: exercise.choices,
               }}
-              answer={answers[exercise.exerciseId] ?? ''}
-              onAnswer={(value) => {
-                setAnswers((current) => ({ ...current, [exercise.exerciseId]: value }));
+              answers={answers[exercise.exerciseId] ?? []}
+              onAnswer={(values) => {
+                setAnswers((current) => ({ ...current, [exercise.exerciseId]: values }));
                 // A confirmation about unanswered Exercises is a question about
                 // the attempt as it was a moment ago; answering one withdraws it.
                 if (phase === 'confirming') setPhase('answering');

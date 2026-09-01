@@ -26,6 +26,7 @@ import {
   type SubmissionRow,
 } from '../db/schema.ts';
 import { normaliseAnswer } from '../practice/deterministic-check.ts';
+import { storedGaps } from '../practice/judgement.ts';
 import { acceptedAnswers, candidateAnswers, variantsOf } from '../content/accepted.ts';
 import { courseIdOf } from '../content/ownership.ts';
 
@@ -63,6 +64,15 @@ export type OpenedDispute = {
    * not have to know there were two sources.
    */
   accepted: string[];
+  /**
+   * What upholding would promote to Accepted Variants — one value per gap.
+   *
+   * Not the Submission's `answer`, which for a fill-gap is the sentence: the
+   * Deterministic Check compares one gap at a time, so a sentence stored as a
+   * variant is a value nothing would ever match. The screen names these, so what
+   * it says was added is what was added.
+   */
+  answerValues: string[];
   errors: Array<{ type: string; span: string; explanationRu: string }>;
   /** Where the answer was given — a Lesson's Practice or a Test. */
   origin: { kind: 'lesson'; title: string } | { kind: 'test'; title: string } | null;
@@ -177,6 +187,7 @@ export function openDispute(db: Db, disputeId: number): OpenedDispute | null {
     // rather than where: an Admin resolving a Dispute reads a list. #85 is where
     // a variant gains a position and this becomes a question about gaps.
     accepted: acceptedAnswers(found.exercise, variantsOf(db, found.exercise.id)).flat(),
+    answerValues: storedGaps(found.submission).map((value) => value.trim()).filter((value) => value !== ''),
     errors,
     origin: lesson
       ? { kind: 'lesson', title: lesson.title }
@@ -253,15 +264,26 @@ export function resolveDispute(
         .where(eq(acceptedVariants.exerciseId, exercise.id)).all()
         .map((row) => row.value);
 
-      const answer = submission.answer.trim();
-      // An empty answer is never what an objection is about, and an Accepted
-      // Variant of "" would accept a blank answer for ever after.
-      if (answer !== '' && !alreadyAccepted(exercise, existing, answer)) {
+      // What the Student wrote at each gap, not the sentence they built with it.
+      // A fill-gap's `answer` is that sentence, and storing it as an Accepted
+      // Variant would store a value nothing will ever compare against — the
+      // Deterministic Check asks about one gap at a time.
+      //
+      // Every gap that is not already accepted, because an objection is about
+      // the answer as a whole and the Admin upholding it has read it as a whole.
+      // The variant carries no position, so it joins every gap — which is what
+      // an Accepted Variant has always done, and what #85 is where it stops.
+      for (const value of storedGaps(submission)) {
+        const answer = value.trim();
+        // An empty answer is never what an objection is about, and an Accepted
+        // Variant of "" would accept a blank answer for ever after.
+        if (answer === '' || alreadyAccepted(exercise, [...existing], answer)) continue;
         tx.insert(acceptedVariants).values({
           exerciseId: exercise.id,
           value: answer,
           createdAt: new Date(),
         }).run();
+        existing.push(answer);
         variantAdded = true;
       }
     }

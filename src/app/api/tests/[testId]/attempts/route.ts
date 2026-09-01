@@ -23,9 +23,13 @@ function parseAnswers(value: unknown): AttemptAnswer[] | null {
   const answers: AttemptAnswer[] = [];
   for (const entry of raw) {
     if (typeof entry !== 'object' || entry === null) return null;
-    const { exerciseId, answer } = entry as Record<string, unknown>;
-    if (!Number.isInteger(exerciseId) || typeof answer !== 'string') return null;
-    answers.push({ exerciseId: exerciseId as number, answer });
+    // One value per gap, in reading order — a list of one for every Kind with a
+    // single place to answer, so nothing here has to know how many gaps the
+    // Exercise being answered has.
+    const { exerciseId, answers: written } = entry as Record<string, unknown>;
+    if (!Number.isInteger(exerciseId)) return null;
+    if (!Array.isArray(written) || !written.every((value) => typeof value === 'string')) return null;
+    answers.push({ exerciseId: exerciseId as number, answers: written as string[] });
   }
   return answers;
 }

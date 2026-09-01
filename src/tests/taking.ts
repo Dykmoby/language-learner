@@ -25,7 +25,8 @@ import {
 } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
 import { acceptedAnswersFor, acceptedPositions } from '../content/accepted.ts';
-import { deterministicCheck } from '../practice/deterministic-check.ts';
+import { checkGaps } from '../practice/deterministic-check.ts';
+import { answerOf, judge, nothingAnswered, storedGaps } from '../practice/judgement.ts';
 import { disputesOn } from '../practice/disputes.ts';
 import { isEnrolled } from '../practice/lessons.ts';
 import { attemptOutcome } from './score.ts';
@@ -185,7 +186,7 @@ export function submitAttempt(
   // answer, so there is no attempt to record.
   if (own.length === 0) return { ok: false, reason: 'empty_test' };
 
-  const given = new Map(answers.map((entry) => [entry.exerciseId, entry.answer]));
+  const given = new Map(answers.map((entry) => [entry.exerciseId, entry.answers]));
 
   return db.transaction((tx) => {
     const highest = tx.select({ value: max(testAttempts.attempt) }).from(testAttempts)
@@ -206,7 +207,11 @@ export function submitAttempt(
     const awaiting: number[] = [];
 
     for (const exercise of own) {
-      const answer = given.get(exercise.id) ?? '';
+      const written = given.get(exercise.id) ?? [];
+      // The answer as a person reads it, composed once here rather than at each
+      // of the screens that show one: a fill-gap's is its sentence, gaps filled.
+      let answer = answerOf(exercise, written);
+      let answerGaps: string[] = [];
 
       let status: 'graded' | 'awaiting_grading' = 'awaiting_grading';
       let verdict: Verdict | null = null;
@@ -215,15 +220,14 @@ export function submitAttempt(
       if (isDeterministic(exercise.kind)) {
         // The authored values and the Accepted Variants alike — CONTEXT.md
         // § Deterministic Check names both, and a Test judges in code exactly as
-        // a Practice does, against the sole position each Exercise has.
-        const [accepted] = acceptedAnswersFor(tx, exercise);
-        const outcome = deterministicCheck(answer, accepted ?? [], {
-          caseSensitive: exercise.caseSensitive,
-        });
+        // a Practice does, gap by gap.
+        const judgement = judge(exercise, written, acceptedAnswersFor(tx, exercise));
+        answer = judgement.answer;
+        answerGaps = judgement.answerGaps;
         status = 'graded';
-        verdict = outcome.correct ? 'correct' : 'incorrect';
-        corrected = outcome.correct ? outcome.matched : null;
-      } else if (answer.trim() === '') {
+        verdict = judgement.verdict;
+        corrected = judgement.corrected;
+      } else if (nothingAnswered(written)) {
         status = 'graded';
         verdict = 'incorrect';
       } else {
@@ -237,6 +241,7 @@ export function submitAttempt(
         // later attempt is a different row rather than a collision.
         attempt: attemptNumber,
         answer,
+        answerGaps,
         testAttemptId: attempt.id,
         status,
         failureReason: null,
@@ -346,6 +351,16 @@ export function openAttempt(
       })),
       referenceAnswer: exercise.referenceAnswer,
       acceptedAnswers: isDeterministic(exercise.kind) ? acceptedPositions(exercise) : [],
+      answerGaps: isDeterministic(exercise.kind) ? storedGaps(row) : [],
+      // Re-derived rather than stored: a per-gap Verdict is not a column, and
+      // what the review marks is what the Exercise accepts *now* — the same
+      // values it shows beside the answer. An Accepted Variant added since is
+      // therefore marked as accepted, which is what it is.
+      gaps: isDeterministic(exercise.kind)
+        ? checkGaps(storedGaps(row), acceptedAnswersFor(db, exercise), {
+            caseSensitive: exercise.caseSensitive,
+          }).gaps.map((gap) => gap.correct)
+        : [],
       dispute: objection === undefined ? null : { ruling: objection.ruling },
     };
   });

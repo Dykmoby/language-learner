@@ -84,7 +84,7 @@ async function answer(client: Client, exerciseId: number, given: string): Promis
   const response = await client.fetch(`/api/exercises/${exerciseId}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: given }),
+    body: JSON.stringify({ answers: [given] }),
   });
   assert.equal(response.status, 200);
 

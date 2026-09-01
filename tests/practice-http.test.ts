@@ -17,14 +17,15 @@ import type { SeedAccount } from '../src/db/seed.ts';
 import { ru } from '../src/ru.ts';
 import { ENGLISH_A1 } from '../src/content/english-a1.ts';
 import {
-  DETERMINISTIC_COURSE, OTHER_COURSE, HOSTILE_THEORY_COURSE, KIND_SHOWCASES, kindShowcase,
+  DETERMINISTIC_COURSE, MULTI_GAP_COURSE, OTHER_COURSE, HOSTILE_THEORY_COURSE,
+  KIND_SHOWCASES, kindShowcase,
 } from './helpers/fixtures.ts';
 import { lessonsOf, submissionsOf, unenroll } from './helpers/inspect.ts';
 import type { Frame, ResultFrame, RevealResult } from '../src/practice/wire.ts';
 
 // One account per test. Progress is per Student, so this is the whole of the
 // isolation this suite needs.
-const STUDENTS: SeedAccount[] = Array.from({ length: 24 }, (_, i) => ({
+const STUDENTS: SeedAccount[] = Array.from({ length: 32 }, (_, i) => ({
   username: `student${i + 1}`, password: 'staple monkey trombone', isAdmin: false,
 }));
 
@@ -36,6 +37,7 @@ before(async () => {
     content: [
       ENGLISH_A1,
       DETERMINISTIC_COURSE,
+      MULTI_GAP_COURSE,
       OTHER_COURSE,
       HOSTILE_THEORY_COURSE,
       ...KIND_SHOWCASES.map(kindShowcase),
@@ -57,11 +59,18 @@ async function signedIn(): Promise<Client> {
 
 type Answering = { status: number; frames: Frame[]; result: ResultFrame | null; error: string | null };
 
-async function answer(client: Client, exerciseId: number, text: string): Promise<Answering> {
+// One value per gap, which for every Exercise with a single place to answer is a
+// list of one — written here as a bare string, because that is what almost every
+// row below is about.
+async function answer(
+  client: Client,
+  exerciseId: number,
+  text: string | readonly string[],
+): Promise<Answering> {
   const response = await client.fetch(`/api/exercises/${exerciseId}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: text }),
+    body: JSON.stringify({ answers: typeof text === 'string' ? [text] : text }),
   });
 
   if (!response.ok) {
@@ -211,7 +220,20 @@ test('every attempt writes a Submission row with both Verdicts and its attempt n
 
   const rows = submissionsOf(app.databasePath, username, exercise.id);
   assert.deepEqual(rows.map((r) => r.attempt), [1, 2, 3], 'numbered per Student and per Exercise');
-  assert.deepEqual(rows.map((r) => r.answer), ['the', 'an', 'a'], 'and the answers are kept');
+  // The sentence, not the word: a fill-gap's answer is stored as a person reads
+  // it, so every screen that shows one shows a sentence without having to
+  // reassemble it. What was written in each gap is kept beside it.
+  assert.deepEqual(
+    rows.map((r) => r.answer),
+    [
+      'Вставьте артикль: I have the cat.',
+      'Вставьте артикль: I have an cat.',
+      'Вставьте артикль: I have a cat.',
+    ],
+    'and the answers are kept',
+  );
+  assert.deepEqual(rows.map((r) => r.answerGaps), [['the'], ['an'], ['a']],
+    'gap by gap, which is what a Dispute promotes and what marks a wrong gap');
   assert.deepEqual(rows.map((r) => r.status), ['graded', 'graded', 'graded']);
   assert.deepEqual(rows.map((r) => r.guardedVerdict), ['incorrect', 'incorrect', 'correct']);
   assert.deepEqual(
@@ -435,4 +457,134 @@ test('completion is derived from Submissions, not from a flag that can disagree 
 
   assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200,
     'the next Lesson unlocked with no other write anywhere');
+});
+
+// --- #83: a fill-gap Exercise with several gaps -------------------------------
+
+/** The multi-gap Lesson's first Exercise: «___ have ___ apple and ___ cat.» */
+function threeGaps() {
+  const [only] = course(MULTI_GAP_COURSE.title);
+  return { lessonId: only!.lesson.id, exercises: only!.exercises };
+}
+
+test('a prompt with three gaps renders three inputs, in the sentence', async () => {
+  const client = await signedIn();
+  const { lessonId } = threeGaps();
+
+  const html = await (await client.fetch(`/lessons/${lessonId}/practice`)).text();
+
+  assert.equal(
+    (html.match(/class="gap"/g) ?? []).length, 3,
+    'one input per gap, and no more',
+  );
+  // The pieces of the prompt sit around the inputs rather than the prompt being
+  // printed whole with the inputs underneath it.
+  assert.ok(html.includes('Заполните пропуски: '), 'the text before the first gap');
+  assert.ok(html.includes(' have '), 'the text between the first two');
+  assert.ok(html.includes(' cat.'), 'the text after the last');
+  // Inside the prompt itself: the page also carries the props the component was
+  // rendered from, and the raw prompt lives there whatever the screen shows.
+  const promptHtml = html.match(/<p class="prompt">[\s\S]*?<\/p>/)![0];
+  assert.ok(!promptHtml.includes('___'), 'and no gap is left printed as literal text');
+});
+
+test('every gap accepted is correct; some is partially correct; none is incorrect', async () => {
+  const client = await signedIn();
+  const { exercises } = threeGaps();
+  const first = exercises[0]!;
+
+  const none = await answer(client, first.id, ['the', 'the', 'the']);
+  assert.equal(none.result?.verdict, 'incorrect');
+  assert.deepEqual(none.result?.gaps, [false, false, false]);
+
+  const some = await answer(client, first.id, ['I', 'the', 'a']);
+  assert.equal(some.result?.verdict, 'partially_correct',
+    'a partly right answer says so rather than being called wrong');
+  assert.deepEqual(some.result?.gaps, [true, false, true],
+    'and says which gap it was, or the next attempt is a re-guess of all three');
+  assert.equal(some.result?.corrected, null,
+    'never the missing word: that is what Reveal is for, after three attempts');
+
+  const all = await answer(client, first.id, ['I', 'an', 'a']);
+  assert.equal(all.result?.verdict, 'correct');
+  assert.deepEqual(all.result?.gaps, [true, true, true]);
+  assert.equal(all.result?.corrected, 'Заполните пропуски: I have an apple and a cat.',
+    'the correction is the sentence, not the three words');
+});
+
+test('a value accepted at one gap is not thereby accepted at another', async () => {
+  // The whole reason the accepted answers are per gap. «a» is right at the third
+  // gap and wrong at the second, and an Exercise that took it at either would be
+  // teaching the mistake.
+  const client = await signedIn();
+  const { exercises } = threeGaps();
+
+  const swapped = await answer(client, exercises[0]!.id, ['I', 'a', 'an']);
+  assert.equal(swapped.result?.verdict, 'partially_correct');
+  assert.deepEqual(swapped.result?.gaps, [true, false, false]);
+});
+
+test('a partly right answer counts as a failed attempt, and Reveal shows the whole sentence', async () => {
+  const client = await signedIn();
+  const { exercises } = threeGaps();
+  const first = exercises[0]!;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const outcome = await answer(client, first.id, ['I', 'a', 'the']);
+    assert.equal(outcome.result?.verdict, 'partially_correct');
+    assert.equal(outcome.result?.progression.failedAttempts, attempt,
+      'partially correct is not correct, so it counts against the Student');
+    assert.equal(outcome.result?.progression.advanced, false, 'and does not advance');
+  }
+
+  const revealed = await client.fetch(`/api/exercises/${first.id}/reveal`, { method: 'POST' });
+  assert.equal(revealed.status, 200, 'Reveal is offered after three, as it always was');
+  const body = await revealed.json() as RevealResult;
+  assert.equal(body.referenceAnswer, 'I have an apple and a cat.',
+    'the complete sentence, not the words that were missing');
+});
+
+test('an answer with nothing in any gap is refused, the way a blank one always was', async () => {
+  const client = await signedIn();
+  const { exercises } = threeGaps();
+
+  const empty = await answer(client, exercises[0]!.id, ['', '  ', '']);
+  assert.equal(empty.status, 400);
+  assert.equal(empty.error, ru.practice.emptyAnswer,
+    'asked of the gaps: the sentence they build still reads as the prompt');
+});
+
+test('the same word at two gaps is judged at both, and marked at both', async () => {
+  // The second Exercise accepts «is» at either gap. Nothing about per-gap
+  // judgement makes that harder to author or to answer.
+  const client = await signedIn();
+  const { exercises } = threeGaps();
+  const second = exercises[1]!;
+
+  // The Practice presents one Exercise at a time, so the first has to be
+  // finished before the second is current.
+  assert.equal((await answer(client, exercises[0]!.id, ['I', 'an', 'a'])).result?.verdict, 'correct');
+
+  const half = await answer(client, second.id, ['is', 'are']);
+  assert.equal(half.result?.verdict, 'partially_correct');
+  assert.deepEqual(half.result?.gaps, [true, false]);
+
+  const both = await answer(client, second.id, ['is', 'is']);
+  assert.equal(both.result?.verdict, 'correct');
+});
+
+test('a single-gap Exercise answers exactly as it did before gaps were counted', async () => {
+  const client = await signedIn();
+  const [first] = course(DETERMINISTIC_COURSE.title);
+  const exercise = first!.exercises[0]!;
+
+  const wrong = await answer(client, exercise.id, 'the');
+  assert.equal(wrong.result?.verdict, 'incorrect',
+    'one gap wrong is incorrect, never partially correct');
+  assert.deepEqual(wrong.result?.gaps, [false]);
+
+  const right = await answer(client, exercise.id, 'a');
+  assert.equal(right.result?.verdict, 'correct');
+  assert.equal(right.result?.corrected, 'Вставьте артикль: I have a cat.',
+    'the sentence, which is what every screen showing an answer now shows');
 });

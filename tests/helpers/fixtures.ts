@@ -98,10 +98,15 @@ export const HOSTILE_THEORY_COURSE: CourseFixture = {
  */
 export function kindShowcase(kind: ExerciseKind): CourseFixture {
   const deterministic = {
-    fill_gap: { acceptedAnswers: [['a']], choices: [] },
-    multiple_choice: { acceptedAnswers: [['a']], choices: ['a', 'an', 'the'] },
-    word_order: { acceptedAnswers: [['This is a cat']], choices: ['is', 'a', 'this', 'cat'] },
-  }[kind as 'fill_gap' | 'multiple_choice' | 'word_order'] ?? { acceptedAnswers: [], choices: [] };
+    // A fill-gap's prompt is what says how many places there are to answer, so
+    // one that carried no `___` would render no input at all — and is refused by
+    // the validity rules for exactly that reason.
+    fill_gap: { gaps: ': I have ___ cat.', acceptedAnswers: [['a']], choices: [] },
+    multiple_choice: { gaps: '', acceptedAnswers: [['a']], choices: ['a', 'an', 'the'] },
+    word_order: { gaps: '', acceptedAnswers: [['This is a cat']], choices: ['is', 'a', 'this', 'cat'] },
+  }[kind as 'fill_gap' | 'multiple_choice' | 'word_order']
+    ?? { gaps: '', acceptedAnswers: [], choices: [] };
+  const { gaps, ...fields } = deterministic;
 
   return {
     language: 'en',
@@ -116,9 +121,9 @@ export function kindShowcase(kind: ExerciseKind): CourseFixture {
         practice: [
           {
             kind,
-            prompt: `Задание вида ${kind}`,
+            prompt: `Задание вида ${kind}${gaps}`,
             referenceAnswer: 'a',
-            ...deterministic,
+            ...fields,
           },
         ],
       },
@@ -129,3 +134,43 @@ export function kindShowcase(kind: ExerciseKind): CourseFixture {
 export const KIND_SHOWCASES = [
   'fill_gap', 'multiple_choice', 'word_order', 'composition', 'translation', 'open_writing',
 ] as const satisfies readonly ExerciseKind[];
+
+/**
+ * A Lesson whose Exercises have several gaps each, and a Test of the same.
+ *
+ * Its own Course, because the Practice presents one Exercise at a time and
+ * Lessons unlock sequentially: a multi-gap Exercise buried behind two others is
+ * one no test can reach without answering them first.
+ *
+ * The prompts are deliberately shaped so that a value accepted at one gap is not
+ * accepted at another — that is the property per-gap judgement exists for, and a
+ * fixture where every gap took the same word would pass under the rule this
+ * replaces.
+ */
+export const MULTI_GAP_COURSE: CourseFixture = {
+  language: 'en',
+  level: 'A1',
+  graderModel: 'claude-sonnet-5',
+  title: 'Курс с пропусками',
+  lessons: [
+    {
+      title: 'Урок с пропусками',
+      grammarFocus: 'Indefinite article a/an, and the pronoun I.',
+      theoryMarkdown: '## Урок с пропусками\n\nВ одном предложении может быть несколько пропусков.',
+      practice: [
+        {
+          kind: 'fill_gap',
+          prompt: 'Заполните пропуски: ___ have ___ apple and ___ cat.',
+          referenceAnswer: 'I have an apple and a cat.',
+          acceptedAnswers: [['I'], ['an'], ['a']],
+        },
+        {
+          kind: 'fill_gap',
+          prompt: 'Заполните пропуски: She ___ a teacher and he ___ a driver.',
+          referenceAnswer: 'She is a teacher and he is a driver.',
+          acceptedAnswers: [['is'], ['is']],
+        },
+      ],
+    },
+  ],
+};
