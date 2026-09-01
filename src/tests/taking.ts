@@ -24,7 +24,7 @@ import {
   type CourseRow, type ExerciseRow, type SubmissionRow, type TestRow, type TestAttemptRow,
 } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
-import { acceptedAnswersFor } from '../content/accepted.ts';
+import { acceptedAnswersFor, acceptedPositions } from '../content/accepted.ts';
 import { deterministicCheck } from '../practice/deterministic-check.ts';
 import { disputesOn } from '../practice/disputes.ts';
 import { isEnrolled } from '../practice/lessons.ts';
@@ -344,7 +344,7 @@ export function openAttempt(
         explanationRu: error.explanationRu,
       })),
       referenceAnswer: exercise.referenceAnswer,
-      acceptedAnswers: isDeterministic(exercise.kind) ? exercise.acceptedAnswers : [],
+      acceptedAnswers: isDeterministic(exercise.kind) ? acceptedPositions(exercise).flat() : [],
       dispute: objection === undefined ? null : { ruling: objection.ruling },
     };
   });

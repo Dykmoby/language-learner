@@ -17,8 +17,27 @@ import { eq } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import { acceptedVariants, type ExerciseRow } from '../db/schema.ts';
+import type { AcceptedAnswers } from './exercise-validity.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
+
+/**
+ * What an Exercise accepts, one list per position — the single read of the
+ * stored column, and the only thing that knows how it is written.
+ *
+ * A row written before #82's migration holds one flat list of whole answers.
+ * That is not a different meaning, it is the same meaning for an Exercise with
+ * one place to answer, so it is wrapped into the single position it has always
+ * been rather than kept alive as a second shape. The migration wraps every row
+ * and this wrapping goes with it.
+ */
+export function acceptedPositions(exercise: Pick<ExerciseRow, 'acceptedAnswers'>): AcceptedAnswers {
+  const stored = exercise.acceptedAnswers;
+  // An empty list is no positions at all, and `every` says so — a Grader-judged
+  // Exercise accepts nothing here and must not gain an empty position.
+  if (stored.every((entry) => Array.isArray(entry))) return stored as string[][];
+  return [stored as string[]];
+}
 
 /** The Accepted Variants of one Exercise, in the order they were confirmed. */
 export function variantsOf(db: Db, exerciseId: number): string[] {
@@ -46,7 +65,7 @@ export function acceptedAnswersFor(db: Db, exercise: ExerciseRow): string[] {
  * rather than by whichever caller spread them.
  */
 export function acceptedAnswers(exercise: ExerciseRow, variants: readonly string[]): string[] {
-  return [...exercise.acceptedAnswers, ...variants];
+  return [...acceptedPositions(exercise).flat(), ...variants];
 }
 
 /**

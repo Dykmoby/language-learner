@@ -69,6 +69,18 @@ export function answersAreChoices(kind: ExerciseKind): boolean {
   return kind === 'multiple_choice';
 }
 
+/**
+ * What an Exercise accepts, as one list per position — one entry for each place
+ * in the prompt a Student answers, holding every value accepted there.
+ *
+ * Uniform across the Kinds rather than fill-gap-only. An Exercise with a single
+ * place to answer — a multiple choice, a word order, a one-gap fill-gap — is the
+ * honest special case of this shape: one position, several accepted values.
+ * Keeping a flat list alive beside it would be a second shape to get wrong at
+ * every call site that touches an answer.
+ */
+export type AcceptedAnswers = readonly (readonly string[])[];
+
 export const EXERCISE_FAULTS = [
   'prompt_empty',
   'too_many_fragments',

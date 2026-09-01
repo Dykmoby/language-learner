@@ -19,6 +19,7 @@ import {
   documentFaults, exerciseLevelFaults,
   type DocumentExercise, type DocumentFault, type LessonDocument,
 } from '../content/lesson-document.ts';
+import { acceptedPositions } from '../content/accepted.ts';
 import { unreviewedReferenceAnswers } from '../authoring/review.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -52,7 +53,7 @@ export function publishedDocument(db: Db, lessonId: number): LessonDocument | nu
       kind: exercise.kind,
       prompt: exercise.prompt,
       referenceAnswer: exercise.referenceAnswer,
-      acceptedAnswers: exercise.acceptedAnswers,
+      acceptedAnswers: acceptedPositions(exercise).flat(),
       caseSensitive: exercise.caseSensitive,
       choices: exercise.choices,
     })),

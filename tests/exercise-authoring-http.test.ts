@@ -21,6 +21,7 @@ import { lessonsOf, submissionsOf } from './helpers/inspect.ts';
 import { ru } from '../src/ru.ts';
 import type { Frame, ResultFrame } from '../src/practice/wire.ts';
 import type { DocumentExercise, LessonDocument } from '../src/content/lesson-document.ts';
+import { acceptedPositions } from '../src/content/accepted.ts';
 
 let app: BootedApp;
 
@@ -213,7 +214,7 @@ test('Exercises publish in the authored order, however they were reordered in th
     kind: exercise.kind,
     prompt: exercise.prompt,
     referenceAnswer: exercise.referenceAnswer,
-    acceptedAnswers: exercise.acceptedAnswers,
+    acceptedAnswers: acceptedPositions(exercise).flat(),
     caseSensitive: exercise.caseSensitive,
     choices: exercise.choices,
   }));
