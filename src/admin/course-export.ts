@@ -49,8 +49,21 @@ type Db = BetterSQLite3Database<typeof schema>;
  * Bumped whenever a file written by this build could be misread by an older one.
  * Its whole job is to let an import refuse a file it does not understand rather
  * than guess at it — a guess here is content silently arriving wrong.
+ *
+ * 2 is where an Exercise's accepted answers became a list per gap. A version 1
+ * file holds one flat list of whole answers, and reads back through
+ * `perGapAcceptedAnswers` below.
  */
-export const COURSE_EXPORT_VERSION = 1;
+export const COURSE_EXPORT_VERSION = 2;
+
+/**
+ * Every version this build can read back.
+ *
+ * A file from an older build must keep importing forever — that is what makes an
+ * export a restore rather than a snapshot with a shelf life — and a file from a
+ * later one is refused as such rather than guessed at.
+ */
+export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, COURSE_EXPORT_VERSION];
 
 export type ExportedCourse = {
   language: Language;
@@ -229,6 +242,36 @@ function parseVariants(value: unknown, exerciseCount: number): string[][] | null
   return variants;
 }
 
+/**
+ * One document from a file written before accepted answers became per-gap.
+ *
+ * The one place left in the codebase that understands a flat list of accepted
+ * answers, and the one place that permanently must: a version 1 file has to keep
+ * reading, and reading it means wrapping each Exercise's flat list into the
+ * single position it always was.
+ *
+ * Applied to the raw value on the way in, before the document is parsed, so the
+ * parser has exactly one shape to know about and nothing downstream branches.
+ */
+function perGapAcceptedAnswers(document: unknown): unknown {
+  if (typeof document !== 'object' || document === null) return document;
+  const body = document as Record<string, unknown>;
+  if (!Array.isArray(body.exercises)) return document;
+
+  return {
+    ...body,
+    exercises: body.exercises.map((entry) => {
+      if (typeof entry !== 'object' || entry === null) return entry;
+      const exercise = entry as Record<string, unknown>;
+      const accepted = exercise.acceptedAnswers;
+      // Nothing accepted is no positions in either format, and anything that is
+      // not a list at all is left for the parser to turn down by shape.
+      if (!Array.isArray(accepted) || accepted.length === 0) return entry;
+      return { ...exercise, acceptedAnswers: [accepted] };
+    }),
+  };
+}
+
 function parseImages(value: unknown): Record<string, string> | null {
   if (value === undefined) return {};
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
@@ -256,10 +299,15 @@ export function parseCourseExport(value: unknown): CourseExport | null {
   if (body.lessons !== undefined && !Array.isArray(body.lessons)) return null;
   if (body.tests !== undefined && !Array.isArray(body.tests)) return null;
 
+  // Only a version 1 file can hold flat lists, so the wrapping is asked for by
+  // version rather than guessed at from the values — a file that claims 2 and
+  // holds a flat list is a broken file, not an old one.
+  const asWritten = (value: unknown) => (version < 2 ? perGapAcceptedAnswers(value) : value);
+
   const lessons: ExportedLesson[] = [];
   for (const entry of (body.lessons ?? []) as unknown[]) {
     if (typeof entry !== 'object' || entry === null) return null;
-    const document = parseLessonDocument((entry as Record<string, unknown>).document);
+    const document = parseLessonDocument(asWritten((entry as Record<string, unknown>).document));
     if (document === null) return null;
     const acceptedVariants = parseVariants(
       (entry as Record<string, unknown>).acceptedVariants, document.exercises.length,
@@ -271,7 +319,7 @@ export function parseCourseExport(value: unknown): CourseExport | null {
   const tests: ExportedTest[] = [];
   for (const entry of (body.tests ?? []) as unknown[]) {
     if (typeof entry !== 'object' || entry === null) return null;
-    const document = parseTestDocument((entry as Record<string, unknown>).document);
+    const document = parseTestDocument(asWritten((entry as Record<string, unknown>).document));
     if (document === null) return null;
     const acceptedVariants = parseVariants(
       (entry as Record<string, unknown>).acceptedVariants, document.exercises.length,

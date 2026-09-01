@@ -194,7 +194,9 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
             <ul className="choices">
               {exercise.choices.map((choice) => {
                 const chosen = exercise.answer === choice;
-                const accepted = exercise.acceptedAnswers.includes(choice);
+                // A multiple choice and a word order each have one place to
+                // answer, so the marked options are the one position's.
+                const accepted = (exercise.acceptedAnswers[0] ?? []).includes(choice);
                 return (
                   // A Deterministic Kind fails at exactly one token, so the
                   // option carries the state rather than the whole Exercise —

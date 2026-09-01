@@ -138,14 +138,14 @@ test('the Deterministic Check Exercises carry what a Deterministic Check needs',
 
   for (const exercise of deterministic) {
     assert.ok(
-      (exercise.acceptedAnswers ?? []).length > 0,
+      (exercise.acceptedAnswers ?? []).flat().length > 0,
       `${exercise.prompt}: an Exercise judged in code needs something to compare against`,
     );
   }
 
   assert.ok(
-    deterministic.some((e) => (e.acceptedAnswers ?? []).length > 1),
-    'at least one stores several accepted answers',
+    deterministic.some((e) => (e.acceptedAnswers ?? []).flat().length > 1),
+    'at least one stores several accepted answers at its one gap',
   );
   assert.ok(
     deterministic.some((e) => e.caseSensitive === true),
@@ -161,7 +161,7 @@ test('the Deterministic Check Exercises carry what a Deterministic Check needs',
 
   // A multiple choice whose correct answer is not among the options is unanswerable.
   for (const exercise of deterministic.filter((e) => e.kind === 'multiple_choice')) {
-    for (const accepted of exercise.acceptedAnswers ?? []) {
+    for (const accepted of (exercise.acceptedAnswers ?? []).flat()) {
       assert.ok(
         (exercise.choices ?? []).includes(accepted),
         `${exercise.prompt}: the accepted answer ${JSON.stringify(accepted)} is one of the options`,

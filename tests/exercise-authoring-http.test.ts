@@ -21,6 +21,7 @@ import { lessonsOf, submissionsOf } from './helpers/inspect.ts';
 import { ru } from '../src/ru.ts';
 import type { Frame, ResultFrame } from '../src/practice/wire.ts';
 import type { DocumentExercise, LessonDocument } from '../src/content/lesson-document.ts';
+import { acceptedPositions } from '../src/content/accepted.ts';
 
 let app: BootedApp;
 
@@ -117,7 +118,7 @@ test('an incoherent Exercise is refused with the Russian message for its rule, a
     kind: 'multiple_choice',
     prompt: 'Выберите вариант: She ___ (work).',
     referenceAnswer: 'working',
-    acceptedAnswers: ['works'],
+    acceptedAnswers: [['works']],
     choices: ['work', 'works', 'worked'],
   }]));
 
@@ -144,7 +145,7 @@ test('a Deterministic Check Exercise authored here is judged in code', async () 
     kind: 'fill_gap',
     prompt: 'Поставьте форму: He ___ (go) to school.',
     referenceAnswer: 'goes',
-    acceptedAnswers: ['goes'],
+    acceptedAnswers: [['goes']],
     caseSensitive: false,
   }]));
 
@@ -198,7 +199,7 @@ test('Exercises publish in the authored order, however they were reordered in th
     kind: 'fill_gap',
     prompt: `Задание ${which}: I have ___ cat.`,
     referenceAnswer: 'a',
-    acceptedAnswers: ['a'],
+    acceptedAnswers: [['a']],
   }));
   await saveAndPublish(admin, lesson.id, documentFor(three));
 
@@ -213,7 +214,7 @@ test('Exercises publish in the authored order, however they were reordered in th
     kind: exercise.kind,
     prompt: exercise.prompt,
     referenceAnswer: exercise.referenceAnswer,
-    acceptedAnswers: exercise.acceptedAnswers,
+    acceptedAnswers: acceptedPositions(exercise),
     caseSensitive: exercise.caseSensitive,
     choices: exercise.choices,
   }));

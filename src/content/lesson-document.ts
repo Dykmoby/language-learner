@@ -16,8 +16,16 @@
 
 import {
   EXERCISE_KINDS, answersAreChoices, exerciseFaults, isBlank, isDeterministic, offersChoices,
-  type AuthoredExercise, type ExerciseFaultCode, type ExerciseKind,
+  type AcceptedAnswers, type AuthoredExercise, type ExerciseFaultCode, type ExerciseKind,
 } from './exercise-validity.ts';
+
+/**
+ * The accepted answers copied position by position, so an edit to one document
+ * cannot reach into the one it was made from.
+ */
+function copyAccepted(accepted: AcceptedAnswers | undefined): string[][] {
+  return (accepted ?? []).map((values) => [...values]);
+}
 
 export type DocumentExercise = AuthoredExercise & {
   /**
@@ -135,7 +143,7 @@ export function withKind(exercise: DocumentExercise, kind: ExerciseKind): Docume
     kind,
     prompt: exercise.prompt,
     referenceAnswer: answersMeanTheSame ? exercise.referenceAnswer : '',
-    acceptedAnswers: keepsAcceptedAnswers ? [...(exercise.acceptedAnswers ?? [])] : [],
+    acceptedAnswers: keepsAcceptedAnswers ? copyAccepted(exercise.acceptedAnswers) : [],
     caseSensitive: isDeterministic(kind) ? exercise.caseSensitive ?? false : false,
     choices: keepsChoices ? [...(exercise.choices ?? [])] : [],
   };
@@ -168,9 +176,12 @@ export function discardedByKindChange(exercise: DocumentExercise, kind: Exercise
   // Held to the same standard the validity rules hold a value to: one that
   // normalises away is absent, so losing it loses nothing.
   const filled = (values: readonly string[] | undefined) => (values ?? []).filter((v) => !isBlank(v)).length;
+  // Across every position, because the question is how much typing goes — an
+  // author counts answers, not the gaps they were written against.
+  const filledAnswers = (accepted: AcceptedAnswers | undefined) => filled((accepted ?? []).flat());
 
   const lostReference = !isBlank(exercise.referenceAnswer) && isBlank(after.referenceAnswer) ? 1 : 0;
-  const lostAnswers = Math.max(0, filled(exercise.acceptedAnswers) - filled(after.acceptedAnswers));
+  const lostAnswers = Math.max(0, filledAnswers(exercise.acceptedAnswers) - filledAnswers(after.acceptedAnswers));
   const lostChoices = Math.max(0, filled(exercise.choices) - filled(after.choices));
 
   return lostReference + lostAnswers + lostChoices;
@@ -197,7 +208,8 @@ export function blankExercise(kind: ExerciseKind): DocumentExercise {
 function rewriteAnswers(exercise: DocumentExercise, from: string, to: string): Partial<DocumentExercise> {
   return {
     referenceAnswer: exercise.referenceAnswer === from ? to : exercise.referenceAnswer,
-    acceptedAnswers: (exercise.acceptedAnswers ?? []).map((answer) => (answer === from ? to : answer)),
+    acceptedAnswers: (exercise.acceptedAnswers ?? [])
+      .map((values) => values.map((answer) => (answer === from ? to : answer))),
   };
 }
 
@@ -221,7 +233,8 @@ export function removeChoice(exercise: DocumentExercise, index: number): Documen
     ...exercise,
     choices,
     referenceAnswer: exercise.referenceAnswer === removed ? '' : exercise.referenceAnswer,
-    acceptedAnswers: (exercise.acceptedAnswers ?? []).filter((answer) => answer !== removed),
+    acceptedAnswers: (exercise.acceptedAnswers ?? [])
+      .map((values) => values.filter((answer) => answer !== removed)),
   };
 }
 
@@ -246,6 +259,27 @@ function asStringArray(value: unknown): string[] | null {
 }
 
 /**
+ * The accepted answers as they arrive: one list of short strings per position.
+ *
+ * Blank entries go the same way `asStringArray` drops them, and for the same
+ * reason. An empty position is **kept**: a gap nobody has written an answer for
+ * yet is a real thing an author can produce, and dropping it would turn an
+ * Exercise that is refused by name into one whose positions silently stopped
+ * matching its prompt.
+ */
+function asAcceptedAnswers(value: unknown): string[][] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) return null;
+
+  const positions: string[][] = [];
+  for (const entry of value) {
+    if (!Array.isArray(entry) || !entry.every((item) => typeof item === 'string')) return null;
+    positions.push((entry as string[]).filter((item) => item.trim() !== ''));
+  }
+  return positions;
+}
+
+/**
  * One Exercise as a form sends it, or null if it is not that shape at all.
  *
  * Exported because a Test's Exercises arrive in exactly this shape and are
@@ -262,7 +296,7 @@ export function parseDocumentExercise(value: unknown): DocumentExercise | null {
 
   const prompt = asString(body.prompt);
   const referenceAnswer = asString(body.referenceAnswer);
-  const acceptedAnswers = asStringArray(body.acceptedAnswers);
+  const acceptedAnswers = asAcceptedAnswers(body.acceptedAnswers);
   const choices = asStringArray(body.choices);
   if (prompt === null || referenceAnswer === null || acceptedAnswers === null || choices === null) return null;
 

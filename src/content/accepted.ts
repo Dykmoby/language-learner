@@ -17,8 +17,21 @@ import { eq } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import { acceptedVariants, type ExerciseRow } from '../db/schema.ts';
+import type { AcceptedAnswers } from './exercise-validity.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
+
+/**
+ * What an Exercise accepts, one list per position — the single read of the
+ * stored column.
+ *
+ * One line, and worth keeping as a name rather than inlining: it is what makes
+ * the shape of the column a thing this module owns, so the next change to it is
+ * one function rather than every screen that shows an answer.
+ */
+export function acceptedPositions(exercise: Pick<ExerciseRow, 'acceptedAnswers'>): AcceptedAnswers {
+  return exercise.acceptedAnswers;
+}
 
 /** The Accepted Variants of one Exercise, in the order they were confirmed. */
 export function variantsOf(db: Db, exerciseId: number): string[] {
@@ -28,25 +41,37 @@ export function variantsOf(db: Db, exerciseId: number): string[] {
 }
 
 /**
- * What a Deterministic Check compares an answer against.
+ * What a Deterministic Check compares an answer against, position by position.
  *
- * The authored list first, so `matched` reports the Admin's canonical wording
+ * The authored values first, so `matched` reports the Admin's canonical wording
  * where both would match — a Submission records what the Student was judged
  * against, and the authored answer is the better thing to record.
  */
-export function acceptedAnswersFor(db: Db, exercise: ExerciseRow): string[] {
+export function acceptedAnswersFor(db: Db, exercise: ExerciseRow): AcceptedAnswers {
   return acceptedAnswers(exercise, variantsOf(db, exercise.id));
 }
 
 /**
- * The same list from rows the caller already holds.
+ * The same lists from rows the caller already holds.
  *
  * Pure, so a screen that has both halves in hand does not go back to the
  * database to put them together — and so the order is decided in one place
  * rather than by whichever caller spread them.
+ *
+ * An Accepted Variant is recorded against the Exercise and carries no position,
+ * so it joins every position — which is exactly what it does today, when there
+ * is only ever one. #85 is where a Dispute says which gap its variant is for;
+ * narrowing it here first would change what an existing Exercise accepts, and
+ * this step changes nothing.
  */
-export function acceptedAnswers(exercise: ExerciseRow, variants: readonly string[]): string[] {
-  return [...exercise.acceptedAnswers, ...variants];
+export function acceptedAnswers(exercise: ExerciseRow, variants: readonly string[]): AcceptedAnswers {
+  const positions = acceptedPositions(exercise);
+  if (variants.length === 0) return positions;
+  // A Grader-judged Exercise stores no positions, and a Dispute upheld on one
+  // still records a variant. Dropping it would lose the only thing the screens
+  // that read this have to show.
+  if (positions.length === 0) return [[...variants]];
+  return positions.map((values) => [...values, ...variants]);
 }
 
 /**
@@ -60,5 +85,5 @@ export function acceptedAnswers(exercise: ExerciseRow, variants: readonly string
  * routes. Adding it as a variant would store the author's own answer twice.
  */
 export function candidateAnswers(exercise: ExerciseRow, variants: readonly string[]): string[] {
-  return [exercise.referenceAnswer, ...acceptedAnswers(exercise, variants)];
+  return [exercise.referenceAnswer, ...acceptedAnswers(exercise, variants).flat()];
 }

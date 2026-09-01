@@ -208,10 +208,15 @@ export function submitAnswer(
   const previousExerciseId = progress.currentExerciseId;
 
   if (isDeterministic(exercise.kind)) {
-    // The authored list *and* the Accepted Variants — CONTEXT.md § Deterministic
+    // The authored values *and* the Accepted Variants — CONTEXT.md § Deterministic
     // Check names both. Without the second, upholding a Dispute on a fill-gap
     // would write a variant nothing ever consults.
-    const outcome = deterministicCheck(answer, acceptedAnswersFor(db, exercise), {
+    //
+    // The sole position, because an Exercise has one place to answer: #83 is
+    // where a prompt with several gaps renders several inputs and each is judged
+    // against its own position.
+    const [accepted] = acceptedAnswersFor(db, exercise);
+    const outcome = deterministicCheck(answer, accepted ?? [], {
       caseSensitive: exercise.caseSensitive,
     });
     // Both Verdict columns are set from the comparison, exactly as they are set

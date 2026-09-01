@@ -67,7 +67,7 @@ test('the file carries the Course, its published Lessons in order, and its Tests
       passThreshold: 70,
       exercises: [{
         kind: 'fill_gap', prompt: 'Вставьте артикль: ___ apple', referenceAnswer: 'an',
-        acceptedAnswers: ['an'], caseSensitive: false, choices: [],
+        acceptedAnswers: [['an']], caseSensitive: false, choices: [],
       }],
     });
     assert.ok(saved.ok);
@@ -97,7 +97,7 @@ test('the file carries the Course, its published Lessons in order, and its Tests
         kind: 'multiple_choice',
         prompt: 'Выберите вариант: I have ___ apple.',
         referenceAnswer: 'an',
-        acceptedAnswers: ['an'],
+        acceptedAnswers: [['an']],
         caseSensitive: false,
         choices: ['a', 'an', 'the'],
       },

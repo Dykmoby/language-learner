@@ -24,7 +24,7 @@ import {
   type CourseRow, type ExerciseRow, type SubmissionRow, type TestRow, type TestAttemptRow,
 } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
-import { acceptedAnswersFor } from '../content/accepted.ts';
+import { acceptedAnswersFor, acceptedPositions } from '../content/accepted.ts';
 import { deterministicCheck } from '../practice/deterministic-check.ts';
 import { disputesOn } from '../practice/disputes.ts';
 import { isEnrolled } from '../practice/lessons.ts';
@@ -213,10 +213,11 @@ export function submitAttempt(
       let corrected: string | null = null;
 
       if (isDeterministic(exercise.kind)) {
-        // The authored list and the Accepted Variants alike — CONTEXT.md
+        // The authored values and the Accepted Variants alike — CONTEXT.md
         // § Deterministic Check names both, and a Test judges in code exactly as
-        // a Practice does.
-        const outcome = deterministicCheck(answer, acceptedAnswersFor(tx, exercise), {
+        // a Practice does, against the sole position each Exercise has.
+        const [accepted] = acceptedAnswersFor(tx, exercise);
+        const outcome = deterministicCheck(answer, accepted ?? [], {
           caseSensitive: exercise.caseSensitive,
         });
         status = 'graded';
@@ -344,7 +345,7 @@ export function openAttempt(
         explanationRu: error.explanationRu,
       })),
       referenceAnswer: exercise.referenceAnswer,
-      acceptedAnswers: isDeterministic(exercise.kind) ? exercise.acceptedAnswers : [],
+      acceptedAnswers: isDeterministic(exercise.kind) ? acceptedPositions(exercise) : [],
       dispute: objection === undefined ? null : { ruling: objection.ruling },
     };
   });

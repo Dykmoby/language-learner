@@ -69,6 +69,18 @@ export function answersAreChoices(kind: ExerciseKind): boolean {
   return kind === 'multiple_choice';
 }
 
+/**
+ * What an Exercise accepts, as one list per position — one entry for each place
+ * in the prompt a Student answers, holding every value accepted there.
+ *
+ * Uniform across the Kinds rather than fill-gap-only. An Exercise with a single
+ * place to answer — a multiple choice, a word order, a one-gap fill-gap — is the
+ * honest special case of this shape: one position, several accepted values.
+ * Keeping a flat list alive beside it would be a second shape to get wrong at
+ * every call site that touches an answer.
+ */
+export type AcceptedAnswers = readonly (readonly string[])[];
+
 export const EXERCISE_FAULTS = [
   'prompt_empty',
   'too_many_fragments',
@@ -99,7 +111,7 @@ export type AuthoredExercise = {
   kind: ExerciseKind;
   prompt: string;
   referenceAnswer: string;
-  acceptedAnswers?: readonly string[];
+  acceptedAnswers?: AcceptedAnswers;
   caseSensitive?: boolean;
   choices?: readonly string[];
 };
@@ -177,7 +189,12 @@ export function exerciseFaults(exercise: AuthoredExercise): ExerciseFault[] {
 
   // Held to the same standard as an answer: a value that normalises away is
   // absent, whatever the raw string looked like.
-  const accepted = (exercise.acceptedAnswers ?? []).filter((value) => !isBlank(value));
+  //
+  // Flattened, because every rule below asks about a *value* — is it on offer,
+  // do the fragments tile it, has it been written twice — and every Exercise has
+  // one position for them to sit in. #83 is where a gap count has to agree with
+  // a position count and these become questions about positions.
+  const accepted = (exercise.acceptedAnswers ?? []).flat().filter((value) => !isBlank(value));
   const choices = (exercise.choices ?? []).filter((value) => !isBlank(value));
 
   if (isBlank(exercise.prompt)) faults.push({ code: 'prompt_empty' });

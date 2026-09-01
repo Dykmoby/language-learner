@@ -16,7 +16,7 @@ function exercise(id: number, position: number): ExerciseRow {
   return {
     id, position, exerciseSetId: 1, kind: 'fill_gap',
     prompt: `Задание ${position}`, referenceAnswer: 'a',
-    acceptedAnswers: ['a'], caseSensitive: false, choices: [],
+    acceptedAnswers: [['a']], caseSensitive: false, choices: [],
   };
 }
 

@@ -127,12 +127,12 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
                       </span>
                     </>
                   )}
-                  {(exercise.acceptedAnswers ?? []).length === 0 ? null : (
+                  {(exercise.acceptedAnswers ?? []).flat().length === 0 ? null : (
                     <>
                       <br />
                       <span className="muted">
                         {exercise.kind === 'word_order' ? ru.draft.acceptedOrders : ru.draft.acceptedAnswers}
-                        : {(exercise.acceptedAnswers ?? []).join(' · ')}
+                        : {(exercise.acceptedAnswers ?? []).flat().join(' · ')}
                       </span>
                     </>
                   )}

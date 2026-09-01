@@ -250,7 +250,7 @@ test('an unpublished Lesson between two published ones does not gate the second'
           kind: 'fill_gap',
           prompt: 'Вставьте артикль: I have ___ cat.',
           referenceAnswer: 'a',
-          acceptedAnswers: ['a'],
+          acceptedAnswers: [['a']],
           caseSensitive: false,
           choices: [],
         }],

@@ -27,7 +27,7 @@ const EXERCISES = [
     kind: 'fill_gap',
     prompt: 'Вставьте артикль: I have ___ cat.',
     referenceAnswer: 'a',
-    acceptedAnswers: ['a'],
+    acceptedAnswers: [['a']],
     choices: [],
     caseSensitive: false,
   },
@@ -35,7 +35,7 @@ const EXERCISES = [
     kind: 'multiple_choice',
     prompt: 'Выберите вариант: I have ___ apple.',
     referenceAnswer: 'an',
-    acceptedAnswers: ['an'],
+    acceptedAnswers: [['an']],
     choices: ['a', 'an', 'the'],
     caseSensitive: false,
   },
@@ -43,7 +43,7 @@ const EXERCISES = [
     kind: 'word_order',
     prompt: 'Составьте предложение: is / a / this / cat',
     referenceAnswer: 'This is a cat',
-    acceptedAnswers: ['This is a cat'],
+    acceptedAnswers: [['This is a cat']],
     choices: ['is', 'a', 'this', 'cat'],
     caseSensitive: false,
   },
@@ -138,7 +138,7 @@ test('submitting scores the attempt in code, against the Test threshold', async 
   const wrong = view.exercises.find((exercise) => exercise.exerciseId === exerciseIds[1])!;
   assert.equal(wrong.correct, false);
   assert.equal(wrong.answer, 'the');
-  assert.deepEqual(wrong.acceptedAnswers, ['an'], 'the review can mark the right option');
+  assert.deepEqual(wrong.acceptedAnswers, [['an']], 'the review can mark the right option');
   assert.equal(wrong.referenceAnswer, 'an');
 
   const stored = attemptsOf(app.databasePath, STUDENT.username, testId);

@@ -185,12 +185,15 @@ function kindRules(): string[] {
     }
 
     if (isDeterministic(kind)) {
+      // A list per place the student answers, holding what is accepted there.
+      // Exactly one of them: every Kind has one place to answer, and #83 is
+      // where a fill-gap prompt may carry several gaps.
       parts.push(answersAreChoices(kind)
-        ? '"acceptedAnswers": one or more entries, each copied EXACTLY from "choices"'
-        : '"acceptedAnswers": every wording that is correct, at least one');
+        ? '"acceptedAnswers": a list holding ONE list, of one or more entries copied EXACTLY from "choices"'
+        : '"acceptedAnswers": a list holding ONE list, of every wording that is correct, at least one');
       parts.push(kind === 'word_order'
-        ? '"referenceAnswer": the canonical ordering, and it must be one of "acceptedAnswers"'
-        : '"referenceAnswer": the canonical answer, and it must be one of "acceptedAnswers"');
+        ? '"referenceAnswer": the canonical ordering, and it must be one of the entries in "acceptedAnswers"'
+        : '"referenceAnswer": the canonical answer, and it must be one of the entries in "acceptedAnswers"');
     } else {
       parts.push('"acceptedAnswers": [] — this Kind is judged by a model, not by comparison');
       parts.push('"referenceAnswer": a model answer, used as context when the student is graded');

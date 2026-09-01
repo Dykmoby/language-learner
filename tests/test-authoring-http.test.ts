@@ -57,7 +57,7 @@ const FILL_GAP = {
   kind: 'fill_gap',
   prompt: 'Вставьте артикль: I have ___ cat.',
   referenceAnswer: 'a',
-  acceptedAnswers: ['a'],
+  acceptedAnswers: [['a']],
   choices: [],
   caseSensitive: false,
 };
@@ -137,7 +137,7 @@ test('an incoherent Exercise is refused with the code that says which rule it br
       kind: 'multiple_choice',
       prompt: 'Выберите вариант: I have ___ apple.',
       referenceAnswer: 'the',
-      acceptedAnswers: ['an'],
+      acceptedAnswers: [['an']],
       choices: ['a', 'an'],
       caseSensitive: false,
     }],

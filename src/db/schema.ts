@@ -131,9 +131,11 @@ export const exercises = sqliteTable('exercises', {
   // The canonical answer the Admin writes. Shown to the Grader as context and to
   // the Student on Reveal.
   referenceAnswer: text('reference_answer').notNull(),
-  // Deterministic Check Kinds only: an array, because "put the word in the
-  // correct form" may have several right answers. Unused by Grader-judged Kinds.
-  acceptedAnswers: text('accepted_answers', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  // Deterministic Check Kinds only: one list per position, because a prompt may
+  // have several places to answer and each has its own accepted values. Unused
+  // by Grader-judged Kinds, which store no positions at all.
+  acceptedAnswers: text('accepted_answers', { mode: 'json' })
+    .$type<string[][]>().notNull().default([]),
   caseSensitive: integer('case_sensitive', { mode: 'boolean' }).notNull().default(false),
   // What the Student is offered rather than what is accepted: the options of a
   // multiple choice, the fragments of a word order, in the order they are shown.

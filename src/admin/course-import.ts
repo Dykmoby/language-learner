@@ -39,7 +39,7 @@ import {
 } from '../content/uploads.ts';
 import { courseFaults, resolvedGraderModel } from './authoring.ts';
 import {
-  COURSE_EXPORT_VERSION, parseCourseExport, versionOf,
+  READABLE_EXPORT_VERSIONS, parseCourseExport, versionOf,
   type CourseExport, type ExportedLesson, type ExportedTest,
 } from './course-export.ts';
 
@@ -115,9 +115,11 @@ export function importCourse(db: Db, options: ImportOptions, text: string): Impo
   }
 
   // Before the shape, so a file from a later build is refused as being from a
-  // later build rather than reported as a pile of shape faults.
+  // later build rather than reported as a pile of shape faults. Every format
+  // this build understands is read, not only the one it writes: an export is a
+  // restore, and a Course exported last year has to come back.
   const version = versionOf(value);
-  if (version !== null && version !== COURSE_EXPORT_VERSION) {
+  if (version !== null && !READABLE_EXPORT_VERSIONS.includes(version)) {
     return refuse({ code: 'version_unknown', offending: String(version) });
   }
 
@@ -336,7 +338,7 @@ function writeExercises(
       kind: exercise.kind,
       prompt: exercise.prompt,
       referenceAnswer: exercise.referenceAnswer,
-      acceptedAnswers: [...(exercise.acceptedAnswers ?? [])],
+      acceptedAnswers: (exercise.acceptedAnswers ?? []).map((values) => [...values]),
       caseSensitive: exercise.caseSensitive ?? false,
       choices: [...(exercise.choices ?? [])],
     }).returning().get();
