@@ -75,7 +75,12 @@ export const config = {
     // would time out the very calls this exists for, and sharing its two slots
     // would leave a Student in front of a spinner waiting on an Admin's Lesson —
     // with no way of knowing that is what they are waiting for.
-    timeoutMs: int('AUTHORING_TIMEOUT_MS', 10 * 60_000),
+    //
+    // Twenty minutes rather than ten because MAX_EXERCISES is a hundred: the
+    // wait scales with the Practice asked for, and a cap the timeout cannot sit
+    // through is a cap that only pretends to be raised. It bounds a call that
+    // has stopped coming back; it is not what an ordinary Generation costs.
+    timeoutMs: int('AUTHORING_TIMEOUT_MS', 20 * 60_000),
     // One at a time by default: a two-person application has one Admin, and a
     // second concurrent Generation buys nothing but a second minutes-long call
     // against the same subscription.
