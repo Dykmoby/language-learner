@@ -59,7 +59,7 @@ function sourceFile(): { file: CourseExport; text: string } {
       title: 'Контрольная 1', passThreshold: 65,
       exercises: [{
         kind: 'fill_gap', prompt: 'Вставьте артикль: ___ apple', referenceAnswer: 'an',
-        acceptedAnswers: ['an'], caseSensitive: false, choices: [],
+        acceptedAnswers: [['an']], caseSensitive: false, choices: [],
       }],
     }).ok);
     assert.ok(publishTest(source.db, created.test.id).ok);

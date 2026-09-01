@@ -21,7 +21,7 @@ const A_MULTIPLE_CHOICE: DocumentExercise = {
   kind: 'multiple_choice',
   prompt: 'Выберите вариант: I have ___ apple.',
   referenceAnswer: 'an',
-  acceptedAnswers: ['an'],
+  acceptedAnswers: [['an']],
   caseSensitive: false,
   choices: ['a', 'an', 'the'],
 };
@@ -53,12 +53,12 @@ const FILLED_IN: Record<ExerciseKind, DocumentExercise> = {
   open_writing: { kind: 'open_writing', prompt: 'Свободное письмо.', referenceAnswer: 'Anything goes.' },
   fill_gap: {
     kind: 'fill_gap', prompt: 'Поставьте форму: She ___ (work).',
-    referenceAnswer: 'works', acceptedAnswers: ['works'], caseSensitive: true, choices: [],
+    referenceAnswer: 'works', acceptedAnswers: [['works']], caseSensitive: true, choices: [],
   },
   multiple_choice: A_MULTIPLE_CHOICE,
   word_order: {
     kind: 'word_order', prompt: 'Составьте предложение.',
-    referenceAnswer: 'This is a cat', acceptedAnswers: ['This is a cat'],
+    referenceAnswer: 'This is a cat', acceptedAnswers: [['This is a cat']],
     choices: ['is', 'a', 'this', 'cat'],
   },
 };
@@ -111,7 +111,7 @@ test('a multiple choice\'s answers never cross into another Kind, or back', () =
 
   const wordOrder: DocumentExercise = {
     kind: 'word_order', prompt: 'Составьте предложение.',
-    referenceAnswer: 'This is a cat', acceptedAnswers: ['This is a cat'],
+    referenceAnswer: 'This is a cat', acceptedAnswers: [['This is a cat']],
     choices: ['is', 'a', 'this', 'cat'],
   };
   const asMultipleChoice = withKind(wordOrder, 'multiple_choice');
@@ -125,7 +125,7 @@ test('what both Kinds use is carried across, and what only one of them does is n
     kind: 'fill_gap',
     prompt: 'Поставьте форму: She ___ (work).',
     referenceAnswer: 'works',
-    acceptedAnswers: ['works'],
+    acceptedAnswers: [['works']],
     caseSensitive: true,
     choices: [],
   };
@@ -133,7 +133,7 @@ test('what both Kinds use is carried across, and what only one of them does is n
   // Both are judged in code against a list of accepted answers, so the list and
   // the case-sensitivity flag mean the same thing in both.
   const asWordOrder = withKind(fillGap, 'word_order');
-  assert.deepEqual(asWordOrder.acceptedAnswers, ['works']);
+  assert.deepEqual(asWordOrder.acceptedAnswers, [['works']]);
   assert.equal(asWordOrder.caseSensitive, true);
 
   // A Grader-judged Kind has no accepted list at all, and the flag with it.
@@ -168,7 +168,7 @@ test('renaming an option carries the answers that named it', () => {
   const renamed = renameChoice(A_MULTIPLE_CHOICE, 1, 'an apple');
 
   assert.deepEqual(renamed.choices, ['a', 'an apple', 'the']);
-  assert.deepEqual(renamed.acceptedAnswers, ['an apple']);
+  assert.deepEqual(renamed.acceptedAnswers, [['an apple']]);
   assert.equal(renamed.referenceAnswer, 'an apple');
 });
 
@@ -176,7 +176,7 @@ test('renaming an option that no answer named leaves the answers alone', () => {
   const renamed = renameChoice(A_MULTIPLE_CHOICE, 2, 'those');
 
   assert.deepEqual(renamed.choices, ['a', 'an', 'those']);
-  assert.deepEqual(renamed.acceptedAnswers, ['an']);
+  assert.deepEqual(renamed.acceptedAnswers, [['an']]);
   assert.equal(renamed.referenceAnswer, 'an');
 });
 
@@ -184,7 +184,7 @@ test('removing an option removes the answers that named it', () => {
   const removed = removeChoice(A_MULTIPLE_CHOICE, 1);
 
   assert.deepEqual(removed.choices, ['a', 'the']);
-  assert.deepEqual(removed.acceptedAnswers, [], 'an accepted answer nobody is offered is not an answer');
+  assert.deepEqual(removed.acceptedAnswers, [[]], 'an accepted answer nobody is offered is not an answer');
   assert.equal(removed.referenceAnswer, '', 'and neither is a Reference Answer nobody is offered');
 });
 
@@ -224,12 +224,12 @@ test('blank answers and options are dropped on the way in', () => {
     ...A_DOCUMENT,
     exercises: [{
       ...A_MULTIPLE_CHOICE,
-      acceptedAnswers: ['an', '', '   '],
+      acceptedAnswers: [['an', '', '   ']],
       choices: ['a', 'an', '', 'the'],
     }],
   });
 
-  assert.deepEqual(parsed?.exercises[0]?.acceptedAnswers, ['an']);
+  assert.deepEqual(parsed?.exercises[0]?.acceptedAnswers, [['an']]);
   assert.deepEqual(parsed?.exercises[0]?.choices, ['a', 'an', 'the']);
 });
 
@@ -239,7 +239,7 @@ test('a body that is not a document at all is refused as a shape, not as a fault
     { what: 'no title', body: { grammarFocus: 'f', theoryMarkdown: 't' } },
     { what: 'exercises is not an array', body: { ...A_DOCUMENT, exercises: 'нет' } },
     { what: 'an Exercise Kind nobody has heard of', body: { ...A_DOCUMENT, exercises: [{ ...A_MULTIPLE_CHOICE, kind: 'dictation' }] } },
-    { what: 'accepted answers that are not strings', body: { ...A_DOCUMENT, exercises: [{ ...A_MULTIPLE_CHOICE, acceptedAnswers: [1, 2] }] } },
+    { what: 'accepted answers that are not strings', body: { ...A_DOCUMENT, exercises: [{ ...A_MULTIPLE_CHOICE, acceptedAnswers: [[1, 2]] }] } },
     { what: 'a case-sensitivity flag that is not a boolean', body: { ...A_DOCUMENT, exercises: [{ ...A_MULTIPLE_CHOICE, caseSensitive: 'да' }] } },
     // An id that never named a row must not be dropped and re-inserted: that
     // would turn an edit into a delete, taking the Exercise's Submissions.
@@ -319,7 +319,7 @@ test('what a Kind change discards is counted for every pair of Kinds', () => {
         (values ?? []).filter((value) => value.trim() !== '').length;
       const expected =
         (before.referenceAnswer.trim() !== '' && after.referenceAnswer.trim() === '' ? 1 : 0)
-        + Math.max(0, filled(before.acceptedAnswers) - filled(after.acceptedAnswers))
+        + Math.max(0, filled((before.acceptedAnswers ?? []).flat()) - filled((after.acceptedAnswers ?? []).flat()))
         + Math.max(0, filled(before.choices) - filled(after.choices));
 
       assert.equal(
@@ -378,7 +378,7 @@ test('a blank value counts as absent, so losing it loses nothing', () => {
     kind: 'fill_gap',
     prompt: 'Поставьте форму.',
     referenceAnswer: '  ',
-    acceptedAnswers: ['', '   '],
+    acceptedAnswers: [['', '   ']],
     caseSensitive: false,
     choices: [],
   };

@@ -180,8 +180,10 @@ export function ExerciseList({
                     </span>
                     <textarea
                       rows={3}
-                      value={linesOf(exercise.acceptedAnswers)}
-                      onChange={(e) => replace(index, { ...exercise, acceptedAnswers: toLines(e.target.value) })}
+                      // The Exercise's one gap. #83 is where a prompt with
+                      // several of them gets a box per gap.
+                      value={linesOf(exercise.acceptedAnswers?.[0])}
+                      onChange={(e) => replace(index, { ...exercise, acceptedAnswers: [toLines(e.target.value)] })}
                       disabled={disabled}
                     />
                   </label>
@@ -277,15 +279,17 @@ type ChoiceProps = {
  */
 function ChoiceFields({ exercise, position, disabled, onChange }: ChoiceProps) {
   const choices = exercise.choices ?? [];
-  const accepted = exercise.acceptedAnswers ?? [];
+  // A multiple choice and a word order each have exactly one place to answer, so
+  // the options are marked against the Exercise's one position.
+  const accepted = exercise.acceptedAnswers?.[0] ?? [];
   const marked = exercise.kind === 'multiple_choice';
 
   function toggleAccepted(value: string, on: boolean) {
     onChange({
       ...exercise,
-      acceptedAnswers: on
+      acceptedAnswers: [on
         ? [...accepted.filter((answer) => answer !== value), value]
-        : accepted.filter((answer) => answer !== value),
+        : accepted.filter((answer) => answer !== value)],
     });
   }
 

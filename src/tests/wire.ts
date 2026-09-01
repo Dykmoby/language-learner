@@ -7,6 +7,7 @@
 // *reviewed* carries everything, because the attempt is closed and the review is
 // what the Test was for.
 
+import type { AcceptedAnswers } from '../content/exercise-validity.ts';
 import type { ExerciseKind } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
 import type { ErrorView } from '../practice/wire.ts';
@@ -50,8 +51,8 @@ export type AttemptExerciseView = {
   corrected: string | null;
   errors: ErrorView[];
   referenceAnswer: string;
-  /** Deterministic Kinds only: every answer that would have been accepted. */
-  acceptedAnswers: string[];
+  /** Deterministic Kinds only: every answer that would have been accepted, per gap. */
+  acceptedAnswers: AcceptedAnswers;
   /**
    * The objection standing against this judgement, if the Student made one, and
    * what an Admin ruled if they have. Null where none was made.

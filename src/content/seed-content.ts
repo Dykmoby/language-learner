@@ -116,7 +116,7 @@ export function seedCourseContent(db: Db, fixture: CourseFixture = ENGLISH_A1): 
           kind: exerciseFixture.kind,
           prompt: exerciseFixture.prompt,
           referenceAnswer: exerciseFixture.referenceAnswer,
-          acceptedAnswers: exerciseFixture.acceptedAnswers ?? [],
+          acceptedAnswers: (exerciseFixture.acceptedAnswers ?? []).map((values) => [...values]),
           caseSensitive: exerciseFixture.caseSensitive ?? false,
           choices: exerciseFixture.choices ?? [],
         };

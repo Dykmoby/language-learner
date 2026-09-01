@@ -345,7 +345,7 @@ export function openAttempt(
         explanationRu: error.explanationRu,
       })),
       referenceAnswer: exercise.referenceAnswer,
-      acceptedAnswers: isDeterministic(exercise.kind) ? acceptedPositions(exercise).flat() : [],
+      acceptedAnswers: isDeterministic(exercise.kind) ? acceptedPositions(exercise) : [],
       dispute: objection === undefined ? null : { ruling: objection.ruling },
     };
   });

@@ -149,7 +149,7 @@ test('Test attempts are summarised beside the Lessons, each with its score', asy
         kind: 'fill_gap',
         prompt: 'Вставьте артикль: I saw ___ bird.',
         referenceAnswer: 'a',
-        acceptedAnswers: ['a'],
+        acceptedAnswers: [['a']],
         choices: [],
         caseSensitive: false,
       }],

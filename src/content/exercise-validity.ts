@@ -111,7 +111,7 @@ export type AuthoredExercise = {
   kind: ExerciseKind;
   prompt: string;
   referenceAnswer: string;
-  acceptedAnswers?: readonly string[];
+  acceptedAnswers?: AcceptedAnswers;
   caseSensitive?: boolean;
   choices?: readonly string[];
 };
@@ -189,7 +189,12 @@ export function exerciseFaults(exercise: AuthoredExercise): ExerciseFault[] {
 
   // Held to the same standard as an answer: a value that normalises away is
   // absent, whatever the raw string looked like.
-  const accepted = (exercise.acceptedAnswers ?? []).filter((value) => !isBlank(value));
+  //
+  // Flattened, because every rule below asks about a *value* — is it on offer,
+  // do the fragments tile it, has it been written twice — and every Exercise has
+  // one position for them to sit in. #83 is where a gap count has to agree with
+  // a position count and these become questions about positions.
+  const accepted = (exercise.acceptedAnswers ?? []).flat().filter((value) => !isBlank(value));
   const choices = (exercise.choices ?? []).filter((value) => !isBlank(value));
 
   if (isBlank(exercise.prompt)) faults.push({ code: 'prompt_empty' });

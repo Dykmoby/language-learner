@@ -35,7 +35,7 @@ const EXERCISES = [
     kind: 'fill_gap' as const,
     prompt: 'Вставьте артикль: I have ___ cat.',
     referenceAnswer: 'a',
-    acceptedAnswers: ['a'],
+    acceptedAnswers: [['a']],
     choices: [],
     caseSensitive: false,
   },

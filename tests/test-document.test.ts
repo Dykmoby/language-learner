@@ -24,7 +24,7 @@ function document(over: Partial<TestDocument> = {}): TestDocument {
         kind: 'fill_gap',
         prompt: 'Вставьте артикль: I have ___ cat.',
         referenceAnswer: 'a',
-        acceptedAnswers: ['a'],
+        acceptedAnswers: [['a']],
         choices: [],
         caseSensitive: false,
       },
@@ -72,7 +72,7 @@ test('the Exercise validity rules apply here exactly as they do in a Lesson', ()
         kind: 'multiple_choice',
         prompt: 'Выберите вариант: I have ___ apple.',
         referenceAnswer: 'the',
-        acceptedAnswers: ['an'],
+        acceptedAnswers: [['an']],
         choices: ['a', 'an'],
       },
     ],
@@ -85,8 +85,8 @@ test('the Exercise validity rules apply here exactly as they do in a Lesson', ()
 test('the same Exercise row claimed twice is refused', () => {
   const twice = document({
     exercises: [
-      { kind: 'fill_gap', id: 7, prompt: 'a', referenceAnswer: 'a', acceptedAnswers: ['a'] },
-      { kind: 'fill_gap', id: 7, prompt: 'b', referenceAnswer: 'b', acceptedAnswers: ['b'] },
+      { kind: 'fill_gap', id: 7, prompt: 'a', referenceAnswer: 'a', acceptedAnswers: [['a']] },
+      { kind: 'fill_gap', id: 7, prompt: 'b', referenceAnswer: 'b', acceptedAnswers: [['b']] },
     ],
   });
 
@@ -116,7 +116,7 @@ test('an Exercise id survives the parse — losing one would take a Student’s 
   const parsed = parseTestDocument({
     title: 'x',
     passThreshold: 80,
-    exercises: [{ id: 11, kind: 'fill_gap', prompt: 'p', referenceAnswer: 'a', acceptedAnswers: ['a'] }],
+    exercises: [{ id: 11, kind: 'fill_gap', prompt: 'p', referenceAnswer: 'a', acceptedAnswers: [['a']] }],
   });
 
   assert.equal(parsed?.exercises[0]?.id, 11);

@@ -11,14 +11,15 @@
 // eye, and a person must.
 
 import type { ExerciseKind } from '../db/schema.ts';
+import type { AcceptedAnswers } from './exercise-validity.ts';
 
 export type ExerciseFixture = {
   kind: ExerciseKind;
   /** Shown to the Student, in Russian. */
   prompt: string;
   referenceAnswer: string;
-  /** Deterministic Check Kinds: every form judged correct. */
-  acceptedAnswers?: string[];
+  /** Deterministic Check Kinds: every form judged correct, one list per gap. */
+  acceptedAnswers?: AcceptedAnswers;
   /** Set where capitalisation is the point, and nowhere else. */
   caseSensitive?: boolean;
   /** Multiple choice options, or word order fragments, in the order shown. */
@@ -115,7 +116,7 @@ export const ENGLISH_A1: CourseFixture = {
           kind: 'fill_gap',
           prompt: 'Вставьте артикль: I have ___ apple.',
           referenceAnswer: 'an',
-          acceptedAnswers: ['an'],
+          acceptedAnswers: [['an']],
         },
         {
           kind: 'fill_gap',
@@ -125,28 +126,28 @@ export const ENGLISH_A1: CourseFixture = {
           // depending on their keyboard.
           prompt: 'Вставьте пропущенное слово или сокращение: He ___ a doctor.',
           referenceAnswer: 'is',
-          acceptedAnswers: ['is', "'s", '’s'],
+          acceptedAnswers: [['is', "'s", '’s']],
         },
         {
           kind: 'fill_gap',
           // caseSensitive: the whole point of this Exercise is the capital letter.
           prompt: 'Вставьте пропущенное слово с правильной заглавной буквы: ___ am from Dushanbe.',
           referenceAnswer: 'I',
-          acceptedAnswers: ['I'],
+          acceptedAnswers: [['I']],
           caseSensitive: true,
         },
         {
           kind: 'multiple_choice',
           prompt: 'Выберите правильный вариант: She is ___ teacher.',
           referenceAnswer: 'a',
-          acceptedAnswers: ['a'],
+          acceptedAnswers: [['a']],
           choices: ['a', 'an', 'the', '— (без артикля)'],
         },
         {
           kind: 'word_order',
           prompt: 'Составьте предложение из слов: is / a / this / cat',
           referenceAnswer: 'This is a cat',
-          acceptedAnswers: ['This is a cat'],
+          acceptedAnswers: [['This is a cat']],
           choices: ['is', 'a', 'this', 'cat'],
         },
         {
@@ -177,13 +178,13 @@ export const ENGLISH_A1: CourseFixture = {
           kind: 'fill_gap',
           prompt: 'Поставьте глагол в правильную форму: She ___ (work) in a school.',
           referenceAnswer: 'works',
-          acceptedAnswers: ['works'],
+          acceptedAnswers: [['works']],
         },
         {
           kind: 'multiple_choice',
           prompt: 'Выберите правильный вариант: He ___ like coffee.',
           referenceAnswer: "doesn't",
-          acceptedAnswers: ["doesn't"],
+          acceptedAnswers: [["doesn't"]],
           choices: ["doesn't", "don't", "isn't", "aren't"],
         },
         {
@@ -191,7 +192,7 @@ export const ENGLISH_A1: CourseFixture = {
           // Two valid orders: the adverb of frequency may lead the sentence.
           prompt: 'Составьте предложение: usually / I / go / to school / by bus',
           referenceAnswer: 'I usually go to school by bus',
-          acceptedAnswers: ['I usually go to school by bus', 'Usually I go to school by bus'],
+          acceptedAnswers: [['I usually go to school by bus', 'Usually I go to school by bus']],
           choices: ['usually', 'I', 'go', 'to school', 'by bus'],
         },
         {

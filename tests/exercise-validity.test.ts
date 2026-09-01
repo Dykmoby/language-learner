@@ -63,19 +63,19 @@ test('a Deterministic Check Kind needs at least one accepted answer', () => {
     },
     {
       what: 'fill-gap with one accepted answer is complete',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: ['an'] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: [['an']] },
       expect: [],
     },
     {
       what: 'an accepted answer that is only whitespace does not count as one',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: ['  '] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: [['  ']] },
       expect: ['accepted_answers_required'],
     },
   ]);
 });
 
 test('multiple choice: the options, and what may be judged correct among them', () => {
-  const base = { kind: 'multiple_choice' as const, referenceAnswer: 'a', acceptedAnswers: ['a'] };
+  const base = { kind: 'multiple_choice' as const, referenceAnswer: 'a', acceptedAnswers: [['a']] };
   runTable([
     {
       what: 'four options with the Reference Answer among them',
@@ -94,22 +94,22 @@ test('multiple choice: the options, and what may be judged correct among them', 
     },
     {
       what: 'an accepted answer that is not on offer can never be selected',
-      exercise: { ...base, acceptedAnswers: ['a', 'some'], choices: ['a', 'an', 'the'] },
+      exercise: { ...base, acceptedAnswers: [['a', 'some']], choices: ['a', 'an', 'the'] },
       expect: ['accepted_answer_not_a_choice'],
     },
     {
       what: 'a Reference Answer that is not on offer shows the Student something never offered',
-      exercise: { ...base, referenceAnswer: 'some', acceptedAnswers: ['a'], choices: ['a', 'an', 'the'] },
+      exercise: { ...base, referenceAnswer: 'some', acceptedAnswers: [['a']], choices: ['a', 'an', 'the'] },
       expect: ['reference_answer_not_a_choice'],
     },
     {
       what: 'options are matched the way the Deterministic Check will match them',
-      exercise: { ...base, referenceAnswer: 'A', acceptedAnswers: ['A'], choices: ['a', 'an', 'the'] },
+      exercise: { ...base, referenceAnswer: 'A', acceptedAnswers: [['A']], choices: ['a', 'an', 'the'] },
       expect: [],
     },
     {
       what: 'under caseSensitive the same pair no longer matches',
-      exercise: { ...base, referenceAnswer: 'A', acceptedAnswers: ['A'], choices: ['a', 'an', 'the'], caseSensitive: true },
+      exercise: { ...base, referenceAnswer: 'A', acceptedAnswers: [['A']], choices: ['a', 'an', 'the'], caseSensitive: true },
       expect: ['accepted_answer_not_a_choice', 'reference_answer_not_a_choice'],
     },
   ]);
@@ -123,7 +123,7 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'This is a cat',
-        acceptedAnswers: ['This is a cat'],
+        acceptedAnswers: [['This is a cat']],
         choices: ['is', 'a', 'this', 'cat'],
       },
       expect: [],
@@ -133,7 +133,7 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'I usually go to school by bus',
-        acceptedAnswers: ['I usually go to school by bus', 'Usually I go to school by bus'],
+        acceptedAnswers: [['I usually go to school by bus', 'Usually I go to school by bus']],
         choices: ['usually', 'I', 'go', 'to school', 'by bus'],
       },
       expect: [],
@@ -143,7 +143,7 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'This is my cat',
-        acceptedAnswers: ['This is my cat'],
+        acceptedAnswers: [['This is my cat']],
         choices: ['is', 'a', 'this', 'cat'],
       },
       expect: ['fragments_do_not_build_answer'],
@@ -153,7 +153,7 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'This is a cat',
-        acceptedAnswers: ['This is a cat'],
+        acceptedAnswers: [['This is a cat']],
         choices: ['is', 'a', 'this', 'cat', 'big'],
       },
       expect: ['fragments_do_not_build_answer'],
@@ -163,7 +163,7 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'a cat a cat',
-        acceptedAnswers: ['a cat a cat'],
+        acceptedAnswers: [['a cat a cat']],
         choices: ['a', 'cat'],
       },
       expect: ['fragments_do_not_build_answer'],
@@ -173,7 +173,7 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'to bus by school',
-        acceptedAnswers: ['to bus by school'],
+        acceptedAnswers: [['to bus by school']],
         choices: ['to school', 'by bus'],
       },
       expect: ['fragments_do_not_build_answer'],
@@ -183,14 +183,14 @@ test('word order: every accepted order is built from exactly the fragments shown
       exercise: {
         ...base,
         referenceAnswer: 'a cat and a dog',
-        acceptedAnswers: ['a cat and a dog'],
+        acceptedAnswers: [['a cat and a dog']],
         choices: ['a', 'cat', 'and', 'a', 'dog'],
       },
       expect: [],
     },
     {
       what: 'word order needs fragments to show, like multiple choice needs options',
-      exercise: { ...base, referenceAnswer: 'This is a cat', acceptedAnswers: ['This is a cat'], choices: [] },
+      exercise: { ...base, referenceAnswer: 'This is a cat', acceptedAnswers: [['This is a cat']], choices: [] },
       expect: ['choices_required'],
     },
   ]);
@@ -205,17 +205,17 @@ test('a Grader-judged Kind carries neither choices nor accepted answers', () => 
     },
     {
       what: 'leftover accepted answers, likewise',
-      exercise: { kind: 'open_writing', acceptedAnswers: ['I have a cat.'] },
+      exercise: { kind: 'open_writing', acceptedAnswers: [['I have a cat.']] },
       expect: ['accepted_answers_not_allowed'],
     },
     {
       what: 'both left behind at once',
-      exercise: { kind: 'translation', choices: ['a'], acceptedAnswers: ['a'] },
+      exercise: { kind: 'translation', choices: ['a'], acceptedAnswers: [['a']] },
       expect: ['choices_not_allowed', 'accepted_answers_not_allowed'],
     },
     {
       what: 'fill-gap has no options to offer either — only multiple choice and word order do',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: ['an'], choices: ['a', 'an'] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'an', acceptedAnswers: [['an']], choices: ['a', 'an'] },
       expect: ['choices_not_allowed'],
     },
   ]);
@@ -225,27 +225,27 @@ test('two accepted answers that collapse to the same string are an authoring mis
   runTable([
     {
       what: 'differing only by case, which the Deterministic Check folds away',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: ['is', 'IS'] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', 'IS']] },
       expect: ['duplicate_accepted_answers'],
     },
     {
       what: 'differing only by a trailing full stop',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: ['is', 'is.'] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', 'is.']] },
       expect: ['duplicate_accepted_answers'],
     },
     {
       what: 'differing only by ё, which normalises to е',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'ещё', acceptedAnswers: ['ещё', 'еще'] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'ещё', acceptedAnswers: [['ещё', 'еще']] },
       expect: ['duplicate_accepted_answers'],
     },
     {
       what: 'under caseSensitive, case is no longer folded and the pair is two real answers',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: ['is', 'IS'], caseSensitive: true },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', 'IS']], caseSensitive: true },
       expect: [],
     },
     {
       what: 'genuinely different answers are not duplicates',
-      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: ['is', "'s", '’s'] },
+      exercise: { kind: 'fill_gap', referenceAnswer: 'is', acceptedAnswers: [['is', "'s", '’s']] },
       expect: [],
     },
   ]);
@@ -256,7 +256,7 @@ test('the fault names the value at fault where one value is to blame', () => {
     kind: 'multiple_choice',
     prompt: 'Выберите артикль.',
     referenceAnswer: 'a',
-    acceptedAnswers: ['a', 'some'],
+    acceptedAnswers: [['a', 'some']],
     choices: ['a', 'an', 'the'],
   });
   assert.deepEqual(faults, [{ code: 'accepted_answer_not_a_choice', offending: 'some' }]);
@@ -304,7 +304,7 @@ test('a word order with more fragments than can be checked is refused, not waved
     codes({
       kind: 'word_order',
       referenceAnswer: fragments.join(' '),
-      acceptedAnswers: [fragments.join(' ')],
+      acceptedAnswers: [[fragments.join(' ')]],
       choices: fragments,
     }),
     ['too_many_fragments'],
@@ -317,7 +317,7 @@ test('a word order with more fragments than can be checked is refused, not waved
     codes({
       kind: 'word_order',
       referenceAnswer: atBound.join(' '),
-      acceptedAnswers: [atBound.join(' ')],
+      acceptedAnswers: [[atBound.join(' ')]],
       choices: atBound,
     }),
     [],
@@ -326,7 +326,7 @@ test('a word order with more fragments than can be checked is refused, not waved
     codes({
       kind: 'word_order',
       referenceAnswer: atBound.join(' '),
-      acceptedAnswers: [[...atBound, 'extra'].join(' ')],
+      acceptedAnswers: [[[...atBound, 'extra'].join(' ')]],
       choices: atBound,
     }),
     ['fragments_do_not_build_answer'],

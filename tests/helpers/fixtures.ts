@@ -22,16 +22,16 @@ export const DETERMINISTIC_COURSE: CourseFixture = {
       grammarFocus: 'Indefinite article a/an with singular countable nouns.',
       theoryMarkdown: '## Первый урок\n\nАртикль **a** перед согласным звуком.',
       practice: [
-        { kind: 'fill_gap', prompt: 'Вставьте артикль: I have ___ cat.', referenceAnswer: 'a', acceptedAnswers: ['a'] },
+        { kind: 'fill_gap', prompt: 'Вставьте артикль: I have ___ cat.', referenceAnswer: 'a', acceptedAnswers: [['a']] },
         {
           kind: 'multiple_choice',
           prompt: 'Выберите вариант: I have ___ apple.',
-          referenceAnswer: 'an', acceptedAnswers: ['an'], choices: ['a', 'an', 'the'],
+          referenceAnswer: 'an', acceptedAnswers: [['an']], choices: ['a', 'an', 'the'],
         },
         {
           kind: 'word_order',
           prompt: 'Составьте предложение: is / a / this / cat',
-          referenceAnswer: 'This is a cat', acceptedAnswers: ['This is a cat'],
+          referenceAnswer: 'This is a cat', acceptedAnswers: [['This is a cat']],
           choices: ['is', 'a', 'this', 'cat'],
         },
       ],
@@ -41,7 +41,7 @@ export const DETERMINISTIC_COURSE: CourseFixture = {
       grammarFocus: 'Present Simple third person -s.',
       theoryMarkdown: '## Второй урок\n\nВ третьем лице добавляется **-s**.',
       practice: [
-        { kind: 'fill_gap', prompt: 'Поставьте форму: She ___ (work).', referenceAnswer: 'works', acceptedAnswers: ['works'] },
+        { kind: 'fill_gap', prompt: 'Поставьте форму: She ___ (work).', referenceAnswer: 'works', acceptedAnswers: [['works']] },
       ],
     },
   ],
@@ -59,7 +59,7 @@ export const OTHER_COURSE: CourseFixture = {
       grammarFocus: 'Past Simple regular verbs.',
       theoryMarkdown: '## Чужой урок\n\nЭтот урок не для этого студента.',
       practice: [
-        { kind: 'fill_gap', prompt: 'Вставьте форму: I ___ (work) yesterday.', referenceAnswer: 'worked', acceptedAnswers: ['worked'] },
+        { kind: 'fill_gap', prompt: 'Вставьте форму: I ___ (work) yesterday.', referenceAnswer: 'worked', acceptedAnswers: [['worked']] },
       ],
     },
   ],
@@ -85,7 +85,7 @@ export const HOSTILE_THEORY_COURSE: CourseFixture = {
         '[нажми](javascript:window.__owned=true)',
       ].join('\n'),
       practice: [
-        { kind: 'fill_gap', prompt: 'Вставьте артикль: I have ___ cat.', referenceAnswer: 'a', acceptedAnswers: ['a'] },
+        { kind: 'fill_gap', prompt: 'Вставьте артикль: I have ___ cat.', referenceAnswer: 'a', acceptedAnswers: [['a']] },
       ],
     },
   ],
@@ -98,9 +98,9 @@ export const HOSTILE_THEORY_COURSE: CourseFixture = {
  */
 export function kindShowcase(kind: ExerciseKind): CourseFixture {
   const deterministic = {
-    fill_gap: { acceptedAnswers: ['a'], choices: [] },
-    multiple_choice: { acceptedAnswers: ['a'], choices: ['a', 'an', 'the'] },
-    word_order: { acceptedAnswers: ['This is a cat'], choices: ['is', 'a', 'this', 'cat'] },
+    fill_gap: { acceptedAnswers: [['a']], choices: [] },
+    multiple_choice: { acceptedAnswers: [['a']], choices: ['a', 'an', 'the'] },
+    word_order: { acceptedAnswers: [['This is a cat']], choices: ['is', 'a', 'this', 'cat'] },
   }[kind as 'fill_gap' | 'multiple_choice' | 'word_order'] ?? { acceptedAnswers: [], choices: [] };
 
   return {

@@ -145,10 +145,11 @@ test('the Exercise Kinds are exactly the six in design.md § Exercise Kinds', ()
   assert.deepEqual([...EXERCISE_KINDS].sort(), documented.sort());
 });
 
-test('a Deterministic Check Exercise stores an array of accepted answers and a case-sensitivity flag', () => {
-  // design.md § Deterministic Check normalisation — the array plus the flag is
-  // what makes "put the word in the correct form" able to demand capitalisation
-  // while ordinary Exercises ignore it.
+test('a Deterministic Check Exercise stores its accepted answers per gap, with a case-sensitivity flag', () => {
+  // design.md § Deterministic Check normalisation — the accepted values plus the
+  // flag are what make "put the word in the correct form" able to demand
+  // capitalisation while ordinary Exercises ignore it. One list per position, so
+  // a prompt with several gaps has somewhere to put each gap's answers.
   const dbh = freshDatabase();
   try {
     const course = aCourse(dbh.db);
@@ -161,11 +162,11 @@ test('a Deterministic Check Exercise stores an array of accepted answers and a c
       exerciseSetId: set.id, position: 1, kind: 'fill_gap',
       prompt: 'Вставьте артикль: I have __ cat.',
       referenceAnswer: 'a',
-      acceptedAnswers: ['a', 'one'],
+      acceptedAnswers: [['a', 'one']],
       caseSensitive: true,
     }).returning().get();
 
-    assert.deepEqual(exercise.acceptedAnswers, ['a', 'one'], 'an array, not a single string');
+    assert.deepEqual(exercise.acceptedAnswers, [['a', 'one']], 'a list per position, not a single string');
     assert.equal(exercise.caseSensitive, true);
   } finally { dbh.cleanup(); }
 });
