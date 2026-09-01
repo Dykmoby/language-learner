@@ -259,3 +259,50 @@ export function enrollStudent(db: Db, input: { courseId: number; studentId: numb
 
   return { ok: true, created: true };
 }
+
+export type WithdrawResult = { ok: true; removed: boolean };
+
+/**
+ * Drops a Student's Enrollment in one Course.
+ *
+ * The other half of enrolling, which existed on its own for long enough that a
+ * Student put on the wrong Course kept it: the screen could add access and had
+ * no way to take it back.
+ *
+ * It removes **access and nothing else**. Their Submissions in that Course stay
+ * exactly where they are, so enrolling them again puts them back where they
+ * stopped rather than at the beginning. Deleting the work is what deleting the
+ * Student does, and the two acts are deliberately not the same size.
+ *
+ * Withdrawing someone who was not enrolled is reported rather than refused —
+ * the mirror of enrolling someone who already was, and for the same reason: an
+ * Enrollment is a fact rather than an event, and both calls leave the same fact
+ * behind. Which is also why this refuses nothing at all and has no fault codes:
+ * an unknown Course and an unknown Student are both simply an Enrollment that is
+ * not there.
+ */
+export function withdrawStudent(
+  db: Db,
+  input: { courseId: number; studentId: number },
+): WithdrawResult {
+  const existing = db.select().from(enrollments).where(and(
+    eq(enrollments.courseId, input.courseId),
+    eq(enrollments.studentId, input.studentId),
+  )).get();
+  if (!existing) return { ok: true, removed: false };
+
+  db.transaction((tx) => {
+    tx.delete(enrollments).where(eq(enrollments.id, existing.id)).run();
+    // The Current Course is where a Student is put back on their next visit, and
+    // a Course they can no longer reach is not somewhere to be put back to. The
+    // home screen already tolerates a stale value by ignoring it, so this is not
+    // a correctness fix — it is the difference between landing where they left
+    // off and landing on the Courses list for no stated reason.
+    tx.update(students)
+      .set({ currentCourseId: null })
+      .where(and(eq(students.id, input.studentId), eq(students.currentCourseId, input.courseId)))
+      .run();
+  });
+
+  return { ok: true, removed: true };
+}

@@ -38,7 +38,24 @@ building rather than a step someone has to remember:
   stays stopped rather than being started by somebody's build.
 
 The deploy loop is therefore `git pull && npm ci && npm run build`, with nothing
-after it. Watch the restart land:
+after it **unless the schema moved**. Migrations are not applied by the service —
+`src/db/migrate.ts` is a CLI of its own, deliberately, so that creating the schema
+and starting the application stay separate acts. So a release that adds a
+migration needs one command before the build, and the failure it prevents is not
+subtle: the column the new code selects does not exist, and every screen that
+reads the table 500s.
+
+```bash
+git pull
+DATABASE_PATH=/home/dykmoby/language-learner/data/language-learner.db \
+  node src/db/migrate.ts
+npm ci && npm run build
+```
+
+Running it when nothing moved is a no-op, so the safe habit is to run it every
+time rather than to decide each time whether it is needed.
+
+Watch the restart land:
 
 ```bash
 journalctl -u language-learner-restart.service -u language-learner -f
@@ -63,8 +80,15 @@ DATABASE_PATH=/home/dykmoby/language-learner/data/language-learner.db \
 ```
 
 Re-running leaves existing accounts untouched and says so. `--force` overwrites —
-that is how a password gets changed, since there is no web surface that creates
-or edits an account.
+that is how a forgotten password is reset, and how the Admin's own password is
+changed from the box.
+
+This script is still the only thing that grants the Admin role, and there is
+still no registration route. What it is no longer the only way to do is make a
+Student: an Admin creates further accounts from `/admin/students`, each with a
+generated Temporary Password the new Student must replace before they can reach
+anything. Those accounts are always Students — nothing in the interface can make
+an Admin, or delete one.
 
 ## Seeding content
 

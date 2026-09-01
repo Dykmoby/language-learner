@@ -58,6 +58,9 @@ export default async function AdminPage() {
       <ImportCourseForm />
 
       <p className="actions">
+        <a href="/admin/students">{ru.admin.accountsLink}</a>
+      </p>
+      <p className="actions">
         <a href="/admin/disputes">{ru.disputeReview.link}</a>
       </p>
       <p className="actions">

@@ -26,6 +26,17 @@ export const students = sqliteTable('students', {
   // argon2id. A stolen copy of the database file must not hand over passwords.
   passwordHash: text('password_hash').notNull(),
   isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
+  // Set on an account an Admin created and cleared the moment its owner chooses
+  // a password of their own. It is a fact about the *password*, not a stage in a
+  // sign-up: an Admin who hands out a Temporary Password knows it, and an
+  // account whose password somebody else knows must not be usable for anything
+  // until that stops being true. The middleware is what enforces that, so this
+  // column is read on every request — cheap, because the session lookup already
+  // returns the whole row.
+  //
+  // Defaulted false so the two seeded accounts read as what they are: passwords
+  // chosen by their owner in the environment file, which nobody was handed.
+  passwordIsTemporary: integer('password_is_temporary', { mode: 'boolean' }).notNull().default(false),
   // The Course a Student last worked in, restored on their next visit. Nullable:
   // a freshly seeded Student has not worked anywhere yet.
   currentCourseId: integer('current_course_id'),

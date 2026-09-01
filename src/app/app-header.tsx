@@ -32,6 +32,29 @@ export async function AppHeader() {
   if (student === null) return null;
 
   const pathname = (await headers()).get(PATHNAME_HEADER) ?? '';
+
+  // An account still holding a Temporary Password can reach exactly one screen,
+  // and every link this header would otherwise offer bounces straight back to
+  // it. So it offers none of them: the name is text rather than a link, no
+  // Course is named — the Course query is not even run, because there is nothing
+  // it could produce that this header may show — and the one control left is the
+  // one that still leads somewhere. A nav full of links that return you to the
+  // page you clicked them on is worse than no nav.
+  if (student.passwordIsTemporary) {
+    return (
+      <header className="appHeader">
+        <div>
+          <span className="appName">{ru.appName}</span>
+          <nav aria-label={ru.chrome.navLabel}>
+            <form method="post" action="/api/logout">
+              <button type="submit" className="secondary">{ru.common.signOut}</button>
+            </form>
+          </nav>
+        </div>
+      </header>
+    );
+  }
+
   const { db } = getDatabase();
   const course = openCourse(db, student, pathname);
 

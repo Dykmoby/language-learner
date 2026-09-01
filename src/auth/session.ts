@@ -3,7 +3,7 @@
 // cannot do (issue #1 § Authentication).
 
 import { randomBytes } from 'node:crypto';
-import { and, eq, gt, lt } from 'drizzle-orm';
+import { and, eq, gt, lt, ne } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import { sessions, students, type StudentRow } from '../db/schema.ts';
@@ -46,4 +46,25 @@ export function deleteSession(db: Db, sessionId: string): void {
 // nobody can use any more.
 export function deleteExpiredSessions(db: Db): void {
   db.delete(sessions).where(lt(sessions.expiresAt, new Date())).run();
+}
+
+/**
+ * Every session of this Student except the one asking. Called when the password
+ * changes.
+ *
+ * A password is changed for two reasons and this is right for both. Replacing a
+ * Temporary Password ends the window in which somebody else knew it, and a
+ * window that ends everywhere except on a device already signed in has not
+ * ended. Changing a password because it may be known to someone is the same
+ * thing said in a hurry — and the row is the only thing that revokes a session
+ * here, which is the whole reason sessions are rows rather than tokens.
+ *
+ * The caller's own session is kept: signing a Student out of the screen they are
+ * standing in front of, as the reward for doing the right thing, would teach
+ * them not to.
+ */
+export function deleteOtherSessions(db: Db, studentId: number, keepSessionId: string): void {
+  db.delete(sessions)
+    .where(and(eq(sessions.studentId, studentId), ne(sessions.id, keepSessionId)))
+    .run();
 }

@@ -153,6 +153,29 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
     }
   }
 
+  // The other half of enrolling, and deliberately reversible: it takes away
+  // access to the Course and touches none of the Student's work in it, so
+  // enrolling them again resumes where they stopped. That is why there is no
+  // confirmation step in front of it — the act it undoes is one press away.
+  async function withdraw(studentId: number) {
+    setBusy(true);
+    clearMessages();
+    try {
+      const response = await fetch(`/api/admin/courses/${courseId}/enrollments/${studentId}`, {
+        method: 'DELETE',
+      });
+      const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+      if (!response.ok || body?.ok !== true) return report(body);
+      setRoster((current) => current.map((entry) =>
+        entry.id === studentId ? { ...entry, enrolled: false } : entry));
+      setNotice(ru.admin.withdrawnNow);
+    } catch {
+      setProblem(ru.admin.writeFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <h2>{ru.admin.lessonsTitle}</h2>
@@ -251,7 +274,14 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
             <li key={entry.id}>
               {entry.username}
               {entry.enrolled ? (
-                <span className="muted"> — {ru.admin.enrolledAlready}</span>
+                <>
+                  <span className="muted"> — {ru.admin.enrolledAlready}</span>
+                  <span className="actions">
+                    <button type="button" className="secondary" onClick={() => withdraw(entry.id)} disabled={busy}>
+                      {busy ? ru.admin.withdrawing : ru.admin.withdraw}
+                    </button>
+                  </span>
+                </>
               ) : (
                 <span className="actions">
                   <button type="button" className="secondary" onClick={() => enroll(entry.id)} disabled={busy}>

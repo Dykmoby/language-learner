@@ -130,3 +130,34 @@ export function courseRoster(db: Db, courseId: number): RosterEntry[] {
 
   return everyone.map((student) => ({ student, enrolled: enrolled.has(student.id) }));
 }
+
+export type AccountEntry = {
+  student: StudentRow;
+  /** How many Courses this Student can reach. Zero is a real and visible state. */
+  enrollmentCount: number;
+};
+
+/**
+ * Every account, in the order they were made, each with the number of Courses it
+ * reaches.
+ *
+ * The count is here rather than on the screen because it is the one number that
+ * makes the delete button safe to press: an account with no Enrollments has
+ * nothing behind it, and an account with three is somebody who has been studying.
+ * A list of names alone gives an Admin no way to tell those apart.
+ *
+ * Every account rather than every non-Admin one. An Admin cannot be deleted from
+ * these screens, and hiding the row that says so would leave a list that quietly
+ * disagrees with the sign-in screen about who exists.
+ */
+export function everyStudent(db: Db): AccountEntry[] {
+  const everyone = db.select().from(students).orderBy(asc(students.id)).all();
+  if (everyone.length === 0) return [];
+
+  const counts = new Map<number, number>();
+  for (const row of db.select({ studentId: enrollments.studentId }).from(enrollments).all()) {
+    counts.set(row.studentId, (counts.get(row.studentId) ?? 0) + 1);
+  }
+
+  return everyone.map((student) => ({ student, enrollmentCount: counts.get(student.id) ?? 0 }));
+}
