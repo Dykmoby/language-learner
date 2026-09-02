@@ -13,12 +13,18 @@ import { useState } from 'react';
 import { ru, faultMessage } from '../../ru.ts';
 import { CEFR_LEVELS, GRADER_MODELS, DEFAULT_GRADER_MODEL } from '../../content/course-options.ts';
 import { LANGUAGES, type Language } from '../../grader/contract.ts';
+import type { Effort } from '../../claude/effort.ts';
+import { EffortSelect } from './effort-select.tsx';
 
 export function NewCourseForm() {
   const [language, setLanguage] = useState<Language>('en');
   const [level, setLevel] = useState<string>(CEFR_LEVELS[0]);
   const [title, setTitle] = useState('');
   const [graderModel, setGraderModel] = useState<string>(DEFAULT_GRADER_MODEL.en);
+  // `low` rather than «По умолчанию», and deliberately: it is what every Course
+  // in the system grades at, so a new Course starts out judged like its
+  // neighbours instead of at whatever the model happens to choose.
+  const [graderEffort, setGraderEffort] = useState<Effort | null>('low');
   // Once an Admin has chosen a model, changing the Language must not quietly
   // take that choice back.
   const [modelChosen, setModelChosen] = useState(false);
@@ -41,7 +47,7 @@ export function NewCourseForm() {
       const response = await fetch('/api/admin/courses', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ language, level, graderModel, title }),
+        body: JSON.stringify({ language, level, graderModel, graderEffort, title }),
       });
       const body = (await response.json().catch(() => null)) as
         { ok?: boolean; courseId?: number; faults?: string[] } | null;
@@ -101,6 +107,17 @@ export function NewCourseForm() {
         </select>
       </label>
       <p className="muted">{ru.admin.graderModelHint}</p>
+
+      {/* The cost is a wait, and the person who waits is not the person
+          choosing — so the hint names it. The Practice screen tells the Student
+          the other half. */}
+      <EffortSelect
+        label={ru.admin.graderEffortField}
+        hint={ru.admin.graderEffortHint}
+        effort={graderEffort}
+        disabled={busy}
+        onEffort={setGraderEffort}
+      />
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (

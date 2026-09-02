@@ -64,3 +64,17 @@ export function graderModelFault(model: string): GraderModelFault | null {
   }
   return (GRADER_MODELS as readonly string[]).includes(model) ? null : 'grader_model_unknown';
 }
+
+/**
+ * How long a Course's own instruction for the Grader may be — issue #80.
+ *
+ * The same bound as the global guidance, for the same reason: long enough for
+ * several paragraphs of instruction, short enough that nobody pastes a Lesson
+ * into it. It lives here rather than beside the global one because the field
+ * that enforces it in the browser is on the Course settings screen, and the
+ * module holding the global bound opens SQLite.
+ *
+ * The bound is on the *stored* text, so an over-long instruction is refused
+ * rather than trimmed on the way in and then silently graded against.
+ */
+export const COURSE_INSTRUCTION_MAX_LENGTH = 4000;

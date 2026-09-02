@@ -32,6 +32,12 @@ export default async function AdminCoursePage({ params }: { params: Promise<{ co
         {' · '}{course.level}
         {' · '}{ru.admin.graderModel(course.graderModel)}
       </p>
+      {/* The settings screen is reached from the Course rather than from the
+          dashboard: what it changes is this Course, and an Admin who wants it is
+          already looking at one. */}
+      <p className="actions">
+        <a href={`/admin/courses/${course.id}/settings`}>{ru.admin.settingsLink}</a>
+      </p>
 
       <CourseAdmin
         courseId={course.id}

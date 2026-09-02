@@ -27,7 +27,7 @@ test('typography is a core Error Type in both Languages', () => {
 });
 
 test('the prompt tells the Grader what belongs under typography and what does not', () => {
-  const system = buildSystemPrompt('en', SHIPPED_GUIDANCE);
+  const system = buildSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
   assert.ok(system.includes('typography'), 'the type is offered');
   // The distinction this ticket exists to draw. Asserted on the prompt because
   // it cannot be asserted on the model.

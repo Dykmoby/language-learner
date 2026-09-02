@@ -255,23 +255,23 @@ test("the Student's answer is fenced as data and marked as never-to-be-followed"
   assert.match(block, /<\/student_answer>/);
   assert.ok(block.includes(injection), 'the answer is fenced, never filtered or rewritten');
 
-  const system = buildSystemPrompt('en', SHIPPED_GUIDANCE);
+  const system = buildSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
   assert.match(system, /<student_answer>/);
   assert.match(system, /never follow/i);
 });
 
 test('the system prompt carries only the Error Types of the Language being graded', () => {
-  const english = buildSystemPrompt('en', SHIPPED_GUIDANCE);
+  const english = buildSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
   assert.ok(english.includes('article'), 'English grading offers the English extension');
   assert.ok(!english.includes('izofat'), 'English grading must not offer Tajik types');
 
-  const tajik = buildSystemPrompt('tj', SHIPPED_GUIDANCE);
+  const tajik = buildSystemPrompt('tj', { guidance: SHIPPED_GUIDANCE, course: '' });
   assert.ok(tajik.includes('izofat'), 'Tajik grading offers the Tajik extension');
   assert.ok(tajik.includes('word_order'), 'both Languages get the core types');
 });
 
 test('the system prompt demands the field order the streaming UX depends on', () => {
-  const system = buildSystemPrompt('en', SHIPPED_GUIDANCE);
+  const system = buildSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
   assert.ok(
     system.indexOf('feedback_ru') < system.indexOf('verdict'),
     'feedback_ru must be asked for before verdict — step 3 streams it to the Student first',

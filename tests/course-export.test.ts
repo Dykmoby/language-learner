@@ -82,7 +82,13 @@ test('the file carries the Course, its published Lessons in order, and its Tests
 
     assert.equal(file.version, COURSE_EXPORT_VERSION, 'the format says which one it is');
     assert.deepEqual(file.course, {
-      language: 'en', level: 'A1', graderModel: 'claude-sonnet-5', title: DETERMINISTIC_COURSE.title,
+      language: 'en', level: 'A1', graderModel: 'claude-sonnet-5',
+      // Issue #76 — the Effort travels with the Course, so a restored Course
+      // grades the way the exported one did.
+      graderEffort: 'low',
+      // Issue #80 — and the Course's own instruction, empty on one that has none.
+      graderInstruction: '',
+      title: DETERMINISTIC_COURSE.title,
     });
 
     assert.deepEqual(

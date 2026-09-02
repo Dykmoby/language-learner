@@ -28,11 +28,11 @@ function golden(name: string): string {
 
 for (const language of LANGUAGES) {
   test(`the ${language} Grader system prompt is byte-identical to the one that shipped`, () => {
-    assert.equal(buildSystemPrompt(language, SHIPPED_GUIDANCE), golden(`grader-system-${language}`));
+    assert.equal(buildSystemPrompt(language, { guidance: SHIPPED_GUIDANCE, course: '' }), golden(`grader-system-${language}`));
   });
 
   test(`the ${language} batch Grader system prompt is byte-identical to the one that shipped`, () => {
-    assert.equal(buildBatchSystemPrompt(language, SHIPPED_GUIDANCE), golden(`batch-grader-system-${language}`));
+    assert.equal(buildBatchSystemPrompt(language, { guidance: SHIPPED_GUIDANCE, course: '' }), golden(`batch-grader-system-${language}`));
   });
 }
 
@@ -40,8 +40,8 @@ test('the five parts the two prompts share are the same words in both', () => {
   // Named one by one rather than asserted as "the diff is small": the point of
   // the skeleton is that these five are not editable apart, and a test that only
   // counted differing lines would pass while one of them drifted.
-  const single = buildSystemPrompt('en', SHIPPED_GUIDANCE);
-  const batch = buildBatchSystemPrompt('en', SHIPPED_GUIDANCE);
+  const single = buildSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
+  const batch = buildBatchSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
 
   // Not the guidance: #79 moved that out of the skeleton and into the database,
   // where it is one text reaching both prompts rather than a shared line of one.
@@ -72,7 +72,7 @@ test('a shape with nothing optional in it produces the skeleton and nothing else
     leadingFields: [],
     spanOwner: 'the',
     fencing: ['F'],
-  }, '');
+  }, { guidance: '', course: '' });
 
   assert.ok(!bare.includes('\n\n\n'), 'an absent block leaves no blank line behind');
   assert.ok(bare.startsWith('You grade X. Target language: English.\n'));

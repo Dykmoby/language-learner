@@ -15,13 +15,15 @@
 import {
   buildSystemPrompt, buildUserPrompt, buildStudentBlock,
   parseGraderOutput, validateErrorTypes, coherenceGuard, graderModelRefusal,
-  type ExerciseContext, type GraderResponse, type GuardOutcome, type Verdict,
+  type ExerciseContext, type GraderInstructions, type GraderResponse,
+  type GuardOutcome, type Verdict,
 } from './contract.ts';
 import { withoutTypography } from './typography.ts';
 import {
   callClaude, EMPTY_USAGE,
   type ApiPushback, type CallFailure, type CallOutcome, type ClaudeUsage,
 } from '../claude/harness.ts';
+import { effortTimeoutMs, type Effort } from '../claude/effort.ts';
 import { config } from '../config.ts';
 
 export type GradeRequest = {
@@ -30,13 +32,24 @@ export type GradeRequest = {
   context: ExerciseContext;
   submission: string;
   /**
-   * The editable grading guidance (issue #79, ADR 0006), read from the database
-   * by whoever built this request. It is a parameter rather than a read inside
-   * `grade` because this module has never touched the database, and because a
-   * test that wants to know what a particular guidance does to a Verdict should
-   * be able to say so.
+   * Per Course, per issue #76 and ADR 0007. `null` is «По умолчанию» — the
+   * parameter is not sent at all.
+   *
+   * Required rather than defaulted, the way `guidance` is: a caller that forgot
+   * it would grade at the wrong Effort *and* against the wrong clock, and both
+   * would present to a Student as a failed grading with nothing to point at.
    */
-  guidance: string;
+  effort: Effort | null;
+  /**
+   * The two editable blocks of the prompt — the global guidance (issue #79, ADR
+   * 0006) and this Course's own instruction (issue #80, ADR 0008) — read from
+   * the database by whoever built this request.
+   *
+   * A parameter rather than a read inside `grade` because this module has never
+   * touched the database, and because a test that wants to know what a particular
+   * instruction does to a Verdict should be able to say so.
+   */
+  instructions: GraderInstructions;
 };
 
 /** The harness's accounting, under the name the Grader's callers already use. */
@@ -138,13 +151,21 @@ export function grade(request: GradeRequest): GradingHandle {
   const call = callClaude({
     lane: 'grading',
     model: request.model,
-    systemPrompt: buildSystemPrompt(request.context.language, request.guidance),
+    systemPrompt: buildSystemPrompt(request.context.language, request.instructions),
     prompt: [buildUserPrompt(request.context), '', buildStudentBlock(request.submission)].join('\n'),
-    // design.md § Grading: adaptive thinking at low Effort. Not the Admin's
-    // choice — a Verdict is not a place to spend minutes of reasoning, and the
-    // spike measured this as matching or beating every alternative.
-    effort: 'low',
-    timeoutMs: config.grader.timeoutMs,
+    // Per Course since issue #76. `low` is still what the spike measured as
+    // matching or beating every alternative, and is what every Course created
+    // before the setting existed carries — but a Course teaching something that
+    // wants more reasoning behind a Verdict can now say so.
+    //
+    // `undefined` rather than `null` on the way to the harness: «По умолчанию»
+    // is the parameter being absent from the call, not a value of it.
+    ...(request.effort === null ? {} : { effort: request.effort }),
+    // The clock moves with the Effort or the setting only pretends to work: the
+    // 90s base is sized for `low`, and a high-Effort call would reliably exceed
+    // it — the Student would see a failed grading rather than the Verdict the
+    // Admin paid for.
+    timeoutMs: effortTimeoutMs(config.grader.timeoutMs, request.effort),
     maxTurns: 1, // grading is single-shot (ADR 0004)
   });
 

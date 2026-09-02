@@ -10,8 +10,13 @@ import { grade, type GradeRequest } from './grade.ts';
 
 // English, so the check runs on the faster of the two Grader models (ADR 0002).
 // The answer has one planted error: the missing indefinite article.
-const KNOWN_INPUT: Omit<GradeRequest, 'guidance'> = {
+const KNOWN_INPUT: Omit<GradeRequest, 'instructions'> = {
   model: 'claude-sonnet-5',
+  // The check belongs to no Course, so there is no Course Effort to take (issue
+  // #76). `low` is what the check has always run at and what its 90s clock is
+  // sized for — and what it measures is whether grading works at all, which is
+  // not a question more reasoning answers.
+  effort: 'low',
   submission: 'I have cat.',
   context: {
     language: 'en',
@@ -58,7 +63,11 @@ export type HealthResult = {
  * run against the shipped text would go green over a broken prompt.
  */
 export async function runHealthCheck(guidance: string): Promise<HealthResult> {
-  const outcome = await grade({ ...KNOWN_INPUT, guidance }).result;
+  // The Course's instruction is empty and not a parameter: the check belongs to
+  // no Course, so there is none to take — issue #80 says so in as many words.
+  // The global guidance is the only editable text this path can be broken by,
+  // which is exactly what makes the banner worth looking at.
+  const outcome = await grade({ ...KNOWN_INPUT, instructions: { guidance, course: '' } }).result;
 
   if (!outcome.ok) {
     return {

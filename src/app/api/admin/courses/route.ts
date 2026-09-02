@@ -9,10 +9,7 @@ import { NextResponse } from 'next/server';
 import { getDatabase } from '../../../../db/index.ts';
 import { adminOrRefusal } from '../../../../admin/guard.ts';
 import { createCourse } from '../../../../admin/authoring.ts';
-
-function asString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
-}
+import { asEffort, asOptionalString, asString } from './body.ts';
 
 export async function POST(request: Request): Promise<Response> {
   const { refusal } = await adminOrRefusal();
@@ -26,11 +23,14 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'malformed' }, { status: 400 });
   }
   // Optional: left out, the Course takes its Language's model per ADR 0002.
-  const graderModel = body?.graderModel === undefined ? undefined : asString(body.graderModel);
+  const graderModel = asOptionalString(body?.graderModel);
   if (graderModel === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
+  const graderEffort = asEffort(body?.graderEffort);
+  if (graderEffort === false) return NextResponse.json({ error: 'malformed' }, { status: 400 });
+
   const { db } = getDatabase();
-  const created = createCourse(db, { language, level, graderModel, title });
+  const created = createCourse(db, { language, level, graderModel, graderEffort, title });
   if (!created.ok) {
     return NextResponse.json({ ok: false, faults: created.faults }, { status: 422 });
   }

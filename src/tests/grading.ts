@@ -25,7 +25,8 @@ import type { BatchContext, JudgedExercise } from '../grader/batch-contract.ts';
 import { gradeBatch } from '../grader/batch.ts';
 import { currentGuidance } from '../grader/guidance.ts';
 import { replaceSubmissionErrors } from '../grader/errors.ts';
-import type { Language } from '../grader/contract.ts';
+import type { GraderInstructions, Language } from '../grader/contract.ts';
+import type { Effort } from '../claude/effort.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -45,7 +46,13 @@ const inFlight = new Set<number>();
 export function batchRequestFor(
   db: Db,
   attemptId: number,
-): { model: string; context: BatchContext; guidance: string; submissionByExercise: Map<number, number> } | null {
+): {
+  model: string;
+  context: BatchContext;
+  instructions: GraderInstructions;
+  effort: Effort | null;
+  submissionByExercise: Map<number, number>;
+} | null {
   const found = db.select({ attempt: testAttempts, test: tests, course: courses })
     .from(testAttempts)
     .innerJoin(tests, eq(tests.id, testAttempts.testId))
@@ -75,10 +82,15 @@ export function batchRequestFor(
   return {
     // Per Course, never per code branch — ADR 0002 puts the choice in the data.
     model: found.course.graderModel,
-    // Global, and the same text a Practice Submission is judged against — issue
-    // #79. A Test judged by different instructions from the Practice that
+    // The same Course's Effort a Practice Submission in it is judged at — issue
+    // #76. A Test judged with less reasoning than the Practice that prepared for
+    // it would be a mirror of something else.
+    effort: found.course.graderEffort,
+    // The same two texts a Practice Submission in this Course is judged against:
+    // the global guidance (issue #79) and the Course's own instruction (issue
+    // #80). A Test judged by different instructions from the Practice that
     // prepared for it would be a mirror of something else.
-    guidance: currentGuidance(db),
+    instructions: { guidance: currentGuidance(db), course: found.course.graderInstruction },
     context: {
       language: found.course.language as Language,
       level: found.course.level,
@@ -207,7 +219,8 @@ export async function gradeAttempt(db: Db, attemptId: number): Promise<void> {
   try {
     const submissionIds = [...request.submissionByExercise.values()];
     const outcome = await gradeBatch({
-      model: request.model, context: request.context, guidance: request.guidance,
+      model: request.model, context: request.context, instructions: request.instructions,
+      effort: request.effort,
     });
 
     if (!outcome.ok) {

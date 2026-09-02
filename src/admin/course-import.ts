@@ -37,7 +37,7 @@ import { testPublishFaults, type TestDocument } from '../content/test-document.t
 import {
   imageUrl, referencedImageNames, sniffImageType, storeImage,
 } from '../content/uploads.ts';
-import { courseFaults, resolvedGraderModel } from './authoring.ts';
+import { courseFaults, resolvedGraderModel, resolvedGraderEffort } from './authoring.ts';
 import {
   READABLE_EXPORT_VERSIONS, parseCourseExport, versionOf,
   type CourseExport, type ExportedLesson, type ExportedTest,
@@ -279,6 +279,13 @@ function writeContent(tx: Tx, file: CourseExport, stored: Map<string, string>): 
     // create a Course that passed validation and can never grade: every
     // Submission in it would reach the Grader as `{ model: '' }` and be refused.
     graderModel: resolvedGraderModel(file.course),
+    // Explicit rather than left to the column: the file's `null` is «По
+    // умолчанию» and has to survive the trip, and `resolvedGraderEffort` is the
+    // one place that knows an absent Effort means `low` rather than that.
+    graderEffort: resolvedGraderEffort(file.course),
+    // Carried as written. It is a prompt, not a title: trimming it would edit an
+    // instruction somebody wrote, and it is refused for length before this runs.
+    graderInstruction: file.course.graderInstruction,
     title: file.course.title.trim(),
     createdAt: new Date(),
   }).returning().get();

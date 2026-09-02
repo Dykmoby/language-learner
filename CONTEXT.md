@@ -102,6 +102,14 @@ _Avoid_: mistake, issue, problem
 A value from the fixed enum of fault categories — a shared core plus a per-Language extension. Stable in storage; only its Russian label changes.
 _Avoid_: category, tag, label
 
+**Grading Guidance**:
+The block of the Grader's system prompt an Admin edits, applying to every Course at once. The rest of the prompt is fixed in code and out of reach.
+_Avoid_: prompt, system prompt, rules
+
+**Course Instruction**:
+A Course's own instruction for the Grader, edited from its settings screen. Reaches the Grader after the Grading Guidance, and wins where the two disagree — it is the more specific of the two. The two together are the Grader's instructions; either alone is named by its own term.
+_Avoid_: course prompt, course guidance, override
+
 **Progressive Hint**:
 The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions.
 _Avoid_: tip, clue
@@ -143,7 +151,7 @@ The ongoing conversation with Claude over an existing Draft.
 _Avoid_: editing, iteration, feedback loop
 
 **Effort**:
-How much reasoning Claude applies during Generation, chosen per request by the Admin.
+How much reasoning Claude applies to a call. Chosen per request by the Admin for a Generation or a Refinement, and stored on the Course for the Grader. «По умолчанию» is the absence of the setting rather than a value of it. Raising it raises the call's timeout with it.
 _Avoid_: quality, depth, thinking level
 
 ### Operations

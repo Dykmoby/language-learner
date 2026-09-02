@@ -9,8 +9,8 @@
 
 import { ru } from '../../../../ru.ts';
 import { AUTHOR_MODELS } from '../../../../content/course-options.ts';
-import { EFFORT_CHOICES } from '../../../../authoring/form.ts';
 import type { Effort } from '../../../../claude/effort.ts';
+import { EffortSelect } from '../../effort-select.tsx';
 
 type Props = {
   model: string;
@@ -31,21 +31,13 @@ export function ModelAndEffort({ model, effort, disabled, onModel, onEffort }: P
         </select>
       </label>
 
-      <label>
-        <span>{ru.generation.effort}</span>
-        <select
-          value={effort ?? ''}
-          onChange={(e) => onEffort(e.target.value === '' ? null : e.target.value as Effort)}
-          disabled={disabled}
-        >
-          {EFFORT_CHOICES.map((choice) => (
-            <option key={choice ?? 'default'} value={choice ?? ''}>
-              {choice === null ? ru.generation.effortDefault : ru.efforts[choice] ?? choice}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="muted">{ru.generation.effortHint}</p>
+      <EffortSelect
+        label={ru.generation.effort}
+        hint={ru.generation.effortHint}
+        effort={effort}
+        disabled={disabled}
+        onEffort={onEffort}
+      />
     </>
   );
 }

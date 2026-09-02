@@ -194,7 +194,19 @@ export function graderRequestFor(
   // Per Course, never per code branch — ADR 0002 puts the choice in the data.
   // The guidance is global (issue #79) and read here rather than inside the
   // Grader, which has never touched the database.
-  return { model: course.graderModel, context, submission: answer, guidance: currentGuidance(db) };
+  return {
+    model: course.graderModel,
+    // Also per Course, and also from the data — issue #76. `null` is the Course
+    // saying «По умолчанию», which the Grader turns into the parameter being
+    // absent from the call rather than into a value of it.
+    effort: course.graderEffort,
+    context,
+    submission: answer,
+    // Both editable blocks, in the order the prompt states: the global guidance
+    // (issue #79) and then this Course's own instruction (issue #80), which is
+    // what holds where the two disagree.
+    instructions: { guidance: currentGuidance(db), course: course.graderInstruction },
+  };
 }
 
 // --- submitting --------------------------------------------------------------

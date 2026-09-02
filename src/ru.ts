@@ -159,9 +159,51 @@ export const ru = {
     graderModelField: 'Модель Проверяющего',
     graderModelHint:
       'Подставляется по языку курса: английский — Sonnet 5, таджикский — Opus 5. Можно изменить.',
+
+    // The Grader's Effort, per Course — issue #76, ADR 0007. The hint names the
+    // cost out loud: raising it makes a Student wait, and the Admin choosing it
+    // is not the person who waits.
+    graderEffortField: 'Усилие Проверяющего',
+    graderEffortHint:
+      'Сколько рассуждения Проверяющий тратит на оценку. Чем выше, тем дольше студент ждёт проверки: на «Максимальном» одна проверка может идти несколько минут.',
+
+    // The Course's own instruction for the Grader — issue #80, ADR 0008. The
+    // screen states the precedence out loud: an Admin who does not know which of
+    // the two texts wins will write one that contradicts the other and never
+    // find out which was followed.
+    graderInstructionTitle: 'Указания Проверяющему для этого курса',
+    graderInstructionExplanation:
+      'Общие указания действуют для всех курсов сразу, но курсы учат разному: строгость к заглавным буквам, нужная курсу по орфографии, мешает разговорному курсу.',
+    graderInstructionPrecedence:
+      'Проверяющий получает оба текста: сначала общий, потом этот. Там, где они расходятся, действует указание курса — оно точнее.',
+    graderInstructionField: 'Указания для курса',
+    graderInstructionHint: (max: number) =>
+      `Обычный текст, не разметка. До ${max} символов. Пустое поле допустимо и ничего не меняет — именно с ним курс и создаётся.`,
     createCourse: 'Создать курс',
     creatingCourse: 'Создание курса…',
     courseCreated: 'Курс создан.',
+
+    // The Course's settings — issue #75. A Course used to be created once and
+    // then fixed, so a mistyped title stayed mistyped.
+    settingsLink: 'Настройки курса',
+    settingsTitle: 'Настройки курса',
+    backToCourse: 'К курсу',
+    saveSettings: 'Сохранить настройки',
+    savingSettings: 'Сохранение…',
+    settingsSaved: 'Настройки сохранены.',
+    // Shown rather than offered. Stated as a fact about the Course, because a
+    // greyed-out control reads as "not right now" and these two are never
+    // editable at all.
+    languageFixed: (language: string) => `Язык курса: ${language}`,
+    levelFixed: (level: string) => `Уровень по CEFR: ${level}`,
+    // The reason, not just the rule: an Admin who is told «нельзя» without it
+    // will assume the screen is unfinished.
+    fixedFactsHint:
+      'Язык и уровень задаются при создании курса и потом не меняются: на них написан каждый урок и каждое упражнение, а смена языка оставила бы курс, содержание которого на одном языке, а Проверяющий проверяет на другом.',
+    // Says the one thing an Admin cannot see for themselves: the change takes
+    // effect on the next answer, with nothing to restart and nothing to wait for.
+    graderModelChangeHint:
+      'Новая модель проверяет следующий отправленный ответ — перезапускать ничего не нужно.',
 
     // Creating and ordering Lessons.
     newLessonTitle: 'Новый урок',
@@ -299,6 +341,9 @@ export const ru = {
     grader_model_forbidden:
       'Haiku не проверяет ответы ни на одном языке: он уверенно объясняет грамматику неверно. Выберите Sonnet 5 или Opus 5.',
     grader_model_unknown: 'Такой модели нет в списке. Выберите Sonnet 5 или Opus 5.',
+    // The bound is on the stored text, so an over-long instruction is refused
+    // rather than trimmed on the way in and silently graded against.
+    course_instruction_too_long: 'Указания для курса слишком длинные. Сократите текст.',
     lesson_title_empty: 'Заполните название урока.',
     course_not_found: 'Курс не найден. Обновите страницу.',
     student_not_found: 'Студент не найден. Обновите страницу.',
@@ -499,6 +544,18 @@ export const ru = {
     // The Student waits roughly three seconds before the first token arrives.
     // This says what is happening in that gap rather than spinning at them.
     checking: 'Проверяющий читает ваш ответ…',
+    // Issue #76 — a Course set to a high Effort is checked in minutes rather
+    // than seconds, and the Student chose none of that. After about a minute the
+    // wait stops looking like a stuck screen and says so.
+    //
+    // Phrased as a possibility, not as a diagnosis: this screen does not know the
+    // Course's Effort, so a call that is genuinely hanging on a `low` Course must
+    // not be told it is being examined more deeply. ADR 0001 draws the same line
+    // for the health check's heuristics — a guess is written as a guess. What
+    // does hold either way is the second sentence, so that is the one stated
+    // flatly: a failed check never counts as an attempt.
+    stillChecking:
+      'Проверка идёт дольше обычного — так бывает, если для курса выбрано высокое усилие Проверяющего. Подождите: если проверка всё же сорвётся, попытка не засчитается.',
     emptyAnswer: 'Сначала напишите ответ.',
     next: 'Дальше',
     correct: 'Верно!',

@@ -27,7 +27,10 @@ import { isBlank } from '../content/exercise-validity.ts';
 // The offerable choices and the Haiku rule live in a module the browser can
 // import: the form that offers them runs there, and a constant shared with this
 // module would drag SQLite into the bundle with it.
-import { DEFAULT_GRADER_MODEL, graderModelFault, isCefrLevel } from '../content/course-options.ts';
+import {
+  COURSE_INSTRUCTION_MAX_LENGTH, DEFAULT_GRADER_MODEL, graderModelFault, isCefrLevel,
+} from '../content/course-options.ts';
+import type { Effort } from '../claude/effort.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -37,6 +40,7 @@ export const AUTHORING_FAULTS = [
   'level_unknown',
   'grader_model_forbidden',
   'grader_model_unknown',
+  'course_instruction_too_long',
   'lesson_title_empty',
   'course_not_found',
   'student_not_found',
@@ -62,6 +66,22 @@ export type CourseInput = {
    * ADR says it should have.
    */
   graderModel?: string;
+  /**
+   * How much reasoning the Grader spends on a Verdict here — issue #76.
+   *
+   * Three states, and they are all real. `null` is «По умолчанию»: the parameter
+   * is not sent to the model at all. Left out entirely is not that — it takes
+   * `low`, which is what every Course graded at while this was fixed in code.
+   * A caller that says nothing must never change how anything grades.
+   */
+  graderEffort?: Effort | null;
+  /**
+   * The Course's own instruction for the Grader — issue #80. Left out is the
+   * empty string, which is what a Course ships with. The New Course form does
+   * not offer it; an imported file carries one, which is why it is here rather
+   * than only on the settings side.
+   */
+  graderInstruction?: string;
   title: string;
 };
 
@@ -77,6 +97,32 @@ export function resolvedGraderModel(input: CourseInput): string {
   return isBlank(input.graderModel ?? '') && isLanguage(input.language)
     ? DEFAULT_GRADER_MODEL[input.language]
     : input.graderModel ?? '';
+}
+
+/**
+ * The Effort a Course would actually be created with.
+ *
+ * Saying nothing means `low`, and deliberately not «По умолчанию»: `low` is what
+ * every Course graded at while this was fixed in code, so a caller that does not
+ * mention the field must not change how anything grades. Updating a Course reads
+ * an absent field the other way — see `settledGraderEffort`, where saying
+ * nothing means saying nothing.
+ */
+export function resolvedGraderEffort(input: { graderEffort?: Effort | null }): Effort | null {
+  return input.graderEffort === undefined ? 'low' : input.graderEffort;
+}
+
+/**
+ * The one bound on a Course's instruction, checked wherever a Course arrives.
+ *
+ * Both routes in are held to it — the settings screen and an imported file — for
+ * the reason the model rule is checked in both: an import must not be a way to
+ * put a text into a prompt that the screen would have refused.
+ */
+function instructionFaults(instruction: string | undefined): AuthoringFaultCode[] {
+  return (instruction ?? '').length > COURSE_INSTRUCTION_MAX_LENGTH
+    ? ['course_instruction_too_long']
+    : [];
 }
 
 /**
@@ -98,6 +144,8 @@ export function courseFaults(input: CourseInput): AuthoringFaultCode[] {
   const modelFault = graderModelFault(resolvedGraderModel(input));
   if (modelFault !== null) faults.push(modelFault);
 
+  faults.push(...instructionFaults(input.graderInstruction));
+
   return faults;
 }
 
@@ -109,11 +157,146 @@ export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
     language: input.language as Language,
     level: input.level,
     graderModel: resolvedGraderModel(input),
+    graderEffort: resolvedGraderEffort(input),
+    // Carried as written rather than trimmed: it is a prompt, not a title.
+    graderInstruction: input.graderInstruction ?? '',
     title: input.title.trim(),
     createdAt: new Date(),
   }).returning().get();
 
   return { ok: true, course };
+}
+
+// --- Changing a Course's settings --------------------------------------------
+
+/**
+ * What an Admin may change about a Course after it exists.
+ *
+ * Narrower than what a Course is made of, and narrow by construction rather than
+ * by a check: the Language and the CEFR level have no field here, so no caller
+ * can ask for them. Both are baked into every Lesson already written and into
+ * every Generation that produced one — a Course whose content is in one language
+ * and whose Grader judges another does not fail, it produces a stream of
+ * meaningless Verdicts, which is far worse than a refusal.
+ */
+export type CourseSettings = {
+  title: string;
+  /**
+   * Left out leaves the Course on the model it already has. Blank takes the
+   * Course's Language default, exactly as creating one does — a Course must
+   * never end up holding the empty string, which the Grader refuses and which
+   * would fail every Submission in the Course.
+   */
+  graderModel?: string;
+  /**
+   * `null` is «По умолчанию» — the parameter is not sent to the model at all.
+   * Left out leaves the Course's Effort as it is, which is not the same thing:
+   * a request that never mentions the field must not move a Course off a setting
+   * somebody chose.
+   */
+  graderEffort?: Effort | null;
+  /**
+   * This Course's own instruction for the Grader — issue #80, ADR 0008.
+   *
+   * Empty is allowed and means the Course has nothing of its own to say, which
+   * is also what it ships with. Left out leaves whatever the Course already
+   * holds: a caller sending only a title must not silently erase an instruction
+   * somebody wrote.
+   */
+  graderInstruction?: string;
+};
+
+export type UpdateCourseResult = { ok: true; course: CourseRow } | Refused;
+
+/** Enough of the Course being edited to say what these settings would become. */
+type EditedCourse = Pick<CourseRow, 'language' | 'graderModel' | 'graderEffort'>;
+
+/**
+ * Every reason these settings cannot be saved, or an empty array.
+ *
+ * Pure and apart from `updateCourse` for the reason `courseFaults` is: what a
+ * field means here depends on the Course being edited rather than on the form
+ * alone, so the rules and the write have to resolve it the same way — through
+ * the two functions below, which is why neither is inlined.
+ */
+export function courseSettingsFaults(
+  input: CourseSettings,
+  course: EditedCourse,
+): AuthoringFaultCode[] {
+  const faults: AuthoringFaultCode[] = [];
+
+  if (isBlank(input.title)) faults.push('course_title_empty');
+
+  const modelFault = graderModelFault(settledGraderModel(input, course));
+  if (modelFault !== null) faults.push(modelFault);
+
+  faults.push(...instructionFaults(input.graderInstruction));
+
+  return faults;
+}
+
+/**
+ * The model these settings would actually be saved with.
+ *
+ * Three cases, and the first is the one that matters: **absent leaves what the
+ * Course already has.** An update names the part of a Course that is changing,
+ * so a request carrying only a title must not quietly move a Course off the
+ * model an Admin chose — and the screen is not the only caller.
+ *
+ * A blank field keeps the meaning it has when a Course is created: take the
+ * Language's default. That is what stops the empty string ever reaching the
+ * column, which the Grader refuses and which would fail every Submission in the
+ * Course.
+ */
+function settledGraderModel(input: CourseSettings, course: EditedCourse): string {
+  if (input.graderModel === undefined) return course.graderModel;
+  return isBlank(input.graderModel) ? DEFAULT_GRADER_MODEL[course.language] : input.graderModel;
+}
+
+/**
+ * The Effort these settings would actually be saved with.
+ *
+ * Absent leaves what the Course has, for the reason the model does — and
+ * deliberately *not* `resolvedGraderEffort`, which is the rule for a Course
+ * coming into being: there, saying nothing means `low`, because a new Course
+ * must grade like every other one. Here saying nothing means saying nothing, and
+ * `low` would silently undo a Course an Admin had set high.
+ */
+function settledGraderEffort(input: CourseSettings, course: EditedCourse): Effort | null {
+  return input.graderEffort === undefined ? course.graderEffort : input.graderEffort;
+}
+
+/**
+ * A Course's editable settings, saved — or every reason they were not.
+ *
+ * Refusals are the ones the New Course form already reports, under the same
+ * codes: an Admin who mistypes a model on the settings screen should read the
+ * same Russian sentence they would have read when creating the Course.
+ */
+export function updateCourse(db: Db, courseId: number, input: CourseSettings): UpdateCourseResult {
+  const course = db.select().from(courses).where(eq(courses.id, courseId)).get();
+  // Reported alone rather than alongside the field faults: there is nothing to
+  // judge the model against without the Course's Language, and "this Course does
+  // not exist" is not a form an Admin can fix by editing it.
+  if (!course) return { ok: false, faults: ['course_not_found'] };
+
+  const faults = courseSettingsFaults(input, course);
+  if (faults.length > 0) return { ok: false, faults };
+
+  // Every field left out leaves what the Course holds. An update names the part
+  // that is changing, and a request carrying only a title must not reset the
+  // three fields it never mentioned — which is the one mistake here that would
+  // be silent, because nothing on any screen would say a Course had moved.
+  const updated = db.update(courses).set({
+    title: input.title.trim(),
+    graderModel: settledGraderModel(input, course),
+    graderEffort: settledGraderEffort(input, course),
+    // An empty string is a real edit — "this Course has nothing of its own to
+    // say" — and is not the same as saying nothing about the field at all.
+    ...(input.graderInstruction === undefined ? {} : { graderInstruction: input.graderInstruction }),
+  }).where(eq(courses.id, courseId)).returning().get();
+
+  return { ok: true, course: updated };
 }
 
 // --- Creating a Lesson -------------------------------------------------------

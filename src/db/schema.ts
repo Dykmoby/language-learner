@@ -16,6 +16,9 @@ import {
   EXERCISE_KINDS, DETERMINISTIC_KINDS, isDeterministic, type ExerciseKind,
 } from '../content/exercise-validity.ts';
 import type { LessonDocument } from '../content/lesson-document.ts';
+// The Efforts, from the module the browser can import: the picker that offers
+// them runs there, and the harness that sends them spawns a subprocess.
+import { EFFORTS } from '../claude/effort.ts';
 
 // A Student is every account. Admin is a role a Student additionally holds —
 // a flag, not a separate table and not a separate account, because the Admin
@@ -63,6 +66,29 @@ export const courses = sqliteTable('courses', {
   // Per ADR 0002: Sonnet 5 for English, Opus 5 for Tajik, overridable per Course
   // without a code change.
   graderModel: text('grader_model').notNull(),
+  // How much reasoning the Grader spends on a Verdict in this Course — issue #76,
+  // ADR 0007. Nullable, and null is «По умолчанию»: the parameter is not sent at
+  // all, which is the absence of a choice rather than a sixth value of one. That
+  // is the same shape Generation has used since it existed, and it is why this
+  // column is not `notNull().default('low')` — a default here would make the two
+  // states impossible to tell apart.
+  //
+  // Every Course that existed before the column migrated to 'low' rather than to
+  // null, because 'low' is what they were all grading at in code. Nothing may
+  // start grading differently because a column was added.
+  graderEffort: text('grader_effort', { enum: EFFORTS }),
+  // This Course's own instruction for the Grader — issue #80, ADR 0008.
+  //
+  // The global guidance applies to every Course at once, and Courses differ in
+  // what they are teaching: the capitalisation strictness a Course about
+  // orthography wants is exactly what a conversational one wants dropped. Both
+  // texts reach the Grader, the global one first, and where they disagree this
+  // one holds — it is the more specific of the two, and the prompt says so.
+  //
+  // Not nullable, unlike the global block's whole row: there is no "never
+  // edited" state to tell apart here, because the shipped default *is* the empty
+  // string. A Course ships with nothing of its own to say.
+  graderInstruction: text('grader_instruction').notNull().default(''),
   title: text('title').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });

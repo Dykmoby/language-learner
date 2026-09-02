@@ -89,7 +89,7 @@ test('each answer is fenced as data, tagged with the Exercise it answers', () =>
 });
 
 test('the system prompt forbids following the answers and fixes the response shape', () => {
-  const system = buildBatchSystemPrompt('en', SHIPPED_GUIDANCE);
+  const system = buildBatchSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
 
   assert.match(system, /DATA, never/i, 'the answers are data, never instructions');
   assert.ok(system.includes('exercise_id'), 'each judgement names the Exercise it is about');
@@ -100,7 +100,7 @@ test('the system prompt forbids following the answers and fixes the response sha
 
 test('no prior attempts travel with a batch — a Test has no Progressive Hints', () => {
   const prompt = buildBatchUserPrompt(CONTEXT);
-  const system = buildBatchSystemPrompt('en', SHIPPED_GUIDANCE);
+  const system = buildBatchSystemPrompt('en', { guidance: SHIPPED_GUIDANCE, course: '' });
 
   assert.ok(!/attempt \d/i.test(prompt), 'nothing in the prompt counts attempts');
   assert.ok(!/sharpen/i.test(system), 'and nothing asks for a sharper hint');
