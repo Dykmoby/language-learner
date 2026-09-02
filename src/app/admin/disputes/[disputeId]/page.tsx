@@ -27,6 +27,9 @@ export default async function DisputePage(
   if (!opened) notFound();
 
   const { dispute, exercise, submission } = opened;
+  // Read once: the screen asks whether anything is accepted at all, and then how
+  // to lay it out — two questions about one list.
+  const acceptedValues = opened.accepted.flat();
   const verdictLabel = submission.guardedVerdict === 'correct' ? ru.practice.correct
     : submission.guardedVerdict === 'partially_correct' ? ru.practice.partiallyCorrect
     : submission.guardedVerdict === 'incorrect' ? ru.practice.incorrect
@@ -60,11 +63,11 @@ export default async function DisputePage(
       {/* Gap by Gap where there is more than one — #85. «a, an, I» in one list
           is a list an Admin cannot act on, because which Gap takes which is the
           whole question the decision below asks. */}
-      {opened.accepted.flat().length === 0 ? (
+      {acceptedValues.length === 0 ? (
         <p className="muted">{ru.disputeReview.acceptedNone}</p>
       ) : opened.accepted.length <= 1 ? (
         <ul className="variants">
-          {opened.accepted.flat().map((value, index) => (
+          {acceptedValues.map((value, index) => (
             <li key={`${index}-${value}`}>{value}</li>
           ))}
         </ul>

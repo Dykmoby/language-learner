@@ -636,9 +636,9 @@ export const ru = {
     referenceAnswer: 'Эталонный ответ',
     acceptedTitle: 'Уже принимаются',
     acceptedNone: 'Дополнительных принимаемых ответов пока нет.',
-    // Issue #85 — on a задание с несколькими пропусками the accepted answers are
-    // read propusk by propusk, because which one takes which is the question the
-    // Admin is about to answer.
+    // Issue #85 — on an Exercise with several Gaps the accepted answers are read
+    // Gap by Gap, because which one takes which is the question the Admin is
+    // about to answer.
     acceptedAtGap: (n: number) => `Пропуск ${n}`,
     acceptedNoneAtGap: 'ничего дополнительно',
     studentAnswer: 'Ответ студента',
@@ -654,8 +654,8 @@ export const ru = {
     submittedAt: 'Отправлено',
 
     // Issue #85 — an objection is about one word. Asked rather than assumed: a
-    // word confirmed for the second пропуск must not become acceptable in the
-    // first, and the Admin is the only one who knows which they mean.
+    // word confirmed for the second Gap must not become acceptable in the first,
+    // and the Admin is the only one who knows which they mean.
     chooseGap: 'Для какого пропуска этот ответ верен?',
     chooseGapHint: 'Ответ будет приниматься только в этом пропуске.',
     gapUnspecified: 'Укажите, для какого пропуска подтверждается ответ.',

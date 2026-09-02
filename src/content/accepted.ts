@@ -16,7 +16,7 @@
 import { asc, eq, inArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
-import { acceptedVariants, type ExerciseRow } from '../db/schema.ts';
+import { acceptedVariants, type AcceptedVariantRow, type ExerciseRow } from '../db/schema.ts';
 import type { AcceptedAnswers } from './exercise-validity.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -37,6 +37,14 @@ type Db = BetterSQLite3Database<typeof schema>;
 export type Variant = { value: string; gap: number | null };
 
 /**
+ * One stored row as a Variant — the single reading of the two columns, so the
+ * three places that ask for them cannot end up reading them differently.
+ */
+export function variantOf(row: Pick<AcceptedVariantRow, 'value' | 'gap'>): Variant {
+  return { value: row.value, gap: row.gap };
+}
+
+/**
  * What an Exercise accepts, one list per Gap — the single read of the stored
  * column.
  *
@@ -53,17 +61,14 @@ export function variantsOf(db: Db, exerciseId: number): Variant[] {
   return db.select().from(acceptedVariants)
     .where(eq(acceptedVariants.exerciseId, exerciseId))
     .orderBy(asc(acceptedVariants.id)).all()
-    .map((row) => ({ value: row.value, gap: row.gap }));
+    .map(variantOf);
 }
 
 /**
- * The values alone, for the one reader that has no Gaps to place them at: the
- * Grader, which judges a whole answer and is given its Accepted Variants as
- * teacher-confirmed context.
- *
- * Only Grader-judged Kinds reach it, and those store no position anyway — but it
- * is written as a flatten rather than assumed, so a positioned variant that
- * somehow reached a Grader call is still offered rather than silently dropped.
+ * The values alone, for the one reader with no Gaps to place them at: the Grader,
+ * which judges a whole answer and is given its Accepted Variants as
+ * teacher-confirmed context. Only Grader-judged Kinds reach it, and those store
+ * no position anyway.
  */
 export function variantValues(variants: readonly Variant[]): string[] {
   return variants.map((variant) => variant.value);
@@ -85,7 +90,7 @@ export function variantsOfMany(db: Db, exerciseIds: readonly number[]): Map<numb
   for (const row of db.select().from(acceptedVariants)
     .where(inArray(acceptedVariants.exerciseId, [...exerciseIds]))
     .orderBy(asc(acceptedVariants.id)).all()) {
-    const variant: Variant = { value: row.value, gap: row.gap };
+    const variant = variantOf(row);
     const found = byExercise.get(row.exerciseId);
     if (found) found.push(variant);
     else byExercise.set(row.exerciseId, [variant]);

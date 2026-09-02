@@ -308,14 +308,11 @@ test('the rule reads the attempt count and nothing else — no Exercise Kind is 
   // Asserted on the rule rather than once per Kind: translation, composition and
   // open writing reach the browser through this one function, and a rule that
   // branched on Kind is the shape of thing that would leave one of them behind.
-  const hidden = { advanced: false, nextExerciseId: 1, lessonComplete: false, failedAttempts: 2, revealOffered: false };
-  const offered = { ...hidden, failedAttempts: 3, revealOffered: true };
-
-  assert.equal(correctedForStudent('I have a cat.', 'incorrect', hidden), null);
-  assert.equal(correctedForStudent('I have a cat.', 'partially_correct', hidden), null);
-  assert.equal(correctedForStudent('I have a cat.', 'incorrect', offered), 'I have a cat.');
-  assert.equal(correctedForStudent('I have a cat.', 'correct', hidden), 'I have a cat.');
-  assert.equal(correctedForStudent(null, 'incorrect', offered), null, 'nothing to show is still nothing');
+  assert.equal(correctedForStudent('I have a cat.', 'incorrect', false), null);
+  assert.equal(correctedForStudent('I have a cat.', 'partially_correct', false), null);
+  assert.equal(correctedForStudent('I have a cat.', 'incorrect', true), 'I have a cat.');
+  assert.equal(correctedForStudent('I have a cat.', 'correct', false), 'I have a cat.');
+  assert.equal(correctedForStudent(null, 'incorrect', true), null, 'nothing to show is still nothing');
 });
 
 test('a failed grading is stored as a failure, with a reason and no Verdict', () => {

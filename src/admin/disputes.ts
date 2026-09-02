@@ -28,9 +28,9 @@ import {
 import { normaliseAnswer } from '../practice/deterministic-check.ts';
 import { storedGaps } from '../practice/judgement.ts';
 import {
-  acceptedAnswers, candidateAnswers, variantsOf, type Variant,
+  acceptedAnswers, candidateAnswers, variantOf, variantsOf, type Variant,
 } from '../content/accepted.ts';
-import type { AcceptedAnswers } from '../content/exercise-validity.ts';
+import { answersCarryGaps, type AcceptedAnswers } from '../content/exercise-validity.ts';
 import { courseIdOf } from '../content/ownership.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -48,9 +48,6 @@ export type QueuedDispute = {
   courseId: number;
   exercisePrompt: string;
 };
-
-/** One answer an Admin could confirm, and where it was written. */
-export type VariantCandidate = { gap: number | null; value: string };
 
 /**
  * Everything a judgement has to be reviewed against, on one screen.
@@ -88,7 +85,7 @@ export type OpenedDispute = {
    * about: an objection is about one word, and promoting all three would accept
    * the two the Student got wrong.
    */
-  candidates: VariantCandidate[];
+  candidates: Variant[];
   errors: Array<{ type: string; span: string; explanationRu: string }>;
   /** Where the answer was given — a Lesson's Practice or a Test. */
   origin: { kind: 'lesson'; title: string } | { kind: 'test'; title: string } | null;
@@ -225,9 +222,10 @@ export function openDispute(db: Db, disputeId: number): OpenedDispute | null {
 export function variantCandidates(
   exercise: Pick<ExerciseRow, 'kind'>,
   submission: Pick<SubmissionRow, 'answer' | 'answerGaps'>,
-): VariantCandidate[] {
+): Variant[] {
+  const gapped = answersCarryGaps(exercise.kind);
   return storedGaps(submission)
-    .map((value, at) => ({ gap: exercise.kind === 'fill_gap' ? at : null, value: value.trim() }))
+    .map((value, at) => ({ value: value.trim(), gap: gapped ? at : null }))
     .filter((candidate) => candidate.value !== '');
 }
 
@@ -260,7 +258,7 @@ export type Resolution = {
 function alreadyAccepted(
   exercise: ExerciseRow,
   existing: readonly Variant[],
-  candidate: VariantCandidate,
+  candidate: Variant,
 ): boolean {
   const options = { caseSensitive: exercise.caseSensitive };
   const normalised = normaliseAnswer(candidate.value, options);
@@ -284,17 +282,18 @@ function alreadyAccepted(
  * was made, this refuses rather than picking the first.
  */
 function confirmedAnswer(
-  candidates: readonly VariantCandidate[],
-  gap: number | null | undefined,
-): VariantCandidate | ResolutionRefusal {
-  if (gap === null || gap === undefined) {
-    if (candidates.length === 1) return candidates[0]!;
-    return { ok: false, reason: 'gap_unspecified' };
+  candidates: readonly Variant[],
+  gap: number | null,
+): { ok: true; variant: Variant } | ResolutionRefusal {
+  if (gap === null) {
+    return candidates.length === 1
+      ? { ok: true, variant: candidates[0]! }
+      : { ok: false, reason: 'gap_unspecified' };
   }
   // A position named on an answer that has none, or on a Gap the Student left
   // empty. Either way there is nothing at that position to confirm.
-  return candidates.find((candidate) => candidate.gap === gap)
-    ?? { ok: false, reason: 'gap_not_answered' };
+  const found = candidates.find((candidate) => candidate.gap === gap);
+  return found === undefined ? { ok: false, reason: 'gap_not_answered' } : { ok: true, variant: found };
 }
 
 /**
@@ -321,7 +320,7 @@ export function resolveDispute(
   adminId: number,
   disputeId: number,
   ruling: DisputeRuling,
-  gap: number | null | undefined = null,
+  gap: number | null = null,
 ): Resolution | ResolutionRefusal {
   return db.transaction((tx) => {
     const dispute = tx.select().from(disputes).where(eq(disputes.id, disputeId)).get();
@@ -344,7 +343,7 @@ export function resolveDispute(
 
     if (ruling === 'upheld' && candidates.length > 0) {
       const confirmed = confirmedAnswer(candidates, gap);
-      if ('ok' in confirmed) return confirmed;
+      if (!confirmed.ok) return confirmed;
 
       // What the Student wrote at that Gap, not the sentence they built with it.
       // A fill-gap's `answer` is that sentence, and storing it as an Accepted
@@ -352,13 +351,13 @@ export function resolveDispute(
       // Deterministic Check asks about one Gap at a time.
       const existing = tx.select().from(acceptedVariants)
         .where(eq(acceptedVariants.exerciseId, exercise.id)).all()
-        .map((row) => ({ value: row.value, gap: row.gap }));
+        .map(variantOf);
 
-      if (!alreadyAccepted(exercise, existing, confirmed)) {
+      if (!alreadyAccepted(exercise, existing, confirmed.variant)) {
         tx.insert(acceptedVariants).values({
           exerciseId: exercise.id,
-          value: confirmed.value,
-          gap: confirmed.gap,
+          value: confirmed.variant.value,
+          gap: confirmed.variant.gap,
           createdAt: new Date(),
         }).run();
         variantAdded = true;

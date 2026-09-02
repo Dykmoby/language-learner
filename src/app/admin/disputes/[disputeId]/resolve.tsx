@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import { VerdictLine } from '../../../shared/verdict-line.tsx';
 import { ru } from '../../../../ru.ts';
-import type { VariantCandidate } from '../../../../admin/disputes.ts';
+import type { Variant } from '../../../../content/accepted.ts';
 import type { DisputeRuling } from '../../../../db/schema.ts';
 
 type Props = {
@@ -30,14 +30,19 @@ type Props = {
    * #85 — because an objection is about one word and the other two are the ones
    * the Student got wrong.
    */
-  candidates: VariantCandidate[];
+  candidates: Variant[];
 };
 
-type Outcome = { ruling: DisputeRuling; variantAdded: boolean; value: string | null };
+type Outcome = {
+  ruling: DisputeRuling;
+  variantAdded: boolean;
+  /** Exactly what was sent, so the confirmation names what was added. */
+  confirmed: Variant | null;
+};
 
 export function ResolveDispute({ disputeId, ruling, candidates }: Props) {
   const [decided, setDecided] = useState<Outcome | null>(
-    ruling === null ? null : { ruling, variantAdded: false, value: null },
+    ruling === null ? null : { ruling, variantAdded: false, confirmed: null },
   );
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -68,11 +73,7 @@ export function ResolveDispute({ disputeId, ruling, candidates }: Props) {
         setProblem(body?.error ?? ru.errors.serverError);
         return;
       }
-      setDecided({
-        ruling: chosen,
-        variantAdded: body.variantAdded === true,
-        value: confirming?.value ?? null,
-      });
+      setDecided({ ruling: chosen, variantAdded: body.variantAdded === true, confirmed: confirming });
     } catch {
       setProblem(ru.errors.serverError);
     } finally {
@@ -94,13 +95,14 @@ export function ResolveDispute({ disputeId, ruling, candidates }: Props) {
         {decided.ruling === 'upheld' && ruling === null ? (
           <p className="muted">
             {decided.variantAdded ? ru.disputeReview.variantAdded : ru.disputeReview.variantAlready}
-            {decided.variantAdded && decided.value !== null ? (
-              <> <strong>{decided.value}</strong></>
+            {/* What was added, and — where there was a position to choose — where.
+                Read off what was sent rather than off the form, so the sentence
+                stays true to the decision it is reporting. */}
+            {decided.variantAdded && decided.confirmed !== null ? (
+              <> <strong>{decided.confirmed.value}</strong></>
             ) : null}
-            {/* Which Gap it was added at, where there was one to choose: what the
-                screen says was added is what was added, position included. */}
-            {decided.variantAdded && confirming?.gap !== null && confirming !== null ? (
-              <> ({ru.disputeReview.acceptedAtGap(confirming.gap + 1)})</>
+            {decided.variantAdded && decided.confirmed?.gap != null ? (
+              <> ({ru.disputeReview.acceptedAtGap(decided.confirmed.gap + 1)})</>
             ) : null}
           </p>
         ) : null}

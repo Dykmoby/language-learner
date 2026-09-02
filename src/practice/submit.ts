@@ -160,10 +160,10 @@ function progressionAfter(
 export function correctedForStudent(
   corrected: string | null,
   verdict: Verdict | null,
-  progression: ProgressionView,
+  revealOffered: boolean,
 ): string | null {
   if (verdict === 'correct') return corrected;
-  return progression.revealOffered ? corrected : null;
+  return revealOffered ? corrected : null;
 }
 
 /**
@@ -305,7 +305,7 @@ export function submitAnswer(
         verdict,
         failure: null,
         feedbackRu: null,
-        corrected: correctedForStudent(judgement.corrected, verdict, progression),
+        corrected: correctedForStudent(judgement.corrected, verdict, progression.revealOffered),
         gaps: judgement.gaps,
         errors: [],
         progression,
@@ -445,7 +445,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     failure: null,
     feedbackRu: response.feedback_ru,
     // Stored above on every attempt; withheld here until the third failed one.
-    corrected: correctedForStudent(response.corrected, guarded.verdict, progression),
+    corrected: correctedForStudent(response.corrected, guarded.verdict, progression.revealOffered),
     // Nothing the Grader judges is judged gap by gap: it reads a whole answer,
     // and its Errors are where it says which part of one was wrong.
     gaps: [],

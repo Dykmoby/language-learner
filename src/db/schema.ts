@@ -189,6 +189,8 @@ export const acceptedVariants = sqliteTable('accepted_variants', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
+export type AcceptedVariantRow = typeof acceptedVariants.$inferSelect;
+
 export type CourseRow = typeof courses.$inferSelect;
 export type LessonRow = typeof lessons.$inferSelect;
 export type ExerciseRow = typeof exercises.$inferSelect;

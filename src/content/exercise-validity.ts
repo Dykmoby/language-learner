@@ -98,6 +98,21 @@ export function gapsOf(kind: ExerciseKind, prompt: string): number {
   return kind === 'fill_gap' ? gapCount(prompt) : 1;
 }
 
+/**
+ * Whether a place to answer in this Kind is a Gap that can be named.
+ *
+ * Only a fill-gap's is. Every other Kind has exactly one place to answer — it is
+ * picked or arranged rather than filled in — so there is no position to record
+ * against an answer, and an Accepted Variant confirmed on one joins the Exercise
+ * as a whole (#85).
+ *
+ * A property of the Kind, like the two predicates above, so it lives here rather
+ * than as a branch in whichever module needs it first.
+ */
+export function answersCarryGaps(kind: ExerciseKind): boolean {
+  return kind === 'fill_gap';
+}
+
 export const EXERCISE_FAULTS = [
   'prompt_empty',
   'gap_count_mismatch',
