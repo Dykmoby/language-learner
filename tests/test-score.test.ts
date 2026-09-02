@@ -19,6 +19,7 @@ function answer(
   return {
     id: rows, studentId: 1, exerciseId, attempt: 1, answer: 'a', testAttemptId: 9,
     status, failureReason: null, proposedVerdict: guardedVerdict, guardedVerdict,
+    typographyDropped: false,
     feedbackRu: null, corrected: null, createdAt: new Date(),
   };
 }

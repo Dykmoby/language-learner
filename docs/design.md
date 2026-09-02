@@ -125,7 +125,9 @@ Stable in storage, Russian labels rendered at display time.
 
 **Core (both Languages):** `word_order`, `spelling`, `punctuation`, `capitalization`, `typography`, `vocabulary_choice`, `missing_word`, `extra_word`, `meaning_mismatch`, `register_style`
 
-> `typography` is reported by the Grader and then dropped by the server: sentence-initial capitalisation, the terminal full stop and stray whitespace are not language, and the Deterministic Check has always ignored all three. It never reaches the Coherence Guard, a stored Submission, or a Student's histogram. `punctuation` and `capitalization` keep their meaning for the cases that are real — a missing comma; `london` written for `London`.
+> `typography` is reported by the Grader and then dropped by the server: sentence-initial capitalisation, the terminal full stop and stray whitespace are not language, and the Deterministic Check has always ignored all three. It never reaches the Coherence Guard, a stored Submission, or a Student's histogram. `punctuation` and `capitalization` keep their meaning for the cases that are real — a missing comma; `london` written for `London` **inside** a sentence.
+>
+> The backstop that catches a Grader ignoring the instruction compares the answer with the correction, and cannot separate the two readings of a difference in the *first* letter: «i have a cat» and «london is the capital» both differ from their corrections by one leading capital and nothing else. It clears the Error in both, so a proper noun opening an otherwise perfect sentence loses its `capitalization` report. The prompt is what covers that case — a complying Grader files an opening capital under `typography` and a proper noun under `capitalization`.
 
 **English:** `article`, `tense`, `irregular_verb`, `subject_verb_agreement`, `preposition`, `plural_form`, `countability`, `modal_verb`, `conditional`, `gerund_vs_infinitive`, `phrasal_verb`
 

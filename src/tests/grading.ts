@@ -166,7 +166,9 @@ export function recordBatch(
         // violation and the histogram in step 7 will trip over it.
         console.warn(`[grader] unknown Error Type(s): ${item.unknownErrorTypes.join(', ')}`);
       }
-      if (item.guarded.changed) {
+      // Not when the server itself removed the Error underneath the Verdict —
+      // see the same line in practice/submit.ts.
+      if (item.guarded.changed && !item.typographyDropped) {
         console.warn(`[grader] Coherence Guard fired: ${item.guarded.rule}`);
       }
 
@@ -177,6 +179,7 @@ export function recordBatch(
         // run-to-run instability impossible to measure later (ADR 0003).
         proposedVerdict: item.proposedVerdict,
         guardedVerdict: item.guarded.verdict,
+        typographyDropped: item.typographyDropped,
         feedbackRu: item.response.feedback_ru,
         corrected: item.response.corrected,
       }).where(eq(submissions.id, submissionId)).run();

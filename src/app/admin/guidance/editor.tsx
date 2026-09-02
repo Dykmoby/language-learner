@@ -17,6 +17,17 @@ type Standing = {
   editedAt: string | null;
 };
 
+// An edited guidance whose author's account has since been deleted is still an
+// edited guidance. Saying «поставляется с приложением» there would tell the
+// Admin the Grader has text it does not have.
+function provenance(standing: Standing): string {
+  if (standing.isShipped || standing.editedAt === null) return ru.guidance.shipped;
+  const when = new Date(standing.editedAt).toLocaleString(ru.locale);
+  return standing.editedBy === null
+    ? ru.guidance.editedByUnknown(when)
+    : ru.guidance.editedBy(standing.editedBy, when);
+}
+
 export function GuidanceEditor({
   initial, initialShipped, initialEditedBy, initialEditedAt, maxLength,
 }: {
@@ -78,11 +89,7 @@ export function GuidanceEditor({
       </label>
       <p className="muted">{ru.guidance.hint(maxLength)}</p>
 
-      <p className="muted">
-        {standing.isShipped || standing.editedBy === null || standing.editedAt === null
-          ? ru.guidance.shipped
-          : ru.guidance.editedBy(standing.editedBy, new Date(standing.editedAt).toLocaleString(ru.locale))}
-      </p>
+      <p className="muted">{provenance(standing)}</p>
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (

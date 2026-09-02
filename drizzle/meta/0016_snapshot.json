@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7c17a7c0-e467-48ba-89d6-f054620e6617",
+  "id": "3190b4e4-7bb4-4919-9fd1-b779fdf73981",
   "prevId": "ac55ed00-0098-4d5c-b150-d75af45f46fc",
   "tables": {
     "accepted_variants": {
@@ -494,7 +494,7 @@
           "name": "updated_by",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "updated_at": {
@@ -517,7 +517,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1121,6 +1121,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "typography_dropped": {
+          "name": "typography_dropped",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         },
         "feedback_ru": {
           "name": "feedback_ru",

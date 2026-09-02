@@ -1,23 +1,42 @@
--- The editable grading guidance — #79.
+-- The editable grading guidance (#79), and the flag that keeps #78 out of a
+-- metric it does not belong in.
 --
--- One row or none. No row means the guidance shipped in the code, so this table
--- starts empty and «Вернуть исходный текст» deletes rather than rewrites: the
--- default has exactly one home, and an Admin restoring it cannot get a stale
--- copy of one. An empty `guidance` is a real edit meaning "nothing beyond the
--- skeleton", which is why absent and empty are different states rather than the
--- same one.
+-- `grader_guidance` holds one row or none. No row means the guidance shipped in
+-- the code, so this table starts empty and «Вернуть исходный текст» deletes
+-- rather than rewrites: the default has exactly one home, and an Admin restoring
+-- it cannot get a stale copy of one. An empty `guidance` is a real edit meaning
+-- "nothing beyond the skeleton", which is why absent and empty are different
+-- states rather than the same one. The single-row shape is the primary key's job
+-- rather than a convention every writer has to remember.
 --
--- The single-row shape is the primary key's job rather than a convention every
--- writer has to remember: every write is an upsert onto id 1.
+-- `updated_by` is nullable and `set null`, like every other authorship reference
+-- in this schema: deleting an account must not fail because that person once
+-- edited the guidance, and must not take the guidance with it either.
 --
--- Numbered 0016 with no 0015 here on purpose — #83 is in flight on its own
--- branch and holds that number. The migrator applies journal entries in order
--- and does not mind a gap.
+-- `submissions.typography_dropped` records that the server removed an Error the
+-- Grader reported (#78). Without it the two stored Verdicts differ for a reason
+-- that has nothing to do with the Grader, and the guard-firing tally reads that
+-- difference as the Grader contradicting itself. Every row written before this
+-- column had nothing dropped from it, which is what the default says.
+--
+-- ORDERING. Numbered 0016 with no 0015 here because #83 is in flight on its own
+-- branch and holds that number. The gap itself is harmless, but the ordering is
+-- not: drizzle's SQLite migrator applies a migration only when its journal
+-- `when` is greater than the newest `created_at` already in
+-- `__drizzle_migrations` — it compares timestamps, not indices, and it keeps
+-- only the latest. So a migration that lands in the folder with a `when` below
+-- one already applied is skipped in silence, with no error and no log line.
+-- This entry's `when` is above #83's, so #83 must reach a deployed database
+-- first. If this branch is deployed first, #83's `when` has to be bumped above
+-- this one when it rebases. A test asserts the journal is monotonic, which
+-- catches the file-level mistake; nothing can catch the deploy-order one.
 
 CREATE TABLE `grader_guidance` (
 	`id` integer PRIMARY KEY NOT NULL,
 	`guidance` text NOT NULL,
-	`updated_by` integer NOT NULL,
+	`updated_by` integer,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`updated_by`) REFERENCES `students`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`updated_by`) REFERENCES `students`(`id`) ON UPDATE no action ON DELETE set null
 );
+--> statement-breakpoint
+ALTER TABLE `submissions` ADD `typography_dropped` integer DEFAULT false NOT NULL;

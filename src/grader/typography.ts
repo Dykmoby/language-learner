@@ -21,6 +21,23 @@
 // A missing comma is not typography and must survive. It survives because it is
 // a real difference between the two strings, which is why the backstop is written
 // as a comparison and not as a reading of the Grader's Russian.
+//
+// Where the backstop is knowingly blunt
+//
+// If the first word of the sentence is the only difference, the backstop cannot
+// tell «i have a cat» (a typing convention) from «london is the capital» (a fact
+// about the word): both differ from the correction by one leading capital and
+// nothing else. It clears the Error in both cases, so a proper noun that opens a
+// sentence loses its `capitalization` report when the sentence is otherwise
+// perfect. That is the deliberate side of #78's two acceptance criteria, which
+// cannot both hold for that one case — the ticket wants a lowercase sentence
+// marked `correct` even when the Grader ignores the instruction and calls it
+// `capitalization`, and that is exactly what this case looks like.
+//
+// The first mechanism is what covers it: a complying Grader files a sentence's
+// opening capital under `typography` and a proper noun under `capitalization`,
+// and only the first is dropped unconditionally. Mid-sentence, the backstop keeps
+// the distinction on its own.
 
 import { TYPOGRAPHY_ERROR_TYPE, type GraderError } from './contract.ts';
 
@@ -34,7 +51,8 @@ const NITPICKS = new Set([TYPOGRAPHY_ERROR_TYPE, 'punctuation', 'capitalization'
 // this has to satisfy at once:
 //
 //   - a right sentence typed in lower case is `correct` with no Errors
-//   - `london` written for `London` still reports `capitalization`
+//   - `london` written for `London` still reports `capitalization`, wherever the
+//     word sits other than first (see the note below for why "other than first")
 //
 // A blanket case fold cannot tell those apart — both differ from the correction
 // by nothing but case — so it would have to drop the proper noun's Error too.
@@ -55,14 +73,31 @@ function foldTypography(raw: string): string {
     .replace(/(^|[.!?]\s+)(\p{L})/gu, (_match, lead: string, letter: string) => lead + letter.toLowerCase());
 }
 
-/** The Errors worth keeping. */
+export type TypographyOutcome = {
+  errors: GraderError[];
+  /** True when the server removed something the Grader reported. */
+  dropped: boolean;
+};
+
+/**
+ * The Errors worth keeping, and whether anything was taken away.
+ *
+ * The backstop needs the Grader to have actually corrected something. `corrected`
+ * is documented to the model as "the student's answer if already correct", so
+ * echoing the answer verbatim is a known habit — and an echo would make the fold
+ * comparison trivially true and clear a real `punctuation` Error with no evidence
+ * at all. A byte-identical `corrected` is the Grader declining to correct, not
+ * the Grader saying the difference is typographic.
+ */
 export function withoutTypography(
   errors: readonly GraderError[],
   answer: string,
   corrected: string,
-): GraderError[] {
-  const onlyTypography = foldTypography(answer) === foldTypography(corrected);
+): TypographyOutcome {
+  const onlyTypography = answer !== corrected && foldTypography(answer) === foldTypography(corrected);
 
-  return errors.filter((error) =>
+  const kept = errors.filter((error) =>
     onlyTypography ? !NITPICKS.has(error.type) : error.type !== TYPOGRAPHY_ERROR_TYPE);
+
+  return { errors: kept, dropped: kept.length !== errors.length };
 }

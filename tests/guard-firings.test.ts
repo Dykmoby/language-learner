@@ -26,8 +26,12 @@ import { exercises, students, submissions, isDeterministic } from '../src/db/sch
 import { tempDatabasePath } from './helpers/temp-db.ts';
 
 /** A Grader-judged Kind, since that is the only kind the guard can act on. */
-function judged(proposed: Verdict | null, guarded: Verdict | null): JudgedSubmission {
-  return { kind: 'translation', proposedVerdict: proposed, guardedVerdict: guarded };
+function judged(
+  proposed: Verdict | null,
+  guarded: Verdict | null,
+  typographyDropped = false,
+): JudgedSubmission {
+  return { kind: 'translation', proposedVerdict: proposed, guardedVerdict: guarded, typographyDropped };
 }
 
 test('a system where the guard has never fired counts zero out of the answers it judged', () => {
@@ -97,6 +101,7 @@ test('a Deterministic Check is not counted at all, in either half of the fractio
   // Exercises would drive the reported rate towards zero on its own.
   const deterministic: JudgedSubmission = {
     kind: 'multiple_choice', proposedVerdict: 'correct', guardedVerdict: 'correct',
+    typographyDropped: false,
   };
 
   const tally = tallyGuardFirings([deterministic, deterministic, judged('correct', 'partially_correct')]);
@@ -175,4 +180,21 @@ test('a system where nobody has answered anything counts nothing at all', () => 
   assert.deepEqual(guardFirings(handle.db), {
     judged: 0, fired: 0, forcedCorrect: 0, forbadeCorrect: 0,
   });
+});
+
+test('a Verdict the server moved by dropping a typography Error is not counted as a firing', () => {
+  // Issue #78 removes an Error before the guard sees it, which can leave the two
+  // stored Verdicts differing for a reason that is not the Grader's. The tally
+  // measures the Grader contradicting itself (ADR 0003); counting this would
+  // report the application's own typography filter as Grader incoherence, on
+  // every routine lowercase sentence.
+  const tally = tallyGuardFirings([
+    judged('partially_correct', 'correct', true),
+    judged('partially_correct', 'correct', true),
+    judged('incorrect', 'correct'),
+  ]);
+
+  assert.equal(tally.judged, 1, 'the dropped rows leave the denominator too');
+  assert.equal(tally.fired, 1);
+  assert.equal(tally.forcedCorrect, 1);
 });

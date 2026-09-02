@@ -351,6 +351,9 @@ export const ru = {
     restoring: 'Возвращение…',
     shipped: 'Сейчас действует текст, поставляемый с приложением.',
     editedBy: (who: string, when: string) => `Последнее изменение: ${who}, ${when}.`,
+    // The account that made the edit has since been deleted. The edit still
+    // stands — it is the application's text, not that person's.
+    editedByUnknown: (when: string) => `Последнее изменение: ${when}. Автор удалён.`,
     // The Health Check runs through the real Grader path, so a broken edit shows
     // up there on its own. Said out loud so the Admin knows where to look.
     healthNote:

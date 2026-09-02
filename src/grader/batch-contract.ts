@@ -226,6 +226,12 @@ export type JudgedExercise = {
   /** What the Grader proposed, kept apart from the guarded value (ADR 0003). */
   proposedVerdict: Verdict;
   guarded: GuardOutcome;
+  /**
+   * The server removed an Error the Grader reported (issue #78). Recorded so a
+   * Verdict the server moved by taking the Error out from under it is not read
+   * later as the Grader contradicting itself.
+   */
+  typographyDropped: boolean;
   unknownErrorTypes: string[];
 };
 
@@ -248,7 +254,7 @@ export function judgeBatch(
     // A judgement for an Exercise nobody asked about cannot reach this far —
     // parseBatchOutput refuses the whole batch over one. The fallback is the
     // answer being absent, not wrong, and an empty string simply never matches.
-    const errors = withoutTypography(
+    const typography = withoutTypography(
       judgement.errors, answers.get(judgement.exerciseId) ?? '', judgement.corrected);
 
     return {
@@ -256,11 +262,12 @@ export function judgeBatch(
       response: {
         feedback_ru: judgement.feedback_ru,
         corrected: judgement.corrected,
-        errors,
+        errors: typography.errors,
       },
       proposedVerdict: judgement.verdict,
-      guarded: coherenceGuard(judgement.verdict, errors),
-      unknownErrorTypes: validateErrorTypes(errors, ctx.language),
+      guarded: coherenceGuard(judgement.verdict, typography.errors),
+      typographyDropped: typography.dropped,
+      unknownErrorTypes: validateErrorTypes(typography.errors, ctx.language),
     };
   });
 }

@@ -79,6 +79,13 @@ export type GradingOutcome =
       /** What the Grader proposed, kept apart from the guarded value (ADR 0003). */
       proposedVerdict: Verdict;
       guarded: GuardOutcome;
+      /**
+       * The server removed an Error the Grader reported (issue #78). Recorded so
+       * a Verdict the server moved by taking the Error out from under it is not
+       * read later as the Grader contradicting itself — which is the one thing
+       * ADR 0003's stored pair exists to measure.
+       */
+      typographyDropped: boolean;
       wasFenced: boolean;
       unknownErrorTypes: string[];
       usage: GraderUsage;
@@ -174,17 +181,18 @@ function judge(outcome: CallOutcome, request: GradeRequest): GradingOutcome {
   // Issue #78 — before the Guard, before the row, before the histogram. A
   // typography Error that survived to any of those would cost the Student a
   // Verdict for something that is not language.
-  const errors = withoutTypography(parsed.value.errors, request.submission, parsed.value.corrected);
+  const typography = withoutTypography(parsed.value.errors, request.submission, parsed.value.corrected);
 
   return {
     ok: true,
     wallMs,
     usage,
     pushback,
-    response: { ...parsed.value, errors },
+    response: { ...parsed.value, errors: typography.errors },
     proposedVerdict: parsed.value.verdict,
-    guarded: coherenceGuard(parsed.value.verdict, errors),
+    guarded: coherenceGuard(parsed.value.verdict, typography.errors),
+    typographyDropped: typography.dropped,
     wasFenced: parsed.wasFenced,
-    unknownErrorTypes: validateErrorTypes(errors, request.context.language),
+    unknownErrorTypes: validateErrorTypes(typography.errors, request.context.language),
   };
 }

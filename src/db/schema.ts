@@ -309,6 +309,13 @@ export const submissions = sqliteTable('submissions', {
   proposedVerdict: text('proposed_verdict', { enum: VERDICTS }),
   guardedVerdict: text('guarded_verdict', { enum: VERDICTS }),
 
+  // The server removed an Error the Grader reported — issue #78's typography
+  // drop. Without this the two Verdicts above would differ for a reason that has
+  // nothing to do with the Grader, and the guard-firing tally reads exactly that
+  // difference as the Grader contradicting itself. Defaulted false, which is
+  // what every row written before this column is: nothing was dropped from it.
+  typographyDropped: integer('typography_dropped', { mode: 'boolean' }).notNull().default(false),
+
   feedbackRu: text('feedback_ru'),
   corrected: text('corrected'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
@@ -468,7 +475,11 @@ export type HealthCheckRow = typeof healthChecks.$inferSelect;
 export const graderGuidance = sqliteTable('grader_guidance', {
   id: integer('id').primaryKey(),
   guidance: text('guidance').notNull(),
-  updatedBy: integer('updated_by').notNull().references(() => students.id),
+  // Nullable and `set null`, like every other authorship reference in this
+  // schema: deleting an account must not fail because that person once edited
+  // the guidance, and must not take the guidance with it either. The text is the
+  // system's; the name beside it is a courtesy.
+  updatedBy: integer('updated_by').references(() => students.id, { onDelete: 'set null' }),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
 

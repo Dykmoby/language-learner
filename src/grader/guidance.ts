@@ -75,16 +75,20 @@ export type GuidanceStanding = {
  * differently is a question somebody will ask.
  */
 export function guidanceStanding(db: Db): GuidanceStanding {
+  // Left, not inner: the author's account may since have been deleted, and an
+  // inner join would then report the edited guidance as the shipped one — the
+  // Grader would be handed the text on the screen while a different text was in
+  // the database. The edit is what matters; the name beside it is a courtesy.
   const row = db.select({ guidance: graderGuidance.guidance, updatedAt: graderGuidance.updatedAt, username: students.username })
     .from(graderGuidance)
-    .innerJoin(students, eq(students.id, graderGuidance.updatedBy))
+    .leftJoin(students, eq(students.id, graderGuidance.updatedBy))
     .where(eq(graderGuidance.id, ROW_ID))
     .get();
 
   if (row === undefined) {
     return { text: SHIPPED_GUIDANCE, isShipped: true, editedBy: null, editedAt: null };
   }
-  return { text: row.guidance, isShipped: false, editedBy: row.username, editedAt: row.updatedAt };
+  return { text: row.guidance, isShipped: false, editedBy: row.username ?? null, editedAt: row.updatedAt };
 }
 
 /** What goes into a prompt. The Grader has no use for who wrote it. */
