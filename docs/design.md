@@ -139,7 +139,7 @@ Stable in storage, Russian labels rendered at display time.
 
 **Tajik:** `verb_agreement`, `izofat`, `definiteness_ro`, `pronoun_enclitic`, `plural_form_tj`, `preposition_tj`, `compound_verb`, `tense_tj`
 
-> The Tajik list is provisional and needs review by the person teaching it. It was proposed from a much thinner base than the English one.
+> The Tajik list is provisional and needs review by the person teaching it. It was proposed from a much thinner base than the English one. The sheet it is reviewed on is [docs/tajik-error-types-review.md](./tajik-error-types-review.md) — one type at a time, each with its Russian label and a worked example, and a place to name a category the list is missing.
 
 ### Failure behaviour
 
@@ -346,7 +346,7 @@ Six grading calls and one authoring call launched in the same instant, through `
 
 ## Open risks
 
-- The Tajik Error Type enum is unreviewed by a Tajik speaker.
+- The Tajik Error Type enum is unreviewed by a Tajik speaker. The review sheet exists — [docs/tajik-error-types-review.md](./tajik-error-types-review.md) — and what remains is a person answering it; applying the answers is issue #58.
 - **The Verdict is unstable at the `partially_correct`/`incorrect` boundary, and now measured rather than anecdotal.** § Verdict stability at the boundary: Opus 5 returned `incorrect` ×3 and `partially_correct` ×2 on five identical calls with a byte-identical error list every run, and Sonnet 5 split the same case the same way. Both controls were stable five out of five. So the substance is reproducible and the label is not — and it is confined to the boundary.
 
   **Is it worth acting on?** The honest answer is that it costs less than it looks like it costs. Progression is untouched: neither Verdict advances the Student ([§ Progression](#progression)), the Exercise stays current either way, and the Errors and the corrected sentence — which is what a Student actually learns from — are the stable part. What moves is one Russian word, between two answers that both mean "not yet". A Student who resubmits the same answer can read a different word, and nothing in the interface promises they will not.
