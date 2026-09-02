@@ -32,6 +32,7 @@ import type * as schema from '../db/schema.ts';
 import {
   acceptedVariants, courses, exercises, exerciseSets, lessons, tests, type CourseRow,
 } from '../db/schema.ts';
+import { type Variant } from '../content/accepted.ts';
 import { documentFaults, type LessonDocument } from '../content/lesson-document.ts';
 import { testPublishFaults, type TestDocument } from '../content/test-document.ts';
 import {
@@ -332,7 +333,7 @@ function writeExercises(
   tx: Tx,
   exerciseSetId: number,
   document: LessonDocument | TestDocument,
-  variants: readonly string[][],
+  variants: readonly Variant[][],
   now: Date,
 ): void {
   document.exercises.forEach((exercise, index) => {
@@ -352,8 +353,11 @@ function writeExercises(
 
     const earned = variants[index] ?? [];
     if (earned.length === 0) return;
+    // With the Gap each was confirmed for — #85. A file written before variants
+    // had one carries null here, and a null variant joins every Gap, which is
+    // what it did in the Course it was exported from.
     tx.insert(acceptedVariants)
-      .values(earned.map((value) => ({ exerciseId: row.id, value, createdAt: now })))
+      .values(earned.map(({ value, gap }) => ({ exerciseId: row.id, value, gap, createdAt: now })))
       .run();
   });
 }

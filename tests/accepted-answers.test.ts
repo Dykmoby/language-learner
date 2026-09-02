@@ -5,6 +5,10 @@
 // single shape everywhere, so the interesting question is no longer what the
 // code tolerates but what the migration did: a row left holding a flat list
 // would be read as a list of characters, and every answer would be wrong.
+//
+// The other half is where an Accepted Variant lands among those positions — #85.
+// A variant confirmed for one Gap is accepted there and nowhere else; one with
+// no position joins every Gap, which is what all of them did before.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,8 +17,8 @@ import { join } from 'node:path';
 import { tempDatabasePath } from './helpers/temp-db.ts';
 import { openDatabase } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
-import { acceptedGaps } from '../src/content/accepted.ts';
-import { courses, exercises, exerciseSets, lessonDrafts, lessons } from '../src/db/schema.ts';
+import { acceptedAnswers, acceptedGaps, candidateAnswers } from '../src/content/accepted.ts';
+import { courses, exercises, exerciseSets, lessonDrafts, lessons, type ExerciseRow } from '../src/db/schema.ts';
 
 test('the accepted answers of an Exercise are read position by position', () => {
   assert.deepEqual(
@@ -27,6 +31,63 @@ test('nothing accepted is no positions, rather than one empty one', () => {
   // A Grader-judged Exercise accepts nothing here, and must not gain a position
   // that the validity rules would then have to explain away.
   assert.deepEqual(acceptedGaps({ acceptedAnswers: [] }), []);
+});
+
+// --- Where a variant is accepted — #85 ---------------------------------------
+
+/** A three-gap fill-gap, as a row, without a database to put it in. */
+const THREE_GAPS: ExerciseRow = {
+  id: 1,
+  exerciseSetId: 1,
+  position: 1,
+  kind: 'fill_gap',
+  prompt: 'Заполните пропуски: ___ have ___ apple and ___ cat.',
+  referenceAnswer: 'I have an apple and a cat.',
+  acceptedAnswers: [['I'], ['an'], ['a']],
+  caseSensitive: false,
+  choices: [],
+};
+
+test('a variant confirmed for one Gap joins that Gap alone', () => {
+  assert.deepEqual(
+    acceptedAnswers(THREE_GAPS, [{ value: 'one', gap: 1 }]),
+    [['I'], ['an', 'one'], ['a']],
+  );
+});
+
+test('a variant with no position joins every Gap, as every variant once did', () => {
+  // What a Kind with one place to answer holds, and what every variant written
+  // before there was a column for the position holds. Narrowing those to a Gap
+  // nobody chose would change what an existing Exercise accepts.
+  assert.deepEqual(
+    acceptedAnswers(THREE_GAPS, [{ value: 'one', gap: null }]),
+    [['I', 'one'], ['an', 'one'], ['a', 'one']],
+  );
+});
+
+test('a Grader-judged Exercise has no Gaps, and its variants are still readable', () => {
+  const graded: ExerciseRow = {
+    ...THREE_GAPS, kind: 'translation', prompt: 'Переведите.', acceptedAnswers: [],
+  };
+  assert.deepEqual(
+    acceptedAnswers(graded, [{ value: 'I have got a cat.', gap: null }]),
+    [['I have got a cat.']],
+  );
+});
+
+test('what already counts as a right answer is asked of one Gap at a time', () => {
+  // The question an Admin about to add an Accepted Variant is answering: is this
+  // word already right *here*. Asked across the whole Exercise, «an» would read
+  // as already accepted at the first Gap, and confirming it there would be
+  // silently refused.
+  const variants = [{ value: 'one', gap: 1 }];
+  assert.deepEqual(candidateAnswers(THREE_GAPS, variants, 0), ['I have an apple and a cat.', 'I']);
+  assert.deepEqual(candidateAnswers(THREE_GAPS, variants, 1), ['I have an apple and a cat.', 'an', 'one']);
+  assert.deepEqual(
+    candidateAnswers(THREE_GAPS, variants),
+    ['I have an apple and a cat.', 'I', 'an', 'one', 'a'],
+    'and of the Exercise as a whole where there is no position to name',
+  );
 });
 
 // --- The migration -----------------------------------------------------------

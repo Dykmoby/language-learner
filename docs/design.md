@@ -181,7 +181,9 @@ Review screen shows every Exercise with correct ones collapsed. Grader-judged Ex
 
 ## Disputes
 
-The Admin review screen shows the Exercise, Reference Answer, Student's answer, the Grader's Errors, and the Student's comment. One click promotes the answer to an Accepted Variant, which then flows into future Grader context as teacher-confirmed.
+The Admin review screen shows the Exercise, Reference Answer, Student's answer, the correction the Grader wrote, the Grader's Errors, and the Student's comment. One click promotes the answer to an Accepted Variant, which then flows into future Grader context as teacher-confirmed.
+
+**An upheld Dispute confirms one answer, at one place.** A fill-gap is answered in as many places as its prompt has Gaps, and an objection is about one word: a Student who says their word in the second Gap is also correct has said nothing about the two they got wrong. So the review asks which Gap the confirmed answer is for, the variant is stored with that position, and the Deterministic Check consults it there and nowhere else — a word accepted at the second Gap must never start marking that word correct in the first, which would be the Exercise teaching the mistake. A variant carrying no position joins every Gap: that is every Kind with one place to answer, and every variant written before the position existed. The Reference Answer is never rewritten either way — it is what the author wrote, and an Accepted Variant is what a Dispute confirmed.
 
 This is the only closed feedback loop in the system: the Grader measurably improves through use, without prompt engineering.
 

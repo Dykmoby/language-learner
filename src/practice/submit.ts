@@ -17,7 +17,7 @@ import {
   submissions, isDeterministic,
   type ExerciseRow, type SubmissionRow, type SubmissionStatus,
 } from '../db/schema.ts';
-import { acceptedAnswersFor, variantsOf } from '../content/accepted.ts';
+import { acceptedAnswersFor, variantValues, variantsOf } from '../content/accepted.ts';
 import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
@@ -212,7 +212,10 @@ export function graderRequestFor(
 ): GradeRequest {
   const { course, lesson, exercise } = opened;
 
-  const variants = variantsOf(db, exercise.id);
+  // Values alone: the Grader judges a whole answer and has no Gaps to place them
+  // at. Only Grader-judged Kinds reach this function, and those carry no
+  // position anyway — see content/accepted.ts.
+  const variants = variantValues(variantsOf(db, exercise.id));
 
   const context: ExerciseContext = {
     language: course.language as Language,

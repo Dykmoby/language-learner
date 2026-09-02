@@ -71,7 +71,7 @@ The canonical answer an Admin writes when authoring an Exercise. Shown to the Gr
 _Avoid_: correct answer, solution, key
 
 **Accepted Variant**:
-An additional answer confirmed to be correct, added by an Admin when resolving a Dispute. Grows over time and is fed to the Grader.
+An additional answer confirmed to be correct, added by an Admin when resolving a Dispute. Grows over time and is fed to the Grader. On a fill-gap it carries the Gap it was confirmed for and is accepted at that Gap alone; on every other Exercise Kind there is one place to answer and so no position to carry.
 _Avoid_: alternative, synonym
 
 **Submission**:

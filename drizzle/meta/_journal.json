@@ -134,6 +134,13 @@
       "when": 1788336258120,
       "tag": "0018_course_grader_instruction",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1788348218271,
+      "tag": "0019_accepted_variant_gap",
+      "breakpoints": true
     }
   ]
 }

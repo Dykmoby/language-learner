@@ -57,12 +57,24 @@ export default async function DisputePage(
       </p>
 
       <h2>{ru.disputeReview.acceptedTitle}</h2>
-      {opened.accepted.length === 0 ? (
+      {/* Gap by Gap where there is more than one — #85. «a, an, I» in one list
+          is a list an Admin cannot act on, because which Gap takes which is the
+          whole question the decision below asks. */}
+      {opened.accepted.flat().length === 0 ? (
         <p className="muted">{ru.disputeReview.acceptedNone}</p>
+      ) : opened.accepted.length <= 1 ? (
+        <ul className="variants">
+          {opened.accepted.flat().map((value, index) => (
+            <li key={`${index}-${value}`}>{value}</li>
+          ))}
+        </ul>
       ) : (
         <ul className="variants">
-          {opened.accepted.map((value, index) => (
-            <li key={`${index}-${value}`}>{value}</li>
+          {opened.accepted.map((values, gap) => (
+            <li key={gap}>
+              <span className="muted">{ru.disputeReview.acceptedAtGap(gap + 1)}: </span>
+              {values.length === 0 ? ru.disputeReview.acceptedNoneAtGap : values.join(', ')}
+            </li>
           ))}
         </ul>
       )}
@@ -105,7 +117,7 @@ export default async function DisputePage(
       <ResolveDispute
         disputeId={dispute.id}
         ruling={dispute.ruling}
-        values={opened.answerValues}
+        candidates={opened.candidates}
       />
     </main>
   );

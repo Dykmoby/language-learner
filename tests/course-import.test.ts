@@ -84,6 +84,26 @@ function sourceFile(): { file: CourseExport; text: string } {
   }
 }
 
+/**
+ * The same file as a build before version 5 wrote it: an Accepted Variant is a
+ * bare string there, with no Gap to name.
+ *
+ * Applied wherever a test re-stamps a file with an older version, because the
+ * version is what says which of the two shapes the variants are in — a file
+ * claiming 3 while holding positioned variants is a file no build ever wrote.
+ */
+function asWrittenBeforeVariantGaps(file: CourseExport) {
+  const flatten = <T extends { acceptedVariants: { value: string }[][] }>(entry: T) => ({
+    ...entry,
+    acceptedVariants: entry.acceptedVariants.map((list) => list.map((variant) => variant.value)),
+  });
+  return {
+    ...file,
+    lessons: file.lessons.map(flatten),
+    tests: file.tests.map(flatten),
+  };
+}
+
 const coursesIn = (db: Db) => db.select().from(courses).orderBy(asc(courses.id)).all();
 
 test('round trip: a file exported on one box rebuilds the same Course on another', () => {
@@ -225,10 +245,13 @@ test('a file written before accepted answers became per-gap still imports', () =
   const { file } = sourceFile();
   const target = box(false);
   try {
+    // Both tolerances at once, because a version 1 file has both: flat accepted
+    // answers on the Exercise, and Accepted Variants with no Gap.
+    const older = asWrittenBeforeVariantGaps(file);
     const asVersionOne = JSON.stringify({
-      ...file,
+      ...older,
       version: 1,
-      lessons: file.lessons.map((lesson) => ({
+      lessons: older.lessons.map((lesson) => ({
         ...lesson,
         document: {
           ...lesson.document,
@@ -238,7 +261,7 @@ test('a file written before accepted answers became per-gap still imports', () =
           })),
         },
       })),
-      tests: file.tests.map((entry) => ({
+      tests: older.tests.map((entry) => ({
         ...entry,
         document: {
           ...entry.document,
@@ -357,7 +380,7 @@ test('Accepted Variants that do not line up with the Exercises are refused', () 
     const misaligned = {
       ...file,
       lessons: file.lessons.map((lesson, index) => index !== 0 ? lesson : {
-        ...lesson, acceptedVariants: [['the']],
+        ...lesson, acceptedVariants: [[{ value: 'the', gap: null }]],
       }),
     };
 
@@ -414,7 +437,9 @@ test('a file written before Courses carried an Effort imports as low, not as the
   const target = box(false);
   try {
     const { graderEffort: _dropped, ...course } = file.course;
-    const asVersionTwo = JSON.stringify({ ...file, version: 2, course });
+    const asVersionTwo = JSON.stringify({
+      ...asWrittenBeforeVariantGaps(file), version: 2, course,
+    });
 
     const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, asVersionTwo);
     assert.ok(result.ok, `import refused: ${JSON.stringify(result.ok ? [] : result.faults)}`);
@@ -473,7 +498,9 @@ test("a Course's own instruction travels, and a file written before them arrives
     // an empty one, which is what a Course that never had one holds anyway —
     // there is nothing here to tell apart.
     const { graderInstruction: _dropped, ...course } = file.course;
-    const older = JSON.stringify({ ...file, version: 3, course });
+    const older = JSON.stringify({
+      ...asWrittenBeforeVariantGaps(file), version: 3, course,
+    });
     const earlier = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, older);
     assert.ok(earlier.ok, `import refused: ${JSON.stringify(earlier.ok ? [] : earlier.faults)}`);
     assert.equal(earlier.course.graderInstruction, '');

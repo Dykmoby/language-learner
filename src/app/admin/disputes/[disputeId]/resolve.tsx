@@ -14,38 +14,52 @@
 import { useState } from 'react';
 import { VerdictLine } from '../../../shared/verdict-line.tsx';
 import { ru } from '../../../../ru.ts';
+import type { VariantCandidate } from '../../../../admin/disputes.ts';
 import type { DisputeRuling } from '../../../../db/schema.ts';
 
 type Props = {
   disputeId: number;
   ruling: DisputeRuling | null;
   /**
-   * Shown on the confirmation, because it is what became an Accepted Variant.
+   * What upholding could confirm — the Student's own words, each with the Gap it
+   * was written at.
    *
-   * One value per gap: what a fill-gap promotes is the words, not the sentence
-   * they were written into, and a confirmation naming the sentence would name
-   * something no Exercise now accepts.
+   * What a fill-gap promotes is the words, not the sentence they were written
+   * into: a confirmation naming the sentence would name something no Exercise
+   * accepts. More than one of them is the case this screen has to ask about —
+   * #85 — because an objection is about one word and the other two are the ones
+   * the Student got wrong.
    */
-  values: string[];
+  candidates: VariantCandidate[];
 };
 
-type Outcome = { ruling: DisputeRuling; variantAdded: boolean };
+type Outcome = { ruling: DisputeRuling; variantAdded: boolean; value: string | null };
 
-export function ResolveDispute({ disputeId, ruling, values }: Props) {
+export function ResolveDispute({ disputeId, ruling, candidates }: Props) {
   const [decided, setDecided] = useState<Outcome | null>(
-    ruling === null ? null : { ruling, variantAdded: false },
+    ruling === null ? null : { ruling, variantAdded: false, value: null },
   );
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  // Which of the Student's words is being confirmed. Nothing to choose between
+  // needs no choice; where there is one, it is made deliberately rather than
+  // defaulted to the first — the position is the decision.
+  const [chosenAt, setChosenAt] = useState<number | null>(candidates.length === 1 ? 0 : null);
+
+  const confirming = chosenAt === null ? null : candidates[chosenAt] ?? null;
 
   async function decide(chosen: DisputeRuling) {
+    if (chosen === 'upheld' && candidates.length > 0 && confirming === null) {
+      setProblem(ru.disputeReview.gapUnspecified);
+      return;
+    }
     setSending(true);
     setProblem(null);
     try {
       const response = await fetch(`/api/admin/disputes/${disputeId}/resolve`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ruling: chosen }),
+        body: JSON.stringify({ ruling: chosen, gap: confirming?.gap ?? null }),
       });
       const body = await response.json().catch(() => null) as
         { ok?: boolean; variantAdded?: boolean; error?: string } | null;
@@ -54,7 +68,11 @@ export function ResolveDispute({ disputeId, ruling, values }: Props) {
         setProblem(body?.error ?? ru.errors.serverError);
         return;
       }
-      setDecided({ ruling: chosen, variantAdded: body.variantAdded === true });
+      setDecided({
+        ruling: chosen,
+        variantAdded: body.variantAdded === true,
+        value: confirming?.value ?? null,
+      });
     } catch {
       setProblem(ru.errors.serverError);
     } finally {
@@ -76,7 +94,14 @@ export function ResolveDispute({ disputeId, ruling, values }: Props) {
         {decided.ruling === 'upheld' && ruling === null ? (
           <p className="muted">
             {decided.variantAdded ? ru.disputeReview.variantAdded : ru.disputeReview.variantAlready}
-            {decided.variantAdded ? <> <strong>{values.join(', ')}</strong></> : null}
+            {decided.variantAdded && decided.value !== null ? (
+              <> <strong>{decided.value}</strong></>
+            ) : null}
+            {/* Which Gap it was added at, where there was one to choose: what the
+                screen says was added is what was added, position included. */}
+            {decided.variantAdded && confirming?.gap !== null && confirming !== null ? (
+              <> ({ru.disputeReview.acceptedAtGap(confirming.gap + 1)})</>
+            ) : null}
           </p>
         ) : null}
         <p><a href="/admin/disputes">{ru.disputeReview.back}</a></p>
@@ -87,6 +112,29 @@ export function ResolveDispute({ disputeId, ruling, values }: Props) {
   return (
     <div className="decision">
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
+
+      {/* The position is part of the decision, so it is made on this screen
+          rather than inferred from the answer — #85. One word written, or a Kind
+          with one place to answer, has nothing to ask about. */}
+      {candidates.length > 1 ? (
+        <fieldset className="gapChoice">
+          <legend>{ru.disputeReview.chooseGap}</legend>
+          {candidates.map((candidate, at) => (
+            <label key={at}>
+              <input
+                type="radio"
+                name="gap"
+                checked={chosenAt === at}
+                onChange={() => setChosenAt(at)}
+              />
+              {candidate.gap === null
+                ? candidate.value
+                : `${ru.disputeReview.acceptedAtGap(candidate.gap + 1)}: ${candidate.value}`}
+            </label>
+          ))}
+          <p className="muted">{ru.disputeReview.chooseGapHint}</p>
+        </fieldset>
+      ) : null}
 
       <p className="actions">
         <button type="button" disabled={sending} onClick={() => void decide('upheld')}>

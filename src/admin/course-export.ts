@@ -37,7 +37,7 @@ import {
   parseLessonDocument, type LessonDocument, type DocumentExercise,
 } from '../content/lesson-document.ts';
 import { parseTestDocument, type TestDocument } from '../content/test-document.ts';
-import { variantsOf } from '../content/accepted.ts';
+import { variantsOf, type Variant } from '../content/accepted.ts';
 import { readImage, referencedImageNames } from '../content/uploads.ts';
 import { publishedDocument } from './drafts.ts';
 import { adminTest } from './tests.ts';
@@ -63,8 +63,13 @@ type Db = BetterSQLite3Database<typeof schema>;
  * 4 is where a Course started carrying its own instruction for the Grader (#80).
  * A file below that version has none, and reads back with an empty one — which
  * is what a Course that has never had an instruction holds anyway.
+ *
+ * 5 is where an Accepted Variant started carrying the Gap it was confirmed for
+ * (#85). A file below that version holds bare strings, which read back with no
+ * position and therefore join every Gap — exactly what they did in the build
+ * that wrote them.
  */
-export const COURSE_EXPORT_VERSION = 4;
+export const COURSE_EXPORT_VERSION = 5;
 
 /**
  * Every version this build can read back.
@@ -73,7 +78,7 @@ export const COURSE_EXPORT_VERSION = 4;
  * export a restore rather than a snapshot with a shelf life — and a file from a
  * later one is refused as such rather than guessed at.
  */
-export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, 2, 3, COURSE_EXPORT_VERSION];
+export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, 2, 3, 4, COURSE_EXPORT_VERSION];
 
 export type ExportedCourse = {
   language: Language;
@@ -105,12 +110,13 @@ export type ExportedCourse = {
  */
 export type ExportedLesson = {
   document: LessonDocument;
-  acceptedVariants: string[][];
+  /** One list per Exercise, each variant carrying the Gap it was confirmed for. */
+  acceptedVariants: Variant[][];
 };
 
 export type ExportedTest = {
   document: TestDocument;
-  acceptedVariants: string[][];
+  acceptedVariants: Variant[][];
 };
 
 export type CourseExport = {
@@ -251,18 +257,48 @@ export function versionOf(value: unknown): number | null {
   return typeof version === 'number' && Number.isInteger(version) ? version : null;
 }
 
-function parseVariants(value: unknown, exerciseCount: number): string[][] | null {
+/**
+ * The Accepted Variants of every Exercise of one Lesson or Test.
+ *
+ * Two shapes, told apart by the file's version rather than by looking: below 5 a
+ * variant is a bare string and carries no Gap, at 5 and above it is
+ * `{ value, gap }`. Asked by version for the reason the per-gap wrapping below
+ * is — a file that claims 5 and holds strings is a broken file, not an old one.
+ */
+function parseVariants(value: unknown, exerciseCount: number, version: number): Variant[][] | null {
   // Absent is the same as none — a file written by hand, or by a build that had
   // no Disputes yet, should not need an array of empty arrays in it.
   if (value === undefined) return Array.from({ length: exerciseCount }, () => []);
   if (!Array.isArray(value)) return null;
 
-  const variants: string[][] = [];
+  const variants: Variant[][] = [];
   for (const entry of value) {
-    if (!Array.isArray(entry) || !entry.every((item) => typeof item === 'string')) return null;
-    variants.push(entry as string[]);
+    if (!Array.isArray(entry)) return null;
+    const parsed: Variant[] = [];
+    for (const item of entry) {
+      const variant = version < 5 ? unpositionedVariant(item) : positionedVariant(item);
+      if (variant === null) return null;
+      parsed.push(variant);
+    }
+    variants.push(parsed);
   }
   return variants;
+}
+
+/** A variant from a file written before one could name a Gap. */
+function unpositionedVariant(value: unknown): Variant | null {
+  return typeof value === 'string' ? { value, gap: null } : null;
+}
+
+function positionedVariant(value: unknown): Variant | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const fields = value as Record<string, unknown>;
+  if (typeof fields.value !== 'string') return null;
+  const gap = fields.gap ?? null;
+  // A Gap is a position in a prompt: a whole number, and never a negative one.
+  // Anything else is a broken file rather than a variant to place somewhere.
+  if (gap !== null && !(typeof gap === 'number' && Number.isInteger(gap) && gap >= 0)) return null;
+  return { value: fields.value, gap };
 }
 
 /**
@@ -358,7 +394,7 @@ export function parseCourseExport(value: unknown): CourseExport | null {
     const document = parseLessonDocument(asWritten((entry as Record<string, unknown>).document));
     if (document === null) return null;
     const acceptedVariants = parseVariants(
-      (entry as Record<string, unknown>).acceptedVariants, document.exercises.length,
+      (entry as Record<string, unknown>).acceptedVariants, document.exercises.length, version,
     );
     if (acceptedVariants === null) return null;
     lessons.push({ document, acceptedVariants });
@@ -370,7 +406,7 @@ export function parseCourseExport(value: unknown): CourseExport | null {
     const document = parseTestDocument(asWritten((entry as Record<string, unknown>).document));
     if (document === null) return null;
     const acceptedVariants = parseVariants(
-      (entry as Record<string, unknown>).acceptedVariants, document.exercises.length,
+      (entry as Record<string, unknown>).acceptedVariants, document.exercises.length, version,
     );
     if (acceptedVariants === null) return null;
     tests.push({ document, acceptedVariants });
