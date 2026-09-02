@@ -24,7 +24,7 @@ import {
   type CourseRow, type TestRow,
 } from '../db/schema.ts';
 import type { DocumentExercise } from '../content/lesson-document.ts';
-import { acceptedPositions } from '../content/accepted.ts';
+import { acceptedGaps } from '../content/accepted.ts';
 import {
   testFaults, testPublishFaults, DEFAULT_PASS_THRESHOLD,
   type TestDocument, type TestFault,
@@ -46,7 +46,7 @@ function exercisesOf(db: Db, setId: number | null): DocumentExercise[] {
       kind: row.kind,
       prompt: row.prompt,
       referenceAnswer: row.referenceAnswer,
-      acceptedAnswers: acceptedPositions(row),
+      acceptedAnswers: acceptedGaps(row),
       caseSensitive: row.caseSensitive,
       choices: row.choices,
     }));

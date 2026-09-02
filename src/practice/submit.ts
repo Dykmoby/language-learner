@@ -218,8 +218,8 @@ export function submitAnswer(
     // Check names both. Without the second, upholding a Dispute on a fill-gap
     // would write a variant nothing ever consults.
     //
-    // Every position, each judged against its own values: a prompt with three
-    // gaps is three facts being checked, and the Verdict says how many held.
+    // Every Gap, each judged against its own values: a prompt with three of them
+    // is three facts being checked, and the Verdict says how many held.
     const judgement = judge(exercise, answers, acceptedAnswersFor(db, exercise));
 
     // Both Verdict columns are set from the comparison, exactly as they are set

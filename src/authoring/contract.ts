@@ -185,9 +185,12 @@ function kindRules(): string[] {
     }
 
     if (isDeterministic(kind)) {
-      // A list per place the student answers, holding what is accepted there.
-      // Exactly one of them: every Kind has one place to answer, and #83 is
-      // where a fill-gap prompt may carry several gaps.
+      // A list per Gap, holding what is accepted there. Exactly one of them, even
+      // now that a fill-gap prompt may carry several: teaching the contract to
+      // ask for a Gap count that matches its own prompt is #84, and until then a
+      // one-gap fill-gap is the only shape Generation is asked for — a Draft
+      // where the two disagree is refused by the review rules before an Admin
+      // sees it.
       parts.push(answersAreChoices(kind)
         ? '"acceptedAnswers": a list holding ONE list, of one or more entries copied EXACTLY from "choices"'
         : '"acceptedAnswers": a list holding ONE list, of every wording that is correct, at least one');

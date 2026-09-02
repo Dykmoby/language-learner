@@ -15,14 +15,13 @@
 // is published into the tables a Student reads.
 
 import {
-  EXERCISE_KINDS, answersAreChoices, exerciseFaults, isBlank, isDeterministic, offersChoices,
+  EXERCISE_KINDS, answersAreChoices, exerciseFaults, gapsOf, isBlank, isDeterministic, offersChoices,
   type AcceptedAnswers, type AuthoredExercise, type ExerciseFaultCode, type ExerciseKind,
 } from './exercise-validity.ts';
-import { gapCount } from './gaps.ts';
 
 /**
- * The accepted answers copied position by position, so an edit to one document
- * cannot reach into the one it was made from.
+ * The accepted answers copied Gap by Gap, so an edit to one document cannot
+ * reach into the one it was made from.
  */
 function copyAccepted(accepted: AcceptedAnswers | undefined): string[][] {
   return (accepted ?? []).map((values) => [...values]);
@@ -152,7 +151,7 @@ export function withKind(exercise: DocumentExercise, kind: ExerciseKind): Docume
   // Becoming a fill-gap means the prompt now says how many places there are to
   // answer, and a word order's single accepted ordering is not one per gap.
   // Routed through the same function a prompt edit uses, so there is one rule
-  // about what a fill-gap's positions are rather than two that can disagree —
+  // about what a fill-gap's Gaps are rather than two that can disagree —
   // and `discardedByKindChange` asks this function, so the author is warned.
   return next.kind === 'fill_gap' ? withPrompt(next, next.prompt) : next;
 }
@@ -216,7 +215,7 @@ export function withPrompt(exercise: DocumentExercise, prompt: string): Document
     ...exercise,
     prompt,
     acceptedAnswers: Array.from(
-      { length: gapCount(prompt) },
+      { length: gapsOf(exercise.kind, prompt) },
       (_, at) => [...(accepted[at] ?? [])],
     ),
   };
@@ -294,24 +293,24 @@ function asStringArray(value: unknown): string[] | null {
 }
 
 /**
- * The accepted answers as they arrive: one list of short strings per position.
+ * The accepted answers as they arrive: one list of short strings per Gap.
  *
  * Blank entries go the same way `asStringArray` drops them, and for the same
- * reason. An empty position is **kept**: a gap nobody has written an answer for
- * yet is a real thing an author can produce, and dropping it would turn an
- * Exercise that is refused by name into one whose positions silently stopped
- * matching its prompt.
+ * reason. An empty one is **kept**: a Gap nobody has written an answer for yet
+ * is a real thing an author can produce, and dropping it would turn an Exercise
+ * that is refused by name into one whose Gaps silently stopped matching its
+ * prompt.
  */
 function asAcceptedAnswers(value: unknown): string[][] | null {
   if (value === undefined) return [];
   if (!Array.isArray(value)) return null;
 
-  const positions: string[][] = [];
+  const gaps: string[][] = [];
   for (const entry of value) {
     if (!Array.isArray(entry) || !entry.every((item) => typeof item === 'string')) return null;
-    positions.push((entry as string[]).filter((item) => item.trim() !== ''));
+    gaps.push((entry as string[]).filter((item) => item.trim() !== ''));
   }
-  return positions;
+  return gaps;
 }
 
 /**

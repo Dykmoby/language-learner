@@ -42,7 +42,7 @@ export function answerOf(exercise: Asked, answers: readonly string[]): string {
  * Kind with nothing to offer: a single value is already in `answer`, and storing
  * it twice would make the two able to disagree.
  */
-export function gapsOf(exercise: Asked, answers: readonly string[]): string[] {
+export function writtenGaps(exercise: Asked, answers: readonly string[]): string[] {
   return exercise.kind === 'fill_gap' ? answers.map((value) => value.trim()) : [];
 }
 
@@ -105,7 +105,7 @@ export function judge(
   return {
     verdict,
     answer: answerOf(exercise, answers),
-    answerGaps: gapsOf(exercise, answers),
+    answerGaps: writtenGaps(exercise, answers),
     gaps: outcome.gaps.map((gap) => gap.correct),
     corrected,
   };

@@ -131,9 +131,9 @@ export const exercises = sqliteTable('exercises', {
   // The canonical answer the Admin writes. Shown to the Grader as context and to
   // the Student on Reveal.
   referenceAnswer: text('reference_answer').notNull(),
-  // Deterministic Check Kinds only: one list per position, because a prompt may
-  // have several places to answer and each has its own accepted values. Unused
-  // by Grader-judged Kinds, which store no positions at all.
+  // Deterministic Check Kinds only: one list per Gap, because a prompt may have
+  // several places to answer and each has its own accepted values. Unused by
+  // Grader-judged Kinds, which store no Gaps at all.
   acceptedAnswers: text('accepted_answers', { mode: 'json' })
     .$type<string[][]>().notNull().default([]),
   caseSensitive: integer('case_sensitive', { mode: 'boolean' }).notNull().default(false),

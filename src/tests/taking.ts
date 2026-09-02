@@ -24,7 +24,7 @@ import {
   type CourseRow, type ExerciseRow, type SubmissionRow, type TestRow, type TestAttemptRow,
 } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
-import { acceptedAnswersFor, acceptedPositions } from '../content/accepted.ts';
+import { acceptedAnswers, acceptedAnswersFor, acceptedGaps, variantsOfMany } from '../content/accepted.ts';
 import { checkGaps } from '../practice/deterministic-check.ts';
 import { answerOf, judge, nothingAnswered, storedGaps } from '../practice/judgement.ts';
 import { disputesOn } from '../practice/disputes.ts';
@@ -312,6 +312,11 @@ export function openAttempt(
   const outcome = attemptOutcome(answers, attempt.passThreshold);
   const awaiting: number[] = [];
 
+  // Every Exercise's Accepted Variants in one query rather than one per row:
+  // this screen re-fetches itself every few seconds while a batch is out, and a
+  // query per Exercise per poll is a cost with nothing to show for it.
+  const variants = variantsOfMany(db, answered.map(({ exercise }) => exercise.id));
+
   // Objections against this attempt's answers. They change no score and reopen
   // no attempt — a Test gates nothing — so they are read here purely so the
   // review can say that an objection was made and what came of it.
@@ -350,16 +355,18 @@ export function openAttempt(
         explanationRu: error.explanationRu,
       })),
       referenceAnswer: exercise.referenceAnswer,
-      acceptedAnswers: isDeterministic(exercise.kind) ? acceptedPositions(exercise) : [],
+      acceptedAnswers: isDeterministic(exercise.kind) ? acceptedGaps(exercise) : [],
       answerGaps: isDeterministic(exercise.kind) ? storedGaps(row) : [],
-      // Re-derived rather than stored: a per-gap Verdict is not a column, and
+      // Re-derived rather than stored: a per-Gap Verdict is not a column, and
       // what the review marks is what the Exercise accepts *now* — the same
       // values it shows beside the answer. An Accepted Variant added since is
       // therefore marked as accepted, which is what it is.
       gaps: isDeterministic(exercise.kind)
-        ? checkGaps(storedGaps(row), acceptedAnswersFor(db, exercise), {
-            caseSensitive: exercise.caseSensitive,
-          }).gaps.map((gap) => gap.correct)
+        ? checkGaps(
+            storedGaps(row),
+            acceptedAnswers(exercise, variants.get(exercise.id) ?? []),
+            { caseSensitive: exercise.caseSensitive },
+          ).gaps.map((gap) => gap.correct)
         : [],
       dispute: objection === undefined ? null : { ruling: objection.ruling },
     };

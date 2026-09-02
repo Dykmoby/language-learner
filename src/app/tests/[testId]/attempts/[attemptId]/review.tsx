@@ -15,11 +15,11 @@
 // A third shape is neither: an answer whose grading failed. It is not red, it is
 // not collapsed, and it must never read as a wrong answer.
 
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ru, errorTypeLabel } from '../../../../../ru.ts';
 import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
-import { GAP, pieces } from '../../../../../content/gaps.ts';
+import { AnsweredSentence } from '../../../../shared/answered-sentence.tsx';
 import { DisputeForm } from '../../../../shared/dispute-form.tsx';
 import { stateClass, stateOfVerdict, stateWords, type VerdictState } from '../../../../shared/verdict-state.ts';
 import { VerdictLine } from '../../../../shared/verdict-line.tsx';
@@ -218,7 +218,20 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
               && exercise.answer.trim() === ''
               ? <span className="muted">{ru.test.noAnswer}</span>
               : exercise.kind === 'fill_gap'
-                ? <AnsweredSentence exercise={exercise} />
+                ? (
+                  // A fill-gap has no options to mark, so the review marks the
+                  // words themselves, sitting in the sentence they were written
+                  // into. Rebuilt rather than printed from `answer`, because a
+                  // review has to say *which* Gap was wrong: three Gaps are three
+                  // facts, and a sentence marked as a whole leaves a Student
+                  // comparing it to the Reference Answer word by word.
+                  <AnsweredSentence
+                    prompt={exercise.prompt}
+                    answers={exercise.answerGaps}
+                    gaps={exercise.gaps}
+                    mark="strong"
+                  />
+                )
                 : <strong>{exercise.answer}</strong>}
           </p>
 
@@ -256,40 +269,5 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
         </>
       ) : null}
     </li>
-  );
-}
-
-/**
- * A fill-gap answer as the sentence it is, with the gaps that were not accepted
- * marked.
- *
- * The stored `answer` is already that sentence, and for a single gap printing it
- * would be enough. It is rebuilt here because a review has to say *which* gap
- * was wrong — three gaps are three facts, and a sentence marked as a whole
- * leaves a Student comparing it to the Reference Answer word by word to find
- * out which one they missed.
- */
-function AnsweredSentence({ exercise }: { exercise: AttemptExerciseView }) {
-  const parts = pieces(exercise.prompt);
-
-  return (
-    <>
-      {parts.map((part, at) => (
-        <Fragment key={at}>
-          {part}
-          {at === parts.length - 1 ? null : (
-            // A Deterministic Kind fails at exactly one token, so each gap
-            // carries its own state rather than the sentence carrying one —
-            // the same two states, from the same system as the options above.
-            <strong className={exercise.gaps[at] === undefined
-              ? undefined
-              : stateClass(exercise.gaps[at] ? 'correct' : 'incorrect')}
-            >
-              {exercise.answerGaps[at]?.trim() || GAP}
-            </strong>
-          )}
-        </Fragment>
-      ))}
-    </>
   );
 }

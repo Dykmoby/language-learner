@@ -135,11 +135,7 @@ test('two entries claiming the same Exercise row are refused', () => {
 test('the document rules stay pure', () => {
   const source = readFileSync(new URL('../src/content/lesson-document.ts', import.meta.url), 'utf8');
   const imports = [...source.matchAll(/^\s*import[\s\S]*?from\s+'([^']+)';/gm)].map((m) => m[1]!);
-  assert.deepEqual(
-    imports,
-    ['./exercise-validity.ts', './gaps.ts'],
-    'the rules and where the gaps are, and nothing else',
-  );
+  assert.deepEqual(imports, ['./exercise-validity.ts'], 'the rules are the only dependency');
   assert.ok(!/\bnode:(fs|net|http|child_process|sqlite)\b/.test(source), 'no I/O module reference');
   assert.ok(!/drizzle/.test(source), 'no database reference');
 });

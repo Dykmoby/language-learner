@@ -13,7 +13,7 @@
 // that nothing ever consults, and the closed feedback loop would silently be open
 // for half the Exercise Kinds.
 
-import { eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import { acceptedVariants, type ExerciseRow } from '../db/schema.ts';
@@ -22,14 +22,14 @@ import type { AcceptedAnswers } from './exercise-validity.ts';
 type Db = BetterSQLite3Database<typeof schema>;
 
 /**
- * What an Exercise accepts, one list per position — the single read of the
- * stored column.
+ * What an Exercise accepts, one list per Gap — the single read of the stored
+ * column.
  *
  * One line, and worth keeping as a name rather than inlining: it is what makes
  * the shape of the column a thing this module owns, so the next change to it is
  * one function rather than every screen that shows an answer.
  */
-export function acceptedPositions(exercise: Pick<ExerciseRow, 'acceptedAnswers'>): AcceptedAnswers {
+export function acceptedGaps(exercise: Pick<ExerciseRow, 'acceptedAnswers'>): AcceptedAnswers {
   return exercise.acceptedAnswers;
 }
 
@@ -41,7 +41,30 @@ export function variantsOf(db: Db, exerciseId: number): string[] {
 }
 
 /**
- * What a Deterministic Check compares an answer against, position by position.
+ * The same, for a whole screenful of Exercises at once.
+ *
+ * A Test's review shows every Exercise of an attempt and marks each Gap of each
+ * one, and the screen is re-fetched every four seconds while a batch is out.
+ * Asking per row turns that into one query per Exercise on every poll; this is
+ * the same answer in one. Exercises with no variants are absent from the map,
+ * which is what an empty list means anyway.
+ */
+export function variantsOfMany(db: Db, exerciseIds: readonly number[]): Map<number, string[]> {
+  const byExercise = new Map<number, string[]>();
+  if (exerciseIds.length === 0) return byExercise;
+
+  for (const row of db.select().from(acceptedVariants)
+    .where(inArray(acceptedVariants.exerciseId, [...exerciseIds]))
+    .orderBy(asc(acceptedVariants.id)).all()) {
+    const found = byExercise.get(row.exerciseId);
+    if (found) found.push(row.value);
+    else byExercise.set(row.exerciseId, [row.value]);
+  }
+  return byExercise;
+}
+
+/**
+ * What a Deterministic Check compares an answer against, Gap by Gap.
  *
  * The authored values first, so `matched` reports the Admin's canonical wording
  * where both would match — a Submission records what the Student was judged
@@ -58,20 +81,18 @@ export function acceptedAnswersFor(db: Db, exercise: ExerciseRow): AcceptedAnswe
  * database to put them together — and so the order is decided in one place
  * rather than by whichever caller spread them.
  *
- * An Accepted Variant is recorded against the Exercise and carries no position,
- * so it joins every position — which is exactly what it does today, when there
- * is only ever one. #85 is where a Dispute says which gap its variant is for;
- * narrowing it here first would change what an existing Exercise accepts, and
- * this step changes nothing.
+ * An Accepted Variant is recorded against the Exercise and carries no Gap, so it
+ * joins every one of them. #85 is where a Dispute says which Gap its variant is
+ * for; narrowing it here would change what an existing Exercise accepts.
  */
 export function acceptedAnswers(exercise: ExerciseRow, variants: readonly string[]): AcceptedAnswers {
-  const positions = acceptedPositions(exercise);
-  if (variants.length === 0) return positions;
-  // A Grader-judged Exercise stores no positions, and a Dispute upheld on one
-  // still records a variant. Dropping it would lose the only thing the screens
-  // that read this have to show.
-  if (positions.length === 0) return [[...variants]];
-  return positions.map((values) => [...values, ...variants]);
+  const gaps = acceptedGaps(exercise);
+  if (variants.length === 0) return gaps;
+  // A Grader-judged Exercise stores no Gaps, and a Dispute upheld on one still
+  // records a variant. Dropping it would lose the only thing the screens that
+  // read this have to show.
+  if (gaps.length === 0) return [[...variants]];
+  return gaps.map((values) => [...values, ...variants]);
 }
 
 /**

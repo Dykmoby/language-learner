@@ -20,13 +20,12 @@
 
 import { ru } from '../../../ru.ts';
 import {
-  EXERCISE_KINDS, isDeterministic, offersChoices, type ExerciseKind,
+  EXERCISE_KINDS, gapsOf, isDeterministic, offersChoices, type ExerciseKind,
 } from '../../../content/exercise-validity.ts';
 import {
   blankExercise, discardedByKindChange, removeChoice, renameChoice, withKind, withPrompt,
   type DocumentExercise,
 } from '../../../content/lesson-document.ts';
-import { gapCount } from '../../../content/gaps.ts';
 import { movedWithin } from '../../../content/ordering.ts';
 import type { Pending } from './pending.ts';
 
@@ -259,30 +258,28 @@ export function ExerciseList({
 }
 
 /**
- * The values accepted at each place this Exercise asks a Student to answer.
+ * The values accepted at each Gap of this Exercise.
  *
- * A word order has one, and so has a fill-gap with one gap; a fill-gap with
- * three gaps has three, in the order the sentence is read. The boxes come from
- * the *prompt* rather than from the stored lists, so what an author sees is what
- * a Student will be shown — and the write back is the whole list every time, so
- * a box nobody has typed in is an empty position rather than a missing one.
+ * A word order has one, and so has a fill-gap with one Gap; a fill-gap with
+ * three has three, in the order the sentence is read. How many there are is
+ * asked of the Kinds module rather than decided here, so what an author sees is
+ * what a Student will be shown — and the write back is the whole list every
+ * time, so a box nobody has typed in is an empty Gap rather than a missing one.
  */
 function AcceptedFields({ exercise, disabled, onChange }: {
   exercise: DocumentExercise;
   disabled: boolean;
   onChange: (next: DocumentExercise) => void;
 }) {
-  // A word order is arranged rather than filled in: it has one place to answer
-  // whatever its prompt happens to contain.
-  const places = exercise.kind === 'fill_gap' ? gapCount(exercise.prompt) : 1;
+  const gaps = gapsOf(exercise.kind, exercise.prompt);
   const accepted = exercise.acceptedAnswers ?? [];
-  const several = places > 1;
+  const several = gaps > 1;
 
   function write(at: number, raw: string) {
     onChange({
       ...exercise,
       acceptedAnswers: Array.from(
-        { length: places },
+        { length: gaps },
         (_, i) => (i === at ? toLines(raw) : [...(accepted[i] ?? [])]),
       ),
     });
@@ -291,11 +288,11 @@ function AcceptedFields({ exercise, disabled, onChange }: {
   // Nowhere to answer at all. The validity rules name it — a fill-gap whose
   // prompt has no `___` cannot be rendered — and a box here would invite an
   // answer to a question that has no place for one.
-  if (places === 0) return <p className="muted">{ru.draft.noGaps}</p>;
+  if (gaps === 0) return <p className="muted">{ru.draft.noGaps}</p>;
 
   return (
     <>
-      {Array.from({ length: places }, (_, at) => (
+      {Array.from({ length: gaps }, (_, at) => (
         <label key={at}>
           <span>
             {exercise.kind === 'word_order' ? ru.draft.acceptedOrders
