@@ -56,7 +56,6 @@ export type StudentRow = typeof students.$inferSelect;
 // so the columns and the rules can never drift apart.
 export { EXERCISE_KINDS, DETERMINISTIC_KINDS, isDeterministic };
 export type { ExerciseKind };
-export { EFFORTS };
 
 // A Course sits inside one Language and is fixed at a single CEFR level for its
 // whole duration, so the level never has to be resolved per Lesson.

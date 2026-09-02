@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { ru, faultMessage } from '../../../../../ru.ts';
 import { COURSE_INSTRUCTION_MAX_LENGTH, GRADER_MODELS } from '../../../../../content/course-options.ts';
 import type { Effort } from '../../../../../claude/effort.ts';
-import { GraderEffortPicker } from '../../../grader-effort-picker.tsx';
+import { EffortSelect } from '../../../effort-select.tsx';
 
 type Props = {
   courseId: number;
@@ -108,7 +108,9 @@ export function CourseSettingsForm({
       </label>
       <p className="muted">{ru.admin.graderModelChangeHint}</p>
 
-      <GraderEffortPicker
+      <EffortSelect
+        label={ru.admin.graderEffortField}
+        hint={ru.admin.graderEffortHint}
         effort={graderEffort}
         disabled={busy}
         onEffort={(next) => edited(setGraderEffort)(next)}

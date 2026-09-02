@@ -10,27 +10,7 @@ import { NextResponse } from 'next/server';
 import { getDatabase } from '../../../../../db/index.ts';
 import { adminOrRefusal, idFromParam } from '../../../../../admin/guard.ts';
 import { updateCourse } from '../../../../../admin/authoring.ts';
-import { EFFORTS, type Effort } from '../../../../../claude/effort.ts';
-
-function asString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
-}
-
-/**
- * The Effort a body asks for — issue #76.
- *
- * Three answers, and all three are real. An `Effort` is a choice; `null` is the
- * choice of «По умолчанию»; `undefined` is the key being absent, which the
- * authoring rules turn into `low` rather than into the default. `false` is how
- * "that is not an Effort at all" is reported, because `null` is already taken.
- */
-function asEffort(value: unknown): Effort | null | undefined | false {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  return typeof value === 'string' && (EFFORTS as readonly string[]).includes(value)
-    ? value as Effort
-    : false;
-}
+import { asEffort, asOptionalString, asString } from '../body.ts';
 
 export async function PATCH(
   request: Request,
@@ -46,17 +26,17 @@ export async function PATCH(
   const title = asString(body?.title);
   if (title === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
-  // Optional: left out, the Course keeps its Language's model per ADR 0002.
-  const graderModel = body?.graderModel === undefined ? undefined : asString(body.graderModel);
+  // Every field below may be left out, and leaving one out leaves the Course as
+  // it is. An update names the part that is changing, so a request carrying only
+  // a title must not reset the Grader model, the Effort or the instruction it
+  // never mentioned.
+  const graderModel = asOptionalString(body?.graderModel);
   if (graderModel === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
   const graderEffort = asEffort(body?.graderEffort);
   if (graderEffort === false) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
-  // An empty string is a real edit — "this Course has nothing of its own to say"
-  // — so only a non-string is malformed. Absent leaves what the Course holds.
-  const graderInstruction = body?.graderInstruction === undefined
-    ? undefined : asString(body.graderInstruction);
+  const graderInstruction = asOptionalString(body?.graderInstruction);
   if (graderInstruction === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
   const { db } = getDatabase();

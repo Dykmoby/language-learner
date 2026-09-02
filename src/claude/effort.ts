@@ -20,6 +20,20 @@ export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 export type Effort = (typeof EFFORTS)[number];
 
 /**
+ * Whether an untrusted value names an Effort.
+ *
+ * Here rather than at each of the three places that read one out of JSON — two
+ * endpoints and an exported Course file — because the list is here, and a copy
+ * of the membership test somewhere else is a copy that keeps its old five
+ * entries the day a sixth is added. What each caller does with "no" differs, and
+ * that part stays with the caller: an endpoint refuses the request, and a file
+ * from an older format has no Effort in it at all.
+ */
+export function isEffort(value: unknown): value is Effort {
+  return typeof value === 'string' && (EFFORTS as readonly string[]).includes(value);
+}
+
+/**
  * How much longer a call gets at each Effort, as a multiple of its base timeout.
  *
  * Raising the Effort has to raise the timeout with it or the setting only

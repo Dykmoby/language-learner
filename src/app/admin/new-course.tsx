@@ -14,7 +14,7 @@ import { ru, faultMessage } from '../../ru.ts';
 import { CEFR_LEVELS, GRADER_MODELS, DEFAULT_GRADER_MODEL } from '../../content/course-options.ts';
 import { LANGUAGES, type Language } from '../../grader/contract.ts';
 import type { Effort } from '../../claude/effort.ts';
-import { GraderEffortPicker } from './grader-effort-picker.tsx';
+import { EffortSelect } from './effort-select.tsx';
 
 export function NewCourseForm() {
   const [language, setLanguage] = useState<Language>('en');
@@ -108,7 +108,16 @@ export function NewCourseForm() {
       </label>
       <p className="muted">{ru.admin.graderModelHint}</p>
 
-      <GraderEffortPicker effort={graderEffort} disabled={busy} onEffort={setGraderEffort} />
+      {/* The cost is a wait, and the person who waits is not the person
+          choosing — so the hint names it. The Practice screen tells the Student
+          the other half. */}
+      <EffortSelect
+        label={ru.admin.graderEffortField}
+        hint={ru.admin.graderEffortHint}
+        effort={graderEffort}
+        disabled={busy}
+        onEffort={setGraderEffort}
+      />
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (

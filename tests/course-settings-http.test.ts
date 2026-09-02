@@ -144,6 +144,27 @@ test('the Effort is saved, and «По умолчанию» is stored as the abse
   assert.equal((await patch(admin, { title: course().title, graderEffort: 'low' })).status, 200);
 });
 
+test('a PATCH naming only the title leaves the Grader settings where they were', async () => {
+  const admin = await signedIn(ADMIN);
+  assert.equal((await patch(admin, {
+    title: course().title, graderModel: 'claude-opus-5', graderEffort: 'max',
+    graderInstruction: 'Строго к заглавным буквам.',
+  })).status, 200);
+
+  assert.equal((await patch(admin, { title: 'Только название' })).status, 200);
+
+  const row = course();
+  assert.equal(row.title, 'Только название');
+  assert.equal(row.graderModel, 'claude-opus-5', 'the endpoint does not reset what it was not told about');
+  assert.equal(row.graderEffort, 'max');
+  assert.equal(row.graderInstruction, 'Строго к заглавным буквам.');
+
+  // Back to what the rest of this suite expects to find.
+  assert.equal((await patch(admin, {
+    title: 'Английский A1', graderModel: 'claude-sonnet-5', graderEffort: 'low', graderInstruction: '',
+  })).status, 200);
+});
+
 test('an Effort that is not one is malformed rather than silently dropped', async () => {
   const admin = await signedIn(ADMIN);
   assert.equal((await patch(admin, { title: 'Английский A1', graderEffort: 'enormous' })).status, 400);

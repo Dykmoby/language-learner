@@ -184,7 +184,7 @@ export const ru = {
     courseCreated: 'Курс создан.',
 
     // The Course's settings — issue #75. A Course used to be created once and
-    // then fixed, so a mistyped название stayed mistyped.
+    // then fixed, so a mistyped title stayed mistyped.
     settingsLink: 'Настройки курса',
     settingsTitle: 'Настройки курса',
     backToCourse: 'К курсу',
@@ -192,7 +192,8 @@ export const ru = {
     savingSettings: 'Сохранение…',
     settingsSaved: 'Настройки сохранены.',
     // Shown rather than offered. Stated as a fact about the Course, because a
-    // greyed-out поле reads as «не сейчас» and these two are never editable.
+    // greyed-out control reads as "not right now" and these two are never
+    // editable at all.
     languageFixed: (language: string) => `Язык курса: ${language}`,
     levelFixed: (level: string) => `Уровень по CEFR: ${level}`,
     // The reason, not just the rule: an Admin who is told «нельзя» without it
@@ -543,12 +544,18 @@ export const ru = {
     // The Student waits roughly three seconds before the first token arrives.
     // This says what is happening in that gap rather than spinning at them.
     checking: 'Проверяющий читает ваш ответ…',
-    // Issue #76 — a Course set to a high Effort is checked in minutes rather than
-    // seconds, and the Student chose none of that. After about a minute the wait
-    // stops looking like a stuck screen and says so. It names the setting rather
-    // than apologising: «долго» without a reason reads as a fault.
+    // Issue #76 — a Course set to a high Effort is checked in minutes rather
+    // than seconds, and the Student chose none of that. After about a minute the
+    // wait stops looking like a stuck screen and says so.
+    //
+    // Phrased as a possibility, not as a diagnosis: this screen does not know the
+    // Course's Effort, so a call that is genuinely hanging on a `low` Course must
+    // not be told it is being examined more deeply. ADR 0001 draws the same line
+    // for the health check's heuristics — a guess is written as a guess. What
+    // does hold either way is the second sentence, so that is the one stated
+    // flatly: a failed check never counts as an attempt.
     stillChecking:
-      'Проверка идёт дольше обычного: в этом курсе Проверяющий разбирает ответ подробнее. Это не сбой — дождитесь ответа.',
+      'Проверка идёт дольше обычного — так бывает, если для курса выбрано высокое усилие Проверяющего. Подождите: если проверка всё же сорвётся, попытка не засчитается.',
     emptyAnswer: 'Сначала напишите ответ.',
     next: 'Дальше',
     correct: 'Верно!',

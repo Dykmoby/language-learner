@@ -9,27 +9,7 @@ import { NextResponse } from 'next/server';
 import { getDatabase } from '../../../../db/index.ts';
 import { adminOrRefusal } from '../../../../admin/guard.ts';
 import { createCourse } from '../../../../admin/authoring.ts';
-import { EFFORTS, type Effort } from '../../../../claude/effort.ts';
-
-function asString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
-}
-
-/**
- * The Effort a body asks for — issue #76.
- *
- * Three answers, and all three are real. An `Effort` is a choice; `null` is the
- * choice of «По умолчанию»; `undefined` is the key being absent, which the
- * authoring rules turn into `low` rather than into the default. `false` is how
- * "that is not an Effort at all" is reported, because `null` is already taken.
- */
-function asEffort(value: unknown): Effort | null | undefined | false {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  return typeof value === 'string' && (EFFORTS as readonly string[]).includes(value)
-    ? value as Effort
-    : false;
-}
+import { asEffort, asOptionalString, asString } from './body.ts';
 
 export async function POST(request: Request): Promise<Response> {
   const { refusal } = await adminOrRefusal();
@@ -43,7 +23,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'malformed' }, { status: 400 });
   }
   // Optional: left out, the Course takes its Language's model per ADR 0002.
-  const graderModel = body?.graderModel === undefined ? undefined : asString(body.graderModel);
+  const graderModel = asOptionalString(body?.graderModel);
   if (graderModel === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
   const graderEffort = asEffort(body?.graderEffort);

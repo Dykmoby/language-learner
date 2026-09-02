@@ -32,7 +32,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import { courses, lessons, tests } from '../db/schema.ts';
 import type { Language } from '../grader/contract.ts';
-import { EFFORTS, type Effort } from '../claude/effort.ts';
+import { isEffort, type Effort } from '../claude/effort.ts';
 import {
   parseLessonDocument, type LessonDocument, type DocumentExercise,
 } from '../content/lesson-document.ts';
@@ -304,9 +304,7 @@ function perGapAcceptedAnswers(document: unknown): unknown {
  */
 function asEffort(value: unknown): Effort | null | undefined {
   if (value === null) return null;
-  return typeof value === 'string' && (EFFORTS as readonly string[]).includes(value)
-    ? value as Effort
-    : undefined;
+  return isEffort(value) ? value : undefined;
 }
 
 function parseImages(value: unknown): Record<string, string> | null {

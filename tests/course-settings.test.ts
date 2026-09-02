@@ -102,7 +102,10 @@ test('every reason is reported at once — an Admin fixes a form, not a field pe
 
 test('every fault the settings can report has Russian to say it with', () => {
   const codes = new Set([
-    ...courseSettingsFaults({ title: '', graderModel: 'gpt-9' }, { language: 'en' }),
+    ...courseSettingsFaults(
+      { title: '', graderModel: 'gpt-9' },
+      { language: 'en', graderModel: 'claude-sonnet-5', graderEffort: 'low' },
+    ),
     'course_not_found' as const,
   ]);
   for (const code of codes) {
@@ -116,11 +119,41 @@ test('a Course that is not there is refused rather than created', () => {
   assert.deepEqual(refused.faults, ['course_not_found']);
 });
 
-test('leaving the model out keeps the Language default rather than blanking it', () => {
+test('a blank model resolves to the Language default, never to the empty string', () => {
   const courseId = aCourse();
-  assert.ok(updateCourse(handle.db, courseId, { title: 'Английский A1' }).ok);
+  assert.ok(updateCourse(handle.db, courseId, { title: 'Английский A1', graderModel: '' }).ok);
   assert.equal(
     stored(courseId).graderModel, 'claude-sonnet-5',
-    'a blank model resolves to the Language default — never to the empty string a Grader refuses',
+    'the empty string is what the Grader refuses — every Submission in the Course would fail',
   );
+});
+
+test('an update that names only the title moves nothing else', () => {
+  // An update names the part of a Course that is changing. A request carrying
+  // only a title must not reset the three fields it never mentioned — the one
+  // mistake here that would be silent, because nothing on any screen would say
+  // a Course had moved off the settings an Admin chose.
+  const courseId = aCourse();
+  assert.ok(updateCourse(handle.db, courseId, {
+    title: 'Английский A1',
+    graderModel: 'claude-opus-5',
+    graderEffort: 'max',
+    graderInstruction: 'Строго к заглавным буквам.',
+  }).ok);
+
+  assert.ok(updateCourse(handle.db, courseId, { title: 'Английский A1 — переписан' }).ok);
+
+  const row = stored(courseId);
+  assert.equal(row.title, 'Английский A1 — переписан', 'what was named did change');
+  assert.equal(row.graderModel, 'claude-opus-5', 'and the model an Admin chose is still there');
+  assert.equal(row.graderEffort, 'max', 'and so is the Effort');
+  assert.equal(row.graderInstruction, 'Строго к заглавным буквам.', 'and so is the instruction');
+});
+
+test('«По умолчанию» can still be chosen — it is a value, not the absence of one', () => {
+  const courseId = aCourse();
+  assert.ok(updateCourse(handle.db, courseId, { title: 'Английский A1', graderEffort: 'high' }).ok);
+
+  assert.ok(updateCourse(handle.db, courseId, { title: 'Английский A1', graderEffort: null }).ok);
+  assert.equal(stored(courseId).graderEffort, null, 'sending null is not the same as sending nothing');
 });
