@@ -699,6 +699,24 @@ ul.variants li {
   padding-top: var(--space-5);
 }
 
+/* Which Gap an upheld answer is confirmed for — #85. Part of the decision rather
+   than a setting beside it, so it sits inside the same block and is read before
+   the buttons are reached. */
+.decision fieldset.gapChoice {
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.decision fieldset.gapChoice legend { padding: 0 var(--space-2); font-weight: var(--weight-semibold); }
+.decision fieldset.gapChoice label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin-bottom: var(--space-1);
+}
+.decision fieldset.gapChoice p { margin: var(--space-2) 0 0; }
+
 /* --- Progress and statistics -------------------------------------------------
    design.md § Progress and statistics. */
 

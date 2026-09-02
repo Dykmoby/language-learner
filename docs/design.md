@@ -86,7 +86,9 @@ Every Grader call is stateless but context-rich. It receives:
 - the Reference Answer and any Accepted Variants
 - the Student's earlier Submissions on this Exercise
 
-That last item is what produces Progressive Hints: attempt 1 nudges, attempt 2 names the error type, attempt 3 shows the structure.
+That last item is what produces Progressive Hints, and the attempt number is stated on every call — the first one included, where there is nothing earlier to count. The ladder: attempt 1 points at the mistake without naming it, attempt 2 names the kind of mistake without writing the correct form, attempt 3 and after show it.
+
+**The corrected answer is withheld from the Student until the third failed attempt.** Two halves, and only one of them is a guarantee. `corrected` is returned by the Grader and written to the Submission on every attempt — an Admin resolving a Dispute needs it — and simply does not travel to the browser until `revealOffered` is true, which is the same event as «three tries and it did not come». That is the guarantee. The ladder above is the other half: an explanation's job is to teach, so nothing can stop a Grader writing the finished form into `feedback_ru`, which is exactly why the field whose whole job is to hold the answer is the one held back. A Test is unaffected — it has one attempt and gives no feedback until submitted, so a review that hid the correction would leave a Student with nothing to learn from.
 
 ### Configuration
 
@@ -139,7 +141,7 @@ Stable in storage, Russian labels rendered at display time.
 
 **Tajik:** `verb_agreement`, `izofat`, `definiteness_ro`, `pronoun_enclitic`, `plural_form_tj`, `preposition_tj`, `compound_verb`, `tense_tj`
 
-> The Tajik list is provisional and needs review by the person teaching it. It was proposed from a much thinner base than the English one.
+> The Tajik list is provisional and needs review by the person teaching it. It was proposed from a much thinner base than the English one. The sheet it is reviewed on is [docs/tajik-error-types-review.md](./tajik-error-types-review.md) — one type at a time, each with its Russian label and a worked example, and a place to name a category the list is missing.
 
 ### Failure behaviour
 
@@ -157,7 +159,7 @@ Grading runs to completion server-side and persists regardless of whether the cl
 
 - `correct` advances.
 - `partially_correct` keeps the Student on the Exercise with a sharper Progressive Hint.
-- After 3 failures, Reveal is offered → state becomes Completed With Help, which counts as complete but renders as a distinct segment in the progress bar.
+- After 3 failures, Reveal is offered → state becomes Completed With Help, which counts as complete but renders as a distinct segment in the progress bar. The same third failure is where the corrected answer starts reaching the browser (§ Grading).
 - Dispute unblocks progression immediately and queues for Admin review.
 - Lessons unlock sequentially, with a per-Course Admin toggle for free navigation.
 
@@ -179,7 +181,9 @@ Review screen shows every Exercise with correct ones collapsed. Grader-judged Ex
 
 ## Disputes
 
-The Admin review screen shows the Exercise, Reference Answer, Student's answer, the Grader's Errors, and the Student's comment. One click promotes the answer to an Accepted Variant, which then flows into future Grader context as teacher-confirmed.
+The Admin review screen shows the Exercise, Reference Answer, Student's answer, the correction the Grader wrote, the Grader's Errors, and the Student's comment. One click promotes the answer to an Accepted Variant, which then flows into future Grader context as teacher-confirmed.
+
+**An upheld Dispute confirms one answer, at one place.** A fill-gap is answered in as many places as its prompt has Gaps, and an objection is about one word: a Student who says their word in the second Gap is also correct has said nothing about the two they got wrong. So the review asks which Gap the confirmed answer is for, the variant is stored with that position, and the Deterministic Check consults it there and nowhere else — a word accepted at the second Gap must never start marking that word correct in the first, which would be the Exercise teaching the mistake. A variant carrying no position joins every Gap: that is every Kind with one place to answer, and every variant written before the position existed. The Reference Answer is never rewritten either way — it is what the author wrote, and an Accepted Variant is what a Dispute confirmed.
 
 This is the only closed feedback loop in the system: the Grader measurably improves through use, without prompt engineering.
 
@@ -346,7 +350,7 @@ Six grading calls and one authoring call launched in the same instant, through `
 
 ## Open risks
 
-- The Tajik Error Type enum is unreviewed by a Tajik speaker.
+- The Tajik Error Type enum is unreviewed by a Tajik speaker. The review sheet exists — [docs/tajik-error-types-review.md](./tajik-error-types-review.md) — and what remains is a person answering it; applying the answers is issue #58.
 - **The Verdict is unstable at the `partially_correct`/`incorrect` boundary, and now measured rather than anecdotal.** § Verdict stability at the boundary: Opus 5 returned `incorrect` ×3 and `partially_correct` ×2 on five identical calls with a byte-identical error list every run, and Sonnet 5 split the same case the same way. Both controls were stable five out of five. So the substance is reproducible and the label is not — and it is confined to the boundary.
 
   **Is it worth acting on?** The honest answer is that it costs less than it looks like it costs. Progression is untouched: neither Verdict advances the Student ([§ Progression](#progression)), the Exercise stays current either way, and the Errors and the corrected sentence — which is what a Student actually learns from — are the stable part. What moves is one Russian word, between two answers that both mean "not yet". A Student who resubmits the same answer can read a different word, and nothing in the interface promises they will not.

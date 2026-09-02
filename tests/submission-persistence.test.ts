@@ -20,7 +20,9 @@ import {
 } from '../src/db/schema.ts';
 import { coherenceGuard, errorTypesFor, type GraderError, type GraderResponse } from '../src/grader/contract.ts';
 import type { GradingOutcome } from '../src/grader/grade.ts';
-import { recordGrading, priorAnswersFor, graderRequestFor } from '../src/practice/submit.ts';
+import {
+  recordGrading, priorAnswersFor, graderRequestFor, correctedForStudent,
+} from '../src/practice/submit.ts';
 import { openExercise } from '../src/practice/lessons.ts';
 import { ru, errorTypeLabel } from '../src/ru.ts';
 
@@ -185,6 +187,132 @@ test('an Error Type outside the enum is stored rather than dropped', () => {
     assert.equal(errorTypeLabel('invented_type'), 'invented_type',
       'and it is shown as it came rather than as a blank');
   } finally { s.cleanup(); }
+});
+
+// --- Withholding the corrected answer — issue #81 ----------------------------
+
+/** One wrong answer, judged, as attempt after attempt. */
+function failOnce(s: ReturnType<typeof scenario>, answer: string) {
+  return recordGrading(s.db, {
+    studentId: s.student.id,
+    exerciseId: s.exercise.id,
+    answer,
+    outcome: graded({
+      feedback_ru: 'Не хватает артикля.',
+      corrected: 'I have a cat.',
+      errors: [THREE_ERRORS[0]!],
+      verdict: 'incorrect',
+    }),
+    exercises: s.exercises,
+    previousExerciseId: s.exercise.id,
+  });
+}
+
+test('the first two failed attempts show the Verdict, the explanation and the Errors — not the answer', () => {
+  const s = scenario();
+  try {
+    for (const attempt of [1, 2]) {
+      const frame = failOnce(s, `i have cat ${attempt}`);
+      assert.equal(frame.verdict, 'incorrect', 'the Verdict still travels');
+      assert.equal(frame.feedbackRu, 'Не хватает артикля.', 'and so does the explanation');
+      assert.equal(frame.errors.length, 1, 'and so do the Errors');
+      assert.equal(frame.corrected, null, `attempt ${attempt} must not hand over the finished sentence`);
+      assert.equal(frame.progression.revealOffered, false);
+    }
+  } finally { s.cleanup(); }
+});
+
+test('the third failed attempt shows it, in the same view where Reveal is first offered', () => {
+  // One event, not two: «three tries and it did not come» is what Reveal is
+  // offered for, and it is what releases the correction.
+  const s = scenario();
+  try {
+    failOnce(s, 'i have cat');
+    failOnce(s, 'i have the cat');
+    const third = failOnce(s, 'i have cats');
+
+    assert.equal(third.corrected, 'I have a cat.');
+    assert.equal(third.progression.revealOffered, true);
+    assert.equal(third.progression.failedAttempts, 3);
+  } finally { s.cleanup(); }
+});
+
+test('the correction is written to every attempt, withheld ones included', () => {
+  // The half an Admin depends on. Resolving a Dispute means reading what the
+  // Grader thought the answer should have been, and a Dispute is most often made
+  // against the attempt whose correction the Student never saw.
+  const s = scenario();
+  try {
+    failOnce(s, 'i have cat');
+    failOnce(s, 'i have the cat');
+
+    const rows = s.db.select().from(submissions).all();
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      assert.equal(row.corrected, 'I have a cat.', 'the row holds it whatever the wire did');
+    }
+  } finally { s.cleanup(); }
+});
+
+test('a grading failure does not advance the count toward the correction', () => {
+  const s = scenario();
+  try {
+    failOnce(s, 'i have cat');
+    failOnce(s, 'i have the cat');
+
+    const failed = recordGrading(s.db, {
+      studentId: s.student.id,
+      exerciseId: s.exercise.id,
+      answer: 'i have one cat',
+      outcome: {
+        ok: false,
+        failure: {
+          kind: 'timeout', reason: 'the call was aborted after 90000ms', raw: null,
+          likelyCredentials: false, likelyEgress: false, likelyRateLimit: false,
+        },
+        usage: EMPTY_USAGE, wallMs: 90_000, pushback: null,
+      },
+      exercises: s.exercises,
+      previousExerciseId: s.exercise.id,
+    });
+
+    assert.equal(failed.progression.failedAttempts, 2, 'a flaky call is not an attempt');
+    assert.equal(failed.corrected, null);
+
+    const next = failOnce(s, 'i have cats');
+    assert.equal(next.progression.failedAttempts, 3);
+    assert.equal(next.corrected, 'I have a cat.', 'the third *judged* failure is the one that releases it');
+  } finally { s.cleanup(); }
+});
+
+test('a correct answer keeps its correction, on the attempt it was written', () => {
+  const s = scenario();
+  try {
+    const frame = recordGrading(s.db, {
+      studentId: s.student.id,
+      exerciseId: s.exercise.id,
+      answer: 'I have a cat.',
+      outcome: graded({
+        feedback_ru: 'Верно.', corrected: 'I have a cat.', errors: [], verdict: 'correct',
+      }),
+      exercises: s.exercises,
+      previousExerciseId: s.exercise.id,
+    });
+
+    assert.equal(frame.verdict, 'correct');
+    assert.equal(frame.corrected, 'I have a cat.', 'there is nothing left to work out');
+  } finally { s.cleanup(); }
+});
+
+test('the rule reads the attempt count and nothing else — no Exercise Kind is exempt', () => {
+  // Asserted on the rule rather than once per Kind: translation, composition and
+  // open writing reach the browser through this one function, and a rule that
+  // branched on Kind is the shape of thing that would leave one of them behind.
+  assert.equal(correctedForStudent('I have a cat.', 'incorrect', false), null);
+  assert.equal(correctedForStudent('I have a cat.', 'partially_correct', false), null);
+  assert.equal(correctedForStudent('I have a cat.', 'incorrect', true), 'I have a cat.');
+  assert.equal(correctedForStudent('I have a cat.', 'correct', false), 'I have a cat.');
+  assert.equal(correctedForStudent(null, 'incorrect', true), null, 'nothing to show is still nothing');
 });
 
 test('a failed grading is stored as a failure, with a reason and no Verdict', () => {

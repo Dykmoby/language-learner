@@ -27,6 +27,9 @@ export default async function DisputePage(
   if (!opened) notFound();
 
   const { dispute, exercise, submission } = opened;
+  // Read once: the screen asks whether anything is accepted at all, and then how
+  // to lay it out — two questions about one list.
+  const acceptedValues = opened.accepted.flat();
   const verdictLabel = submission.guardedVerdict === 'correct' ? ru.practice.correct
     : submission.guardedVerdict === 'partially_correct' ? ru.practice.partiallyCorrect
     : submission.guardedVerdict === 'incorrect' ? ru.practice.incorrect
@@ -57,12 +60,24 @@ export default async function DisputePage(
       </p>
 
       <h2>{ru.disputeReview.acceptedTitle}</h2>
-      {opened.accepted.length === 0 ? (
+      {/* Gap by Gap where there is more than one — #85. «a, an, I» in one list
+          is a list an Admin cannot act on, because which Gap takes which is the
+          whole question the decision below asks. */}
+      {acceptedValues.length === 0 ? (
         <p className="muted">{ru.disputeReview.acceptedNone}</p>
+      ) : opened.accepted.length <= 1 ? (
+        <ul className="variants">
+          {acceptedValues.map((value, index) => (
+            <li key={`${index}-${value}`}>{value}</li>
+          ))}
+        </ul>
       ) : (
         <ul className="variants">
-          {opened.accepted.map((value, index) => (
-            <li key={`${index}-${value}`}>{value}</li>
+          {opened.accepted.map((values, gap) => (
+            <li key={gap}>
+              <span className="muted">{ru.disputeReview.acceptedAtGap(gap + 1)}: </span>
+              {values.length === 0 ? ru.disputeReview.acceptedNoneAtGap : values.join(', ')}
+            </li>
           ))}
         </ul>
       )}
@@ -73,6 +88,14 @@ export default async function DisputePage(
         <p className="muted">{ru.disputeReview.verdict}: {verdictLabel}</p>
       )}
       {submission.feedbackRu ? <p className="feedback">{submission.feedbackRu}</p> : null}
+      {/* Issue #81 — withheld from the Student until their third failed attempt,
+          and never from this screen. Reviewing an objection means reading what
+          the Grader thought the answer should have been. */}
+      {submission.corrected ? (
+        <p className="corrected">
+          {ru.disputeReview.graderCorrected}: <strong>{submission.corrected}</strong>
+        </p>
+      ) : null}
 
       <h2>{ru.disputeReview.graderErrors}</h2>
       {opened.errors.length === 0 ? (
@@ -97,7 +120,7 @@ export default async function DisputePage(
       <ResolveDispute
         disputeId={dispute.id}
         ruling={dispute.ruling}
-        values={opened.answerValues}
+        candidates={opened.candidates}
       />
     </main>
   );

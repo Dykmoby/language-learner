@@ -178,8 +178,18 @@ export const acceptedVariants = sqliteTable('accepted_variants', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   exerciseId: integer('exercise_id').notNull().references(() => exercises.id, { onDelete: 'cascade' }),
   value: text('value').notNull(),
+  // Which Gap this value was confirmed for — #85. Null on every Kind with one
+  // place to answer, where there is no position to name, and on every variant
+  // written before a fill-gap could have more than one Gap; those join every Gap,
+  // exactly as they did when they were written. A positioned variant is accepted
+  // at its own Gap and nowhere else: a word confirmed for the second Gap of
+  // «___ have ___ apple» must not start marking that word correct in the first,
+  // which would be the Exercise teaching the mistake.
+  gap: integer('gap'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
+
+export type AcceptedVariantRow = typeof acceptedVariants.$inferSelect;
 
 export type CourseRow = typeof courses.$inferSelect;
 export type LessonRow = typeof lessons.$inferSelect;

@@ -16,10 +16,33 @@
 import { asc, eq, inArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
-import { acceptedVariants, type ExerciseRow } from '../db/schema.ts';
+import { acceptedVariants, type AcceptedVariantRow, type ExerciseRow } from '../db/schema.ts';
 import type { AcceptedAnswers } from './exercise-validity.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
+
+/**
+ * An Accepted Variant as it is stored: a value, and the Gap it was confirmed for.
+ *
+ * `gap` is null where there is no position to name — every Kind with one place
+ * to answer — and on every variant written before a fill-gap could have more
+ * than one Gap. A variant with no position joins every Gap, which is what all of
+ * them did before #85.
+ *
+ * The value and its position travel together everywhere, deliberately: a
+ * `string[]` of values and a `number[]` of positions is two lists that can end up
+ * different lengths, and the failure would be a teacher-confirmed answer landing
+ * at a Gap no teacher chose.
+ */
+export type Variant = { value: string; gap: number | null };
+
+/**
+ * One stored row as a Variant — the single reading of the two columns, so the
+ * three places that ask for them cannot end up reading them differently.
+ */
+export function variantOf(row: Pick<AcceptedVariantRow, 'value' | 'gap'>): Variant {
+  return { value: row.value, gap: row.gap };
+}
 
 /**
  * What an Exercise accepts, one list per Gap — the single read of the stored
@@ -34,10 +57,21 @@ export function acceptedGaps(exercise: Pick<ExerciseRow, 'acceptedAnswers'>): Ac
 }
 
 /** The Accepted Variants of one Exercise, in the order they were confirmed. */
-export function variantsOf(db: Db, exerciseId: number): string[] {
+export function variantsOf(db: Db, exerciseId: number): Variant[] {
   return db.select().from(acceptedVariants)
-    .where(eq(acceptedVariants.exerciseId, exerciseId)).all()
-    .map((row) => row.value);
+    .where(eq(acceptedVariants.exerciseId, exerciseId))
+    .orderBy(asc(acceptedVariants.id)).all()
+    .map(variantOf);
+}
+
+/**
+ * The values alone, for the one reader with no Gaps to place them at: the Grader,
+ * which judges a whole answer and is given its Accepted Variants as
+ * teacher-confirmed context. Only Grader-judged Kinds reach it, and those store
+ * no position anyway.
+ */
+export function variantValues(variants: readonly Variant[]): string[] {
+  return variants.map((variant) => variant.value);
 }
 
 /**
@@ -49,16 +83,17 @@ export function variantsOf(db: Db, exerciseId: number): string[] {
  * the same answer in one. Exercises with no variants are absent from the map,
  * which is what an empty list means anyway.
  */
-export function variantsOfMany(db: Db, exerciseIds: readonly number[]): Map<number, string[]> {
-  const byExercise = new Map<number, string[]>();
+export function variantsOfMany(db: Db, exerciseIds: readonly number[]): Map<number, Variant[]> {
+  const byExercise = new Map<number, Variant[]>();
   if (exerciseIds.length === 0) return byExercise;
 
   for (const row of db.select().from(acceptedVariants)
     .where(inArray(acceptedVariants.exerciseId, [...exerciseIds]))
     .orderBy(asc(acceptedVariants.id)).all()) {
+    const variant = variantOf(row);
     const found = byExercise.get(row.exerciseId);
-    if (found) found.push(row.value);
-    else byExercise.set(row.exerciseId, [row.value]);
+    if (found) found.push(variant);
+    else byExercise.set(row.exerciseId, [variant]);
   }
   return byExercise;
 }
@@ -81,30 +116,49 @@ export function acceptedAnswersFor(db: Db, exercise: ExerciseRow): AcceptedAnswe
  * database to put them together — and so the order is decided in one place
  * rather than by whichever caller spread them.
  *
- * An Accepted Variant is recorded against the Exercise and carries no Gap, so it
- * joins every one of them. #85 is where a Dispute says which Gap its variant is
- * for; narrowing it here would change what an existing Exercise accepts.
+ * **A variant is accepted at its own Gap and nowhere else** — #85. A word an
+ * Admin confirmed for the second Gap of «___ have ___ apple» must not start
+ * being accepted in the first, which would have the Exercise marking as correct
+ * an answer that puts the words in the wrong places: teaching the mistake.
+ *
+ * A variant with no position still joins every Gap. That is every Kind with one
+ * place to answer, where there is no position to name, and every variant written
+ * before there was a column to hold one — narrowing those to a Gap nobody chose
+ * would change what an existing Exercise accepts.
  */
-export function acceptedAnswers(exercise: ExerciseRow, variants: readonly string[]): AcceptedAnswers {
+export function acceptedAnswers(exercise: ExerciseRow, variants: readonly Variant[]): AcceptedAnswers {
   const gaps = acceptedGaps(exercise);
   if (variants.length === 0) return gaps;
   // A Grader-judged Exercise stores no Gaps, and a Dispute upheld on one still
   // records a variant. Dropping it would lose the only thing the screens that
   // read this have to show.
-  if (gaps.length === 0) return [[...variants]];
-  return gaps.map((values) => [...values, ...variants]);
+  if (gaps.length === 0) return [variantValues(variants)];
+  return gaps.map((values, at) => [
+    ...values,
+    ...variantValues(variants.filter((variant) => variant.gap === null || variant.gap === at)),
+  ]);
 }
 
 /**
- * Everything that already counts as a right answer to this Exercise, the
- * Reference Answer included.
+ * Everything that already counts as a right answer at one Gap of this Exercise,
+ * the Reference Answer included.
  *
- * A superset of the above, and deliberately a different question: the
- * Deterministic Check compares against what an Exercise *accepts*, while an
+ * A superset of one entry of the above, and deliberately a different question:
+ * the Deterministic Check compares against what an Exercise *accepts*, while an
  * Admin about to add an Accepted Variant needs to know whether the answer is
  * already right by any route at all — and the Reference Answer is one of those
  * routes. Adding it as a variant would store the author's own answer twice.
+ *
+ * Asked of one Gap, because that is the question a Dispute now answers. `null`
+ * asks it of every Gap at once, which is what a Kind with one place to answer
+ * means by "this Exercise".
  */
-export function candidateAnswers(exercise: ExerciseRow, variants: readonly string[]): string[] {
-  return [exercise.referenceAnswer, ...acceptedAnswers(exercise, variants).flat()];
+export function candidateAnswers(
+  exercise: ExerciseRow,
+  variants: readonly Variant[],
+  gap: number | null = null,
+): string[] {
+  const accepted = acceptedAnswers(exercise, variants);
+  const values = gap === null ? accepted.flat() : accepted[gap] ?? [];
+  return [exercise.referenceAnswer, ...values];
 }

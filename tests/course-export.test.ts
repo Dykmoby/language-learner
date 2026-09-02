@@ -118,14 +118,14 @@ test('the file carries the Course, its published Lessons in order, and its Tests
   }
 });
 
-test('Accepted Variants travel with the Exercise that earned them', () => {
+test('Accepted Variants travel with the Exercise that earned them, and with their Gaps', () => {
   const { db, uploadDir, cleanup } = fresh();
   try {
     const course = theCourse(db);
     const [first, second] = exercisesOfFirstLesson(db);
     db.insert(acceptedVariants).values([
-      { exerciseId: second!.id, value: 'an ', createdAt: new Date() },
-      { exerciseId: second!.id, value: 'AN', createdAt: new Date() },
+      { exerciseId: second!.id, value: 'an ', gap: null, createdAt: new Date() },
+      { exerciseId: second!.id, value: 'AN', gap: 0, createdAt: new Date() },
     ]).run();
 
     const file = assembleCourseExport(db, course.id, uploadDir)!;
@@ -134,7 +134,12 @@ test('Accepted Variants travel with the Exercise that earned them', () => {
     assert.equal(variants.length, file.lessons[0]!.document.exercises.length,
       'one entry per Exercise, in the same order — nothing to misalign');
     assert.deepEqual(variants[0], [], 'an Exercise nobody disputed carries an empty list');
-    assert.deepEqual(variants[1], ['an ', 'AN']);
+    // #85 — the position travels with the value. A restored Course whose
+    // variants lost their Gaps would start accepting each of them everywhere.
+    assert.deepEqual(variants[1], [
+      { value: 'an ', gap: null },
+      { value: 'AN', gap: 0 },
+    ]);
     assert.ok(first);
   } finally {
     cleanup();

@@ -17,7 +17,7 @@ import {
   submissions, isDeterministic,
   type ExerciseRow, type SubmissionRow, type SubmissionStatus,
 } from '../db/schema.ts';
-import { acceptedAnswersFor, variantsOf } from '../content/accepted.ts';
+import { acceptedAnswersFor, variantValues, variantsOf } from '../content/accepted.ts';
 import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
@@ -133,6 +133,40 @@ function progressionAfter(
 }
 
 /**
+ * The corrected answer, or nothing — issue #81.
+ *
+ * A Student who got one word wrong used to be handed the finished sentence
+ * under «Исправлено» on the first attempt, which leaves nothing to work out and
+ * makes Reveal — the deliberate act of asking, after three failures, that marks
+ * the Exercise Completed With Help — an offer about something they already have.
+ *
+ * So it is withheld until the third failed attempt, which is the same moment
+ * Reveal is first offered: «three tries and it did not come» is one event, and
+ * `revealOffered` is where this application already keeps that count. Nothing is
+ * withheld from the row — an Admin resolving a Dispute needs the correction on
+ * every attempt, and it is written on every attempt. This is the wire only.
+ *
+ * A correct answer keeps its correction, on either path: it is what the Exercise
+ * accepts, shown to a Student who has just written it, and there is nothing left
+ * to work out either way.
+ *
+ * This is the half that is a guarantee. The other half is the ladder in the
+ * Grader's prompt (grader/contract.ts), which is an instruction rather than a
+ * rule — an explanation's job is to teach, and a Grader that writes the answer
+ * into its explanation anyway is a Grader that has ignored an instruction. That
+ * is exactly why this one exists: the field whose whole job is to hold the
+ * answer is the field that can be held back.
+ */
+export function correctedForStudent(
+  corrected: string | null,
+  verdict: Verdict | null,
+  revealOffered: boolean,
+): string | null {
+  if (verdict === 'correct') return corrected;
+  return revealOffered ? corrected : null;
+}
+
+/**
  * ADR 0004 — the whole of Progressive Hints: the earlier answers, oldest first,
  * and no session state anywhere. Only judged attempts count. An answer whose
  * grading failed was never read by the Grader, and handing it back as "you
@@ -178,7 +212,10 @@ export function graderRequestFor(
 ): GradeRequest {
   const { course, lesson, exercise } = opened;
 
-  const variants = variantsOf(db, exercise.id);
+  // Values alone: the Grader judges a whole answer and has no Gaps to place them
+  // at. Only Grader-judged Kinds reach this function, and those carry no
+  // position anyway — see content/accepted.ts.
+  const variants = variantValues(variantsOf(db, exercise.id));
 
   const context: ExerciseContext = {
     language: course.language as Language,
@@ -256,6 +293,8 @@ export function submitAnswer(
       corrected: judgement.corrected,
     });
 
+    const progression = progressionAfter(db, studentId, exerciseId, exercises, previousExerciseId);
+
     return {
       ok: true,
       streamed: false,
@@ -266,10 +305,10 @@ export function submitAnswer(
         verdict,
         failure: null,
         feedbackRu: null,
-        corrected: judgement.corrected,
+        corrected: correctedForStudent(judgement.corrected, verdict, progression.revealOffered),
         gaps: judgement.gaps,
         errors: [],
-        progression: progressionAfter(db, studentId, exerciseId, exercises, previousExerciseId),
+        progression,
       },
     };
   }
@@ -396,6 +435,8 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     errors: response.errors,
   });
 
+  const progression = progressionAfter(db, studentId, exerciseId, exercises, previousExerciseId);
+
   return {
     t: 'result',
     status: 'graded',
@@ -403,7 +444,8 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     verdict: guarded.verdict,
     failure: null,
     feedbackRu: response.feedback_ru,
-    corrected: response.corrected,
+    // Stored above on every attempt; withheld here until the third failed one.
+    corrected: correctedForStudent(response.corrected, guarded.verdict, progression.revealOffered),
     // Nothing the Grader judges is judged gap by gap: it reads a whole answer,
     // and its Errors are where it says which part of one was wrong.
     gaps: [],
@@ -412,7 +454,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
       span: error.span,
       explanationRu: error.explanation_ru,
     })),
-    progression: progressionAfter(db, studentId, exerciseId, exercises, previousExerciseId),
+    progression,
   };
 }
 

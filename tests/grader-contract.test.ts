@@ -304,9 +304,28 @@ test('earlier attempts are handed over in order, which is what produces Progress
   assert.match(prompt, /attempt 3/, 'the Grader is told which attempt this is');
 });
 
-test('a first attempt sends no prior-attempt section at all', () => {
+test('a first attempt sends no earlier answers, and is still told it is the first', () => {
+  // Issue #81. The earlier-answers section is about answers, so a first attempt
+  // has none — but the attempt *number* travels on every call, because it is
+  // what decides whether the Grader may write the corrected form into its
+  // explanation. Left unsaid, attempt one had no instruction to hold back at all.
   const prompt = buildUserPrompt(ctx);
-  assert.ok(!/attempt/i.test(prompt), 'nothing about attempts when there are none');
+  assert.ok(!prompt.includes('already tried'), 'no earlier answers to hand over');
+  assert.match(prompt, /This is attempt 1\./, 'the Grader is told which attempt this is');
+});
+
+test('the hint ladder holds the correct form back until the third attempt', () => {
+  // The instruction half of #81 — the half that is not a guarantee. The other
+  // half is `correctedForStudent` in practice/submit.ts, which is.
+  const prompt = buildUserPrompt(ctx);
+  assert.match(prompt, /attempt 1\s+— point at where the mistake is without naming it/);
+  assert.match(prompt, /attempt 2\s+— name the kind of mistake, without writing the correct form/);
+  assert.match(prompt, /attempt 3 and on — show the correct form/);
+  assert.match(
+    prompt,
+    /"corrected"\s*\n?always holds the corrected answer/,
+    'the ladder governs the explanation, never the field an Admin reviews a Dispute against',
+  );
 });
 
 // --- Purity ------------------------------------------------------------------

@@ -71,7 +71,7 @@ The canonical answer an Admin writes when authoring an Exercise. Shown to the Gr
 _Avoid_: correct answer, solution, key
 
 **Accepted Variant**:
-An additional answer confirmed to be correct, added by an Admin when resolving a Dispute. Grows over time and is fed to the Grader.
+An additional answer confirmed to be correct, added by an Admin when resolving a Dispute. Grows over time and is fed to the Grader. On a fill-gap it carries the Gap it was confirmed for and is accepted at that Gap alone; on every other Exercise Kind there is one place to answer and so no position to carry.
 _Avoid_: alternative, synonym
 
 **Submission**:
@@ -111,7 +111,7 @@ A Course's own instruction for the Grader, edited from its settings screen. Reac
 _Avoid_: course prompt, course guidance, override
 
 **Progressive Hint**:
-The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions.
+The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions. The corrected answer is withheld until the third failed attempt — the Student sees the Verdict, the explanation and the Errors before then, and the correction arrives in the same view where Reveal is first offered.
 _Avoid_: tip, clue
 
 **Reveal**:

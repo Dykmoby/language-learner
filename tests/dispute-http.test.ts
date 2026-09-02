@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { bootApp, Client, ADMIN, type BootedApp } from './helpers/app.ts';
 import type { SeedAccount } from '../src/db/seed.ts';
 import { ru } from '../src/ru.ts';
-import { DETERMINISTIC_COURSE } from './helpers/fixtures.ts';
+import { DETERMINISTIC_COURSE, MULTI_GAP_COURSE } from './helpers/fixtures.ts';
 import {
   courseIdFor, lessonsOf, submissionsOf, errorsOf, testsOf, withDatabase,
 } from './helpers/inspect.ts';
@@ -54,7 +54,13 @@ const TEST_EXERCISES = [
 ];
 
 before(async () => {
-  app = await bootApp({ accounts: [ADMIN, ...STUDENTS], content: [DETERMINISTIC_COURSE] });
+  app = await bootApp({
+    accounts: [ADMIN, ...STUDENTS],
+    // The multi-gap Course too, because #85's question — which Gap is this
+    // answer confirmed for — cannot be asked of an Exercise with one place to
+    // answer.
+    content: [DETERMINISTIC_COURSE, MULTI_GAP_COURSE],
+  });
 
   const courseId = courseIdFor(app.databasePath, DETERMINISTIC_COURSE.title);
   const admin = new Client(app.baseUrl);
@@ -458,6 +464,84 @@ test('upholding through the endpoint promotes the answer and empties the row fro
 
   const page = await admin.fetch(`/admin/disputes/${disputeId}`);
   assert.ok((await page.text()).includes(ru.dispute.upheld), 'and it still reads as decided');
+});
+
+// --- #85: an upheld Dispute confirms one answer, at one Gap ------------------
+
+/** The multi-gap Lesson's first Exercise: «___ have ___ apple and ___ cat.» */
+function multiGapExercise() {
+  const [lesson] = lessonsOf(app.databasePath, MULTI_GAP_COURSE.title);
+  if (!lesson) throw new Error('the multi-gap fixture seeded no Lesson');
+  return lesson.exercises[0]!;
+}
+
+/** One answer to it, written gap by gap. */
+async function answerGaps(client: SignedIn, written: string[]): Promise<ResultFrame> {
+  const response = await client.fetch(`/api/exercises/${multiGapExercise().id}/submit`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ answers: written }),
+  });
+  assert.ok(response.ok, `answering was refused with ${response.status}`);
+  const frames = (await response.text()).split('\n').filter((line) => line.trim() !== '')
+    .map((line) => JSON.parse(line) as Frame);
+  const result = frames.find((f): f is ResultFrame => f.t === 'result');
+  assert.ok(result, 'the stream carried no result frame');
+  return result;
+}
+
+/** A partly wrong answer to it, and an objection to the Verdict. */
+async function objectToGaps(client: SignedIn, written: string[]): Promise<number> {
+  const result = await answerGaps(client, written);
+  await dispute(client, result.submissionId!, 'Во втором пропуске так тоже можно.');
+  return disputeIdFor(result.submissionId!);
+}
+
+test('the review screen asks which Gap the confirmed answer is for', async () => {
+  const client = await signedIn();
+  const disputeId = await objectToGaps(client, ['I', 'one', 'a']);
+
+  const admin = await asAdmin();
+  const page = await (await admin.fetch(`/admin/disputes/${disputeId}`)).text();
+
+  assert.ok(page.includes(ru.disputeReview.chooseGap), 'the question is on the screen');
+  assert.ok(page.includes(ru.disputeReview.acceptedAtGap(2)), 'and each Gap is named');
+});
+
+test('upholding without naming a Gap is refused, and names nothing itself', async () => {
+  const client = await signedIn();
+  const disputeId = await objectToGaps(client, ['I', 'two', 'a']);
+
+  const admin = await asAdmin();
+  const response = await resolve(admin, disputeId, 'upheld');
+  assert.equal(response.status, 400);
+  assert.equal(((await response.json()) as { error: string }).error, ru.disputeReview.gapUnspecified);
+
+  // Still waiting, so nothing was recorded on the way past.
+  const queue = await (await admin.fetch('/admin/disputes')).text();
+  assert.ok(queue.includes(`/admin/disputes/${disputeId}`), 'still in the queue');
+});
+
+test('upholding at a named Gap accepts that answer there and nowhere else', async () => {
+  const client = await signedIn();
+  const disputeId = await objectToGaps(client, ['I', 'three', 'a']);
+
+  const admin = await asAdmin();
+  const response = await admin.fetch(`/api/admin/disputes/${disputeId}/resolve`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ruling: 'upheld', gap: 1 }),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true, ruling: 'upheld', variantAdded: true });
+
+  // What the next Students to answer this Exercise are judged against.
+  const atItsOwnGap = await answerGaps(await signedIn(), ['I', 'three', 'a']);
+  assert.equal(atItsOwnGap.verdict, 'correct', 'accepted at the Gap it was confirmed for');
+
+  const elsewhere = await answerGaps(await signedIn(), ['three', 'an', 'a']);
+  assert.deepEqual(elsewhere.gaps, [false, true, true],
+    'and the word confirmed for the second Gap is not accepted in the first');
 });
 
 test('a decision that is not one of the two is refused rather than guessed at', async () => {

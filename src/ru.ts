@@ -636,12 +636,30 @@ export const ru = {
     referenceAnswer: 'Эталонный ответ',
     acceptedTitle: 'Уже принимаются',
     acceptedNone: 'Дополнительных принимаемых ответов пока нет.',
+    // Issue #85 — on an Exercise with several Gaps the accepted answers are read
+    // Gap by Gap, because which one takes which is the question the Admin is
+    // about to answer.
+    acceptedAtGap: (n: number) => `Пропуск ${n}`,
+    acceptedNoneAtGap: 'ничего дополнительно',
     studentAnswer: 'Ответ студента',
+    // The correction the Grader wrote, which since #81 the Student does not see
+    // until their third failed attempt. It is stored on every attempt precisely
+    // so that this screen can show it: a Verdict reviewed without the answer the
+    // Grader thought was right is a Verdict reviewed with half the evidence.
+    graderCorrected: 'Исправление Проверяющего',
     graderErrors: 'Что нашёл Проверяющий',
     graderNoErrors: 'Проверяющий не отметил ни одной ошибки.',
     verdict: 'Оценка',
     comment: 'Возражение студента',
     submittedAt: 'Отправлено',
+
+    // Issue #85 — an objection is about one word. Asked rather than assumed: a
+    // word confirmed for the second Gap must not become acceptable in the first,
+    // and the Admin is the only one who knows which they mean.
+    chooseGap: 'Для какого пропуска этот ответ верен?',
+    chooseGapHint: 'Ответ будет приниматься только в этом пропуске.',
+    gapUnspecified: 'Укажите, для какого пропуска подтверждается ответ.',
+    gapNotAnswered: 'В этом пропуске студент ничего не написал.',
 
     uphold: 'Принять возражение',
     // Says what pressing it does, because it does something irreversible to the
