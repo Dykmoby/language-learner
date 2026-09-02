@@ -55,7 +55,7 @@ test('a failed grading is answered as a failure, never as a wrong answer', { tim
   const response = await client.fetch(`/api/exercises/${exercise.id}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: 'I have cat.' }),
+    body: JSON.stringify({ answers: ['I have cat.'] }),
   });
 
   assert.equal(response.status, 200, 'a failed grading is a result, not an error status');
@@ -87,7 +87,7 @@ test('a failed grading does not count as an attempt and leaves the Exercise open
   const submit = () => client.fetch(`/api/exercises/${exercise.id}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: 'I have cat.' }),
+    body: JSON.stringify({ answers: ['I have cat.'] }),
   });
 
   for (let i = 0; i < 3; i += 1) {
@@ -123,7 +123,7 @@ test('closing the tab mid-grading still results in a persisted Submission', { ti
   const request = client.fetch(`/api/exercises/${exercise.id}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: 'I have cat.' }),
+    body: JSON.stringify({ answers: ['I have cat.'] }),
     signal: abort.signal,
   }).catch(() => null);
 

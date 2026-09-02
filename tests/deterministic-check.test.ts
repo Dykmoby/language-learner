@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normaliseAnswer, deterministicCheck } from '../src/practice/deterministic-check.ts';
+import { normaliseAnswer, deterministicCheck, checkGaps } from '../src/practice/deterministic-check.ts';
 
 type Row = {
   what: string;
@@ -195,4 +195,90 @@ test('the module performs no I/O and reads nothing from the database', () => {
   assert.deepEqual(imports, [], 'the Deterministic Check imports nothing at all');
   assert.ok(!/\bnode:(fs|net|http|child_process|sqlite)\b/.test(source), 'no I/O module reference');
   assert.ok(!/drizzle|schema\.ts/.test(source), 'no database reference');
+});
+
+// --- Gap by gap --------------------------------------------------------------
+//
+// An Exercise holds one list of accepted values per place a Student answers, and
+// each of those places is judged on its own. The single-gap Exercise is the
+// special case, not a separate path: every row below with one position is what
+// the whole of this module used to be.
+
+test('every gap is judged against its own accepted values', () => {
+  const outcome = checkGaps(['I', 'a'], [['I'], ['a', 'one']]);
+  assert.deepEqual(outcome.gaps.map((gap) => gap.correct), [true, true]);
+  assert.equal(outcome.correct, true);
+  assert.equal(outcome.partial, false);
+});
+
+test("a value accepted at one gap is not thereby accepted at another", () => {
+  // The whole reason the lists are per position. Answering the second gap's word
+  // in the first is exactly the mistake a Student is here to stop making.
+  const outcome = checkGaps(['a', 'I'], [['I'], ['a']]);
+  assert.deepEqual(outcome.gaps.map((gap) => gap.correct), [false, false]);
+  assert.equal(outcome.correct, false);
+  assert.equal(outcome.partial, false);
+});
+
+test('some gaps right and some wrong is partial, and says which', () => {
+  const outcome = checkGaps(['I', 'the'], [['I'], ['a', 'one']]);
+  assert.deepEqual(outcome.gaps.map((gap) => gap.correct), [true, false]);
+  assert.equal(outcome.correct, false);
+  assert.equal(outcome.partial, true);
+});
+
+test('a gap the browser never sent a value for is unanswered, not skipped', () => {
+  // The positions the Exercise has are what is walked, never the length of what
+  // arrived: an answer short of the prompt is not a shorter Exercise.
+  const outcome = checkGaps(['I'], [['I'], ['a']]);
+  assert.deepEqual(outcome.gaps.map((gap) => gap.correct), [true, false]);
+  assert.equal(outcome.partial, true);
+});
+
+test('a gap left blank is never correct, and never makes the answer partial on its own', () => {
+  const blank = checkGaps(['', ''], [['I'], ['a']]);
+  assert.equal(blank.correct, false);
+  assert.equal(blank.partial, false, 'nothing answered is not partly answered');
+});
+
+test('an extra value beyond the Exercise\'s gaps changes nothing', () => {
+  const outcome = checkGaps(['a', 'an'], [['a']]);
+  assert.deepEqual(outcome.gaps.map((gap) => gap.correct), [true]);
+  assert.equal(outcome.correct, true);
+});
+
+test('each gap reports the accepted value it matched, in its authored form', () => {
+  const outcome = checkGaps(['  AN  ', 'CAT'], [['an'], ['cat', 'kitten']], { caseSensitive: false });
+  assert.deepEqual(outcome.gaps.map((gap) => gap.matched), ['an', 'cat']);
+});
+
+test('caseSensitive applies at every gap, not only the first', () => {
+  const outcome = checkGaps(['I', 'monday'], [['I'], ['Monday']], { caseSensitive: true });
+  assert.deepEqual(outcome.gaps.map((gap) => gap.correct), [true, false]);
+});
+
+test('an Exercise with nowhere to answer is not correct by vacuity', () => {
+  // The validity rules refuse one by name. This is what stops one that reached
+  // the database some other way from marking every answer right.
+  const outcome = checkGaps(['anything'], []);
+  assert.equal(outcome.correct, false);
+  assert.equal(outcome.partial, false);
+  assert.deepEqual(outcome.gaps, []);
+});
+
+test('one gap behaves exactly as the single comparison it replaces', () => {
+  const rows: Array<{ answer: string; accepted: string[]; correct: boolean }> = [
+    { answer: 'a cat', accepted: ['a cat'], correct: true },
+    { answer: 'A CAT.', accepted: ['a cat'], correct: true },
+    { answer: 'a dog', accepted: ['a cat'], correct: false },
+    { answer: '   ', accepted: ['a cat'], correct: false },
+  ];
+
+  for (const row of rows) {
+    const single = deterministicCheck(row.answer, row.accepted);
+    const gapped = checkGaps([row.answer], [row.accepted]);
+    assert.equal(gapped.correct, row.correct);
+    assert.equal(gapped.correct, single.correct, JSON.stringify(row));
+    assert.equal(gapped.gaps[0]?.matched ?? null, single.matched, JSON.stringify(row));
+  }
 });

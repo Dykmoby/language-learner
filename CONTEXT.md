@@ -62,6 +62,10 @@ _Avoid_: try, run, sitting, session
 
 ### Answers and judgement
 
+**Gap**:
+A place in a fill-gap Exercise's prompt where a Student writes an answer, written `___`. A prompt with three gaps is answered in three inputs, in the order the sentence is read, each judged against its own accepted values. Every other Exercise Kind has exactly one place to answer.
+_Avoid_: blank, slot, placeholder, field, hole
+
 **Reference Answer**:
 The canonical answer an Admin writes when authoring an Exercise. Shown to the Grader as context and to the Student on Reveal.
 _Avoid_: correct answer, solution, key

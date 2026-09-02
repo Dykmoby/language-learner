@@ -98,8 +98,8 @@ test('a failed batch leaves the answers unjudged and the attempt unscored', { ti
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       answers: [
-        { exerciseId: exerciseIds[0], answer: 'a' },
-        { exerciseId: exerciseIds[1], answer: 'I have a cat.' },
+        { exerciseId: exerciseIds[0], answers: ['a'] },
+        { exerciseId: exerciseIds[1], answers: ['I have a cat.'] },
       ],
     }),
   });
@@ -132,8 +132,8 @@ test('the review says the checking failed, and never that the answer is wrong', 
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       answers: [
-        { exerciseId: exerciseIds[0], answer: 'a' },
-        { exerciseId: exerciseIds[1], answer: 'I have a cat.' },
+        { exerciseId: exerciseIds[0], answers: ['a'] },
+        { exerciseId: exerciseIds[1], answers: ['I have a cat.'] },
       ],
     }),
   });
@@ -165,8 +165,8 @@ test('asking again judges the same answers rather than writing new ones', { time
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       answers: [
-        { exerciseId: exerciseIds[0], answer: 'a' },
-        { exerciseId: exerciseIds[1], answer: 'I have a cat.' },
+        { exerciseId: exerciseIds[0], answers: ['a'] },
+        { exerciseId: exerciseIds[1], answers: ['I have a cat.'] },
       ],
     }),
   });
@@ -208,7 +208,7 @@ test('another Student cannot ask for someone else’s attempt to be judged', { t
   const submitted = await client.fetch(`/api/tests/${testId}/attempts`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answers: [{ exerciseId: exerciseIds[1], answer: 'I have a cat.' }] }),
+    body: JSON.stringify({ answers: [{ exerciseId: exerciseIds[1], answers: ['I have a cat.'] }] }),
   });
   const { attemptId } = (await submitted.json()) as { attemptId: number };
 

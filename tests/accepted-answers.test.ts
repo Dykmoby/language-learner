@@ -13,12 +13,12 @@ import { join } from 'node:path';
 import { tempDatabasePath } from './helpers/temp-db.ts';
 import { openDatabase } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
-import { acceptedPositions } from '../src/content/accepted.ts';
+import { acceptedGaps } from '../src/content/accepted.ts';
 import { courses, exercises, exerciseSets, lessonDrafts, lessons } from '../src/db/schema.ts';
 
 test('the accepted answers of an Exercise are read position by position', () => {
   assert.deepEqual(
-    acceptedPositions({ acceptedAnswers: [['is', "'s"], ['a', 'one']] }),
+    acceptedGaps({ acceptedAnswers: [['is', "'s"], ['a', 'one']] }),
     [['is', "'s"], ['a', 'one']],
   );
 });
@@ -26,7 +26,7 @@ test('the accepted answers of an Exercise are read position by position', () => 
 test('nothing accepted is no positions, rather than one empty one', () => {
   // A Grader-judged Exercise accepts nothing here, and must not gain a position
   // that the validity rules would then have to explain away.
-  assert.deepEqual(acceptedPositions({ acceptedAnswers: [] }), []);
+  assert.deepEqual(acceptedGaps({ acceptedAnswers: [] }), []);
 });
 
 // --- The migration -----------------------------------------------------------

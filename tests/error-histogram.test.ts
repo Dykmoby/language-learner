@@ -180,7 +180,7 @@ test('Submissions made in a Test are counted alongside those made in a Practice'
 
   const exerciseId = saved.document.exercises[0]!.id!;
   const attempt = submitAttempt(handle.db, studentId, created.test.id, [
-    { exerciseId, answer: 'I have cat.' },
+    { exerciseId, answers: ['I have cat.'] },
   ]);
   assert.ok(attempt.ok);
 

@@ -19,17 +19,14 @@
 -- difference as the Grader contradicting itself. Every row written before this
 -- column had nothing dropped from it, which is what the default says.
 --
--- ORDERING. Numbered 0016 with no 0015 here because #83 is in flight on its own
--- branch and holds that number. The gap itself is harmless, but the ordering is
--- not: drizzle's SQLite migrator applies a migration only when its journal
--- `when` is greater than the newest `created_at` already in
--- `__drizzle_migrations` — it compares timestamps, not indices, and it keeps
--- only the latest. So a migration that lands in the folder with a `when` below
--- one already applied is skipped in silence, with no error and no log line.
--- This entry's `when` is above #83's, so #83 must reach a deployed database
--- first. If this branch is deployed first, #83's `when` has to be bumped above
--- this one when it rebases. A test asserts the journal is monotonic, which
--- catches the file-level mistake; nothing can catch the deploy-order one.
+-- ORDERING. This sits after #83's 0015, which is the order it has to be in:
+-- drizzle's SQLite migrator applies a migration only when its journal `when` is
+-- greater than the newest `created_at` already in `__drizzle_migrations` — it
+-- compares timestamps, not indices, and keeps only the latest. A migration that
+-- lands in the folder with a `when` below one already applied is skipped in
+-- silence, with no error and no log line. tests/migration-journal.test.ts
+-- asserts the journal stays monotonic so the next branch to add one cannot get
+-- this wrong.
 
 CREATE TABLE `grader_guidance` (
 	`id` integer PRIMARY KEY NOT NULL,

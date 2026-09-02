@@ -28,7 +28,7 @@ function submission(
 ): SubmissionRow {
   attempts += 1;
   return {
-    id: attempts, studentId: 1, exerciseId, attempt: attempts, answer: 'the',
+    id: attempts, studentId: 1, exerciseId, attempt: attempts, answer: 'the', answerGaps: [],
     // A Practice Submission, so it belongs to no Test attempt.
     testAttemptId: null,
     status, failureReason: null, proposedVerdict: guardedVerdict, guardedVerdict,

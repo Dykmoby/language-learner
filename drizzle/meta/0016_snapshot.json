@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3190b4e4-7bb4-4919-9fd1-b779fdf73981",
-  "prevId": "ac55ed00-0098-4d5c-b150-d75af45f46fc",
+  "id": "e2787437-fe6f-4a3f-8c86-943b0830bd42",
+  "prevId": "29888063-4aab-4bad-ad2c-cecf0347148f",
   "tables": {
     "accepted_variants": {
       "name": "accepted_variants",
@@ -1086,6 +1086,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "answer_gaps": {
+          "name": "answer_gaps",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
         },
         "test_attempt_id": {
           "name": "test_attempt_id",

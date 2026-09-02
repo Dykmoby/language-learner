@@ -19,6 +19,15 @@ export type DeterministicOutcome = {
   matched: string | null;
 };
 
+export type GapsOutcome = {
+  /** One judgement per place the Exercise asks a Student to answer, in reading order. */
+  gaps: DeterministicOutcome[];
+  /** Every gap accepted. */
+  correct: boolean;
+  /** Some accepted and some not — never true where `correct` is. */
+  partial: boolean;
+};
+
 export type NormalisationOptions = {
   /**
    * Set on the Exercise where capitalisation is the point — "put the word in the
@@ -62,4 +71,38 @@ export function deterministicCheck(
 
   const matched = accepted.find((candidate) => normaliseAnswer(candidate, settings) === normalisedAnswer);
   return { correct: matched !== undefined, matched: matched ?? null };
+}
+
+/**
+ * The same comparison at every gap of one Exercise.
+ *
+ * An Exercise has one list of accepted values per place a Student answers, so
+ * this walks *those* rather than what the Student sent: a gap left empty, or one
+ * the browser never sent a value for at all, is a gap that was not answered, and
+ * an answer short of the prompt is not a shorter Exercise.
+ *
+ * Three gaps are three facts being checked. Reporting only whether all of them
+ * held would make the next attempt a re-guess of all three, so each gap's own
+ * outcome comes back — and `partial` is what says the Verdict is neither of the
+ * two this path used to have.
+ *
+ * The accepted lists are taken structurally rather than as `AcceptedAnswers`,
+ * because naming that type here would be an import, and this module has none.
+ */
+export function checkGaps(
+  answers: readonly string[],
+  accepted: readonly (readonly string[])[],
+  options: Partial<NormalisationOptions> = {},
+): GapsOutcome {
+  const gaps = accepted.map((values, at) => deterministicCheck(answers[at] ?? '', values, options));
+  const right = gaps.filter((gap) => gap.correct).length;
+
+  return {
+    gaps,
+    // An Exercise with nowhere to answer is not correct by vacuity. Nothing can
+    // author one — the validity rules refuse it by name — and this is what stops
+    // one that got in some other way from marking every answer right.
+    correct: gaps.length > 0 && right === gaps.length,
+    partial: right > 0 && right < gaps.length,
+  };
 }

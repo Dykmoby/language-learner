@@ -21,7 +21,7 @@ import { lessonsOf, submissionsOf } from './helpers/inspect.ts';
 import { ru } from '../src/ru.ts';
 import type { Frame, ResultFrame } from '../src/practice/wire.ts';
 import type { DocumentExercise, LessonDocument } from '../src/content/lesson-document.ts';
-import { acceptedPositions } from '../src/content/accepted.ts';
+import { acceptedGaps } from '../src/content/accepted.ts';
 
 let app: BootedApp;
 
@@ -84,7 +84,7 @@ async function answer(client: Client, exerciseId: number, given: string): Promis
   const response = await client.fetch(`/api/exercises/${exerciseId}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: given }),
+    body: JSON.stringify({ answers: [given] }),
   });
   assert.equal(response.status, 200);
 
@@ -214,7 +214,7 @@ test('Exercises publish in the authored order, however they were reordered in th
     kind: exercise.kind,
     prompt: exercise.prompt,
     referenceAnswer: exercise.referenceAnswer,
-    acceptedAnswers: acceptedPositions(exercise),
+    acceptedAnswers: acceptedGaps(exercise),
     caseSensitive: exercise.caseSensitive,
     choices: exercise.choices,
   }));

@@ -64,7 +64,13 @@ Applied in order: trim → collapse internal whitespace → case-insensitive →
 
 Stripping the trailing punctuation uncovers any space that sat before it, so that step trims its own tail — otherwise `I have a cat .` fails against `I have a cat`, which marks typography rather than language.
 
-Each Exercise stores accepted answers as **one list per position** — one entry for each place in the prompt the student answers, holding every value accepted there — plus an optional `caseSensitive` flag, needed for "put the word in the correct form" where capitalisation is the point. An Exercise with one place to answer is the special case: one position, several accepted values. Word order matches an exact sequence against one or more accepted orders.
+Each Exercise stores accepted answers as **one list per Gap** — one entry for each place in the prompt the student answers, holding every value accepted there — plus an optional `caseSensitive` flag, needed for "put the word in the correct form" where capitalisation is the point. An Exercise with one place to answer is the special case: one position, several accepted values. Word order matches an exact sequence against one or more accepted orders.
+
+A fill-gap's prompt says how many places there are: one per `___`, and an Exercise whose gap count disagrees with its number of accepted-answer lists is refused by the validity rules, because it cannot be rendered — an input would have nothing behind it, or a list nothing in front of it. Every other Kind has exactly one place to answer whatever its prompt contains.
+
+Each Gap is judged on its own, and the Verdict says how many held: all of them `correct`, some of them `partially_correct` with the gaps that were not accepted marked as such, none of them `incorrect`. Three gaps are three facts being checked, and «неверно» without saying which of the three makes the next attempt a re-guess of all three. It costs nothing in progression — an attempt that is not `correct` already counts as a failed one.
+
+A student's answer travels and is stored as one value per Gap. It is put back into the sentence **once**, where the Submission is written, and the row carries that sentence: every screen that shows an answer therefore shows one, rather than each of them remembering to reassemble it.
 
 **No typo tolerance.** In a language-learning app, tolerating a misspelling teaches the misspelling.
 
@@ -169,7 +175,7 @@ A Test starts unpublished and is absent from a Student's Course until an Admin p
 
 Score is percentage correct against a per-Test threshold, default 80%. Retakes are unlimited and every attempt is logged. Failing a Test gates nothing — Lessons already handle progression, and a Test is a mirror, not a gate.
 
-Review screen shows every Exercise with correct ones collapsed. Grader-judged Exercises highlight the whole Exercise red plus feedback and Reference Answer; Deterministic ones mark the chosen wrong option red and the correct option green.
+Review screen shows every Exercise with correct ones collapsed. Grader-judged Exercises highlight the whole Exercise red plus feedback and Reference Answer; Deterministic ones mark the chosen wrong option red and the correct option green, and a fill-gap's answer is shown as its sentence with each Gap marked.
 
 ## Disputes
 

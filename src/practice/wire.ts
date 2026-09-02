@@ -59,6 +59,15 @@ export type ResultFrame = {
   failure: FailureShape | null;
   feedbackRu: string | null;
   corrected: string | null;
+  /**
+   * Which gaps were accepted, in reading order — a Deterministic Check Kind only,
+   * and empty on everything the Grader judges.
+   *
+   * A partly right answer has to say *which* part, or the next attempt is a
+   * re-guess of all of them. The Verdict alone cannot: `partially_correct` says
+   * that some gap held without saying which.
+   */
+  gaps: boolean[];
   errors: ErrorView[];
   progression: ProgressionView;
 };

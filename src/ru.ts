@@ -489,6 +489,9 @@ export const ru = {
     withHelpCount: (n: number) => `С подсказкой: ${n}`,
     disputedCount: (n: number) => `Оспорено: ${n}`,
     answer: 'Ваш ответ',
+    // One sentence with three inputs in it: a screen reader announcing «Ваш
+    // ответ» three times says nothing about which gap it is on.
+    gapAt: (n: number) => `Пропуск ${n}`,
     chooseOption: 'Выберите вариант',
     buildSentence: 'Нажимайте на слова, чтобы составить предложение',
     clear: 'Очистить',
@@ -822,7 +825,12 @@ export const ru = {
     prompt_empty: 'Заполните формулировку задания.',
     reference_answer_empty: 'Заполните эталонный ответ.',
     accepted_answers_required:
-      'Это упражнение проверяется без Проверяющего, поэтому нужен хотя бы один принимаемый ответ.',
+      'Это упражнение проверяется без Проверяющего, поэтому для каждого пропуска нужен хотя бы один принимаемый ответ.',
+    // The prompt says how many places there are to answer; the accepted answers
+    // say how many there are to judge. An Exercise where the two disagree cannot
+    // be shown to a Student at all — one input would have nothing behind it.
+    gap_count_mismatch:
+      'Число пропусков «___» в формулировке не совпадает с числом наборов принимаемых ответов.',
     too_many_fragments:
       'Слишком много фрагментов: в задании на порядок слов их должно быть не больше двенадцати.',
     accepted_answers_not_allowed:
@@ -911,6 +919,12 @@ export const ru = {
     referenceAnswerGraderHint:
       'Проверяющий получает его как образец при каждой проверке. Ошибка здесь тихо портит проверку всех ответов на это упражнение.',
     referenceAnswerRevealHint: 'Его же увидит студент, если попросит показать ответ.',
+    // A fill-gap's prompt is what says how many places there are to answer, so
+    // the notation is worth stating rather than leaving an author to infer from
+    // the fixture.
+    gapHint: 'Пропуск обозначается тремя подчёркиваниями: ___. Сколько их в формулировке, столько будет полей у студента.',
+    noGaps: 'В формулировке нет ни одного пропуска «___», поэтому отвечать негде.',
+    acceptedAnswersAtGap: (n: number) => `Принимаемые ответы, пропуск ${n}`,
     acceptedAnswers: 'Принимаемые ответы — по одному в строке',
     acceptedOrders: 'Принимаемые порядки — по одному в строке',
     caseSensitive: 'Различать заглавные и строчные буквы',

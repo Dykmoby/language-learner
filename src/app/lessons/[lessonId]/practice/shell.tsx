@@ -9,7 +9,8 @@
 // copy of the rules living in the browser.
 //
 // Every branch on Exercise Kind lives in ExerciseQuestion, which a Test asks with
-// too: the shell asks a question and receives a string. In particular nothing
+// too: the shell asks a question and receives one value per gap, without knowing
+// how many gaps that Exercise turned out to have. In particular nothing
 // here knows whether an Exercise is judged in code or by the Grader — both answer
 // on the same wire in the same shape, and finding out would only let the two
 // paths drift apart.
@@ -59,7 +60,10 @@ const PRACTICE_WORDS: Record<JudgementState, string> = {
 
 export function PracticeShell({ current, segments, counts, nextLessonId, courseId }: Props) {
   const [phase, setPhase] = useState<Phase>('answering');
-  const [answer, setAnswer] = useState('');
+  // One value per gap, in reading order. A list rather than a string even where
+  // there is one gap: the shell asks a question and is handed back what was
+  // written, and how many places that is is the Exercise's business.
+  const [answers, setAnswers] = useState<string[]>([]);
   const [streamed, setStreamed] = useState('');
   const [result, setResult] = useState<ResultFrame | null>(null);
   const [revealed, setRevealed] = useState<RevealResult | null>(null);
@@ -88,7 +92,12 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
 
   async function submit() {
     if (!current) return;
-    if (answer.trim() === '') { setRefusal(ru.practice.emptyAnswer); return; }
+    // Nothing written at any gap is not answering. Asked of the values rather
+    // than of the sentence they build, which still reads as the prompt.
+    if (answers.every((value) => value.trim() === '')) {
+      setRefusal(ru.practice.emptyAnswer);
+      return;
+    }
 
     setPhase('checking');
     setStreamed('');
@@ -99,7 +108,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
       const response = await fetch(`/api/exercises/${current.id}/submit`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ answer }),
+        body: JSON.stringify({ answers }),
       });
 
       if (!response.ok || !response.body) {
@@ -188,10 +197,13 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
       {progress}
       <ExerciseQuestion
         exercise={current}
-        answer={answer}
-        onAnswer={setAnswer}
+        answers={answers}
+        onAnswer={setAnswers}
         disabled={phase === 'checking'}
         answered={phase === 'result' || phase === 'revealed'}
+        // Which gaps held, once a Verdict is in. Empty while answering and on
+        // everything the Grader judges, where an Error is where the detail is.
+        gaps={phase === 'result' ? result?.gaps ?? [] : []}
       />
 
       {refusal ? <p className="error" role="alert">{refusal}</p> : null}
