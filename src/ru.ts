@@ -163,6 +163,27 @@ export const ru = {
     creatingCourse: 'Создание курса…',
     courseCreated: 'Курс создан.',
 
+    // The Course's settings — issue #75. A Course used to be created once and
+    // then fixed, so a mistyped название stayed mistyped.
+    settingsLink: 'Настройки курса',
+    settingsTitle: 'Настройки курса',
+    backToCourse: 'К курсу',
+    saveSettings: 'Сохранить настройки',
+    savingSettings: 'Сохранение…',
+    settingsSaved: 'Настройки сохранены.',
+    // Shown rather than offered. Stated as a fact about the Course, because a
+    // greyed-out поле reads as «не сейчас» and these two are never editable.
+    languageFixed: (language: string) => `Язык курса: ${language}`,
+    levelFixed: (level: string) => `Уровень по CEFR: ${level}`,
+    // The reason, not just the rule: an Admin who is told «нельзя» without it
+    // will assume the screen is unfinished.
+    fixedFactsHint:
+      'Язык и уровень задаются при создании курса и потом не меняются: на них написан каждый урок и каждое упражнение, а смена языка оставила бы курс, содержание которого на одном языке, а Проверяющий проверяет на другом.',
+    // Says the one thing an Admin cannot see for themselves: the change takes
+    // effect on the next answer, with nothing to restart and nothing to wait for.
+    graderModelChangeHint:
+      'Новая модель проверяет следующий отправленный ответ — перезапускать ничего не нужно.',
+
     // Creating and ordering Lessons.
     newLessonTitle: 'Новый урок',
     lessonTitleField: 'Название урока',

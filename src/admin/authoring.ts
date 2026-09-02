@@ -116,6 +116,84 @@ export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
   return { ok: true, course };
 }
 
+// --- Changing a Course's settings --------------------------------------------
+
+/**
+ * What an Admin may change about a Course after it exists.
+ *
+ * Narrower than what a Course is made of, and narrow by construction rather than
+ * by a check: the Language and the CEFR level have no field here, so no caller
+ * can ask for them. Both are baked into every Lesson already written and into
+ * every Generation that produced one — a Course whose content is in one language
+ * and whose Grader judges another does not fail, it produces a stream of
+ * meaningless Verdicts, which is far worse than a refusal.
+ */
+export type CourseSettings = {
+  title: string;
+  /**
+   * Left out or blank takes the Course's own Language default, exactly as
+   * creating one does. A Course must never end up holding the empty string: the
+   * Grader refuses it, and every Submission in the Course would fail to grade.
+   */
+  graderModel?: string;
+};
+
+export type UpdateCourseResult = { ok: true; course: CourseRow } | Refused;
+
+/**
+ * Every reason these settings cannot be saved, or an empty array.
+ *
+ * Pure and apart from `updateCourse` for the reason `courseFaults` is: the
+ * Language is known from the Course rather than sent, so the model resolves
+ * against a row instead of against a form, and both halves have to agree about
+ * which model a blank field means.
+ */
+export function courseSettingsFaults(
+  input: CourseSettings,
+  course: Pick<CourseRow, 'language'>,
+): AuthoringFaultCode[] {
+  const faults: AuthoringFaultCode[] = [];
+
+  if (isBlank(input.title)) faults.push('course_title_empty');
+
+  const modelFault = graderModelFault(settledGraderModel(input, course));
+  if (modelFault !== null) faults.push(modelFault);
+
+  return faults;
+}
+
+/** The model these settings would actually be saved with. */
+function settledGraderModel(input: CourseSettings, course: Pick<CourseRow, 'language'>): string {
+  return isBlank(input.graderModel ?? '')
+    ? DEFAULT_GRADER_MODEL[course.language]
+    : input.graderModel ?? '';
+}
+
+/**
+ * A Course's editable settings, saved — or every reason they were not.
+ *
+ * Refusals are the ones the New Course form already reports, under the same
+ * codes: an Admin who mistypes a model on the settings screen should read the
+ * same Russian sentence they would have read when creating the Course.
+ */
+export function updateCourse(db: Db, courseId: number, input: CourseSettings): UpdateCourseResult {
+  const course = db.select().from(courses).where(eq(courses.id, courseId)).get();
+  // Reported alone rather than alongside the field faults: there is nothing to
+  // judge the model against without the Course's Language, and "this Course does
+  // not exist" is not a form an Admin can fix by editing it.
+  if (!course) return { ok: false, faults: ['course_not_found'] };
+
+  const faults = courseSettingsFaults(input, course);
+  if (faults.length > 0) return { ok: false, faults };
+
+  const updated = db.update(courses).set({
+    title: input.title.trim(),
+    graderModel: settledGraderModel(input, course),
+  }).where(eq(courses.id, courseId)).returning().get();
+
+  return { ok: true, course: updated };
+}
+
 // --- Creating a Lesson -------------------------------------------------------
 
 export type CreateLessonResult =
