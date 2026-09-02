@@ -718,6 +718,9 @@ export const ru = {
     spelling: 'Орфография',
     punctuation: 'Пунктуация',
     capitalization: 'Заглавная буква',
+    // Reported by the Grader and dropped before storage (design.md § Error Type
+    // enum), so this label is only ever read of a row written before #78.
+    typography: 'Оформление текста',
     vocabulary_choice: 'Выбор слова',
     missing_word: 'Пропущено слово',
     extra_word: 'Лишнее слово',

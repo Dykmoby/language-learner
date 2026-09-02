@@ -17,6 +17,7 @@ import {
   parseGraderOutput, validateErrorTypes, coherenceGuard, graderModelRefusal,
   type ExerciseContext, type GraderResponse, type GuardOutcome, type Verdict,
 } from './contract.ts';
+import { withoutTypography } from './typography.ts';
 import {
   callClaude, EMPTY_USAGE,
   type ApiPushback, type CallFailure, type CallOutcome, type ClaudeUsage,
@@ -162,15 +163,20 @@ function judge(outcome: CallOutcome, request: GradeRequest): GradingOutcome {
     console.warn(`[grader] ${request.model} wrapped its JSON in markdown fences`);
   }
 
+  // Issue #78 — before the Guard, before the row, before the histogram. A
+  // typography Error that survived to any of those would cost the Student a
+  // Verdict for something that is not language.
+  const errors = withoutTypography(parsed.value.errors, request.submission, parsed.value.corrected);
+
   return {
     ok: true,
     wallMs,
     usage,
     pushback,
-    response: parsed.value,
+    response: { ...parsed.value, errors },
     proposedVerdict: parsed.value.verdict,
-    guarded: coherenceGuard(parsed.value.verdict, parsed.value.errors),
+    guarded: coherenceGuard(parsed.value.verdict, errors),
     wasFenced: parsed.wasFenced,
-    unknownErrorTypes: validateErrorTypes(parsed.value.errors, request.context.language),
+    unknownErrorTypes: validateErrorTypes(errors, request.context.language),
   };
 }

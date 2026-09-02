@@ -148,7 +148,7 @@ test('each judgement lands on its own Exercise, with both Verdicts and its Error
       verdict: 'correct',
     }),
     judgement(exerciseIds[1]!, { feedback_ru: 'Верно.', corrected: 'I have a cat.' }),
-  ], 'en');
+  ], request.context);
 
   recordBatch(handle.db, judged, request.submissionByExercise);
 
@@ -183,7 +183,7 @@ test('a judgement for an Exercise this attempt does not hold is written nowhere'
   const attemptId = submit(['a', 'I have cat.', 'I am student.']);
   const request = batchRequestFor(handle.db, attemptId)!;
 
-  recordBatch(handle.db, judgeBatch([judgement(999_999)], 'en'), request.submissionByExercise);
+  recordBatch(handle.db, judgeBatch([judgement(999_999)], request.context), request.submissionByExercise);
 
   const opened = openAttempt(handle.db, studentId, attemptId);
   assert.ok(opened.ok);
@@ -201,7 +201,7 @@ test('an invented Error Type is kept rather than dropped — it is a real fault 
       verdict: 'incorrect',
     }),
     judgement(exerciseIds[2]!),
-  ], 'en');
+  ], request.context);
   assert.deepEqual(judged[0]!.unknownErrorTypes, ['izofat'], 'and it is reported');
 
   recordBatch(handle.db, judged, request.submissionByExercise);
@@ -235,7 +235,7 @@ test('grading again after a failure replaces the judgement rather than stacking 
       verdict: 'partially_correct',
     }),
     judgement(exerciseIds[2]!),
-  ], 'en'), again!.submissionByExercise);
+  ], again!.context), again!.submissionByExercise);
 
   const settled = openAttempt(handle.db, studentId, attemptId);
   assert.ok(settled.ok);

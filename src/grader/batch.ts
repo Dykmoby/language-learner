@@ -108,6 +108,6 @@ function judge(outcome: CallOutcome, request: BatchRequest): BatchGradingOutcome
     wallMs,
     usage,
     wasFenced: parsed.wasFenced,
-    judged: judgeBatch(parsed.judgements, request.context.language),
+    judged: judgeBatch(parsed.judgements, request.context),
   };
 }

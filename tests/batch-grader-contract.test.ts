@@ -185,7 +185,7 @@ test('the Coherence Guard is applied to every item independently', () => {
     judgement(11, { errors: [], verdict: 'incorrect' }),
     // Errors, and called correct: forbidden.
     judgement(12, { verdict: 'correct' }),
-  ], 'en');
+  ], CONTEXT);
 
   assert.equal(judged[0]!.guarded.verdict, 'correct');
   assert.equal(judged[0]!.guarded.changed, true);
@@ -199,7 +199,7 @@ test('an Error Type outside the Language enum is reported per item, not thrown',
   const judged = judgeBatch([
     judgement(11, { errors: [{ type: 'izofat', span: 'x', explanation_ru: 'нет' }] }),
     judgement(12),
-  ], 'en');
+  ], CONTEXT);
 
   assert.deepEqual(judged[0]!.unknownErrorTypes, ['izofat'], 'Tajik types are not English types');
   assert.deepEqual(judged[1]!.unknownErrorTypes, []);

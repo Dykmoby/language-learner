@@ -18,9 +18,15 @@ export type Language = (typeof LANGUAGES)[number];
 // design.md § Error Type enum. Stable in storage; only the Russian label changes,
 // and that label is resolved at display time and never persisted. A test reads
 // these lists back out of design.md so the two cannot drift apart.
+// `typography` is reported and then dropped: it exists so the Grader has
+// somewhere to put sentence case, the terminal full stop and stray whitespace
+// other than `punctuation` and `capitalization`, which have real work to do.
+// Nothing downstream ever sees one — see grader/typography.ts.
+export const TYPOGRAPHY_ERROR_TYPE = 'typography';
+
 const CORE_ERROR_TYPES = [
-  'word_order', 'spelling', 'punctuation', 'capitalization', 'vocabulary_choice',
-  'missing_word', 'extra_word', 'meaning_mismatch', 'register_style',
+  'word_order', 'spelling', 'punctuation', 'capitalization', TYPOGRAPHY_ERROR_TYPE,
+  'vocabulary_choice', 'missing_word', 'extra_word', 'meaning_mismatch', 'register_style',
 ] as const;
 
 const EN_ERROR_TYPES = [
@@ -360,6 +366,15 @@ export function buildGraderSystemPrompt(language: Language, shape: GraderPromptS
     ``,
     `"span" is the exact offending fragment copied from ${shape.spanOwner} student's answer.`,
     `Judge only the ${langName}. Do not invent errors that are not there.`,
+    ``,
+    // Issue #78. The three the Deterministic Check has always ignored, named so
+    // the model stops filing them under types that have real work to do — and
+    // the two that are real named beside them, because "no punctuation errors"
+    // would lose a missing comma, which is language.
+    `Capitalisation of the first word, a missing or extra full stop at the end, and`,
+    `stray whitespace are typography, not language. Report them as "typography" and`,
+    `never as "punctuation" or "capitalization". A missing comma inside a sentence IS`,
+    `"punctuation", and a proper noun written in lower case IS "capitalization".`,
     ``,
     ...shape.fencing,
   ].join('\n');

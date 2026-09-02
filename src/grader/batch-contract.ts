@@ -25,6 +25,7 @@ import {
   VERDICTS,
   type GraderError, type GuardOutcome, type Language, type Verdict,
 } from './contract.ts';
+import { withoutTypography } from './typography.ts';
 
 /** One Exercise of the attempt, with the answer that is to be judged against it. */
 export type BatchExercise = {
@@ -232,20 +233,34 @@ export type JudgedExercise = {
  * Every rule the single-Submission path applies to one Verdict, applied to each
  * of these — independently, because the Exercises have nothing to do with each
  * other and one incoherent judgement must not colour the rest.
+ *
+ * It takes the whole context rather than just the Language because issue #78's
+ * backstop compares a judgement against the answer it judged, and only the
+ * context knows which answer that was.
  */
 export function judgeBatch(
   judgements: readonly BatchJudgement[],
-  language: Language,
+  ctx: BatchContext,
 ): JudgedExercise[] {
-  return judgements.map((judgement) => ({
-    exerciseId: judgement.exerciseId,
-    response: {
-      feedback_ru: judgement.feedback_ru,
-      corrected: judgement.corrected,
-      errors: judgement.errors,
-    },
-    proposedVerdict: judgement.verdict,
-    guarded: coherenceGuard(judgement.verdict, judgement.errors),
-    unknownErrorTypes: validateErrorTypes(judgement.errors, language),
-  }));
+  const answers = new Map(ctx.exercises.map((e) => [e.exerciseId, e.answer]));
+
+  return judgements.map((judgement) => {
+    // A judgement for an Exercise nobody asked about cannot reach this far —
+    // parseBatchOutput refuses the whole batch over one. The fallback is the
+    // answer being absent, not wrong, and an empty string simply never matches.
+    const errors = withoutTypography(
+      judgement.errors, answers.get(judgement.exerciseId) ?? '', judgement.corrected);
+
+    return {
+      exerciseId: judgement.exerciseId,
+      response: {
+        feedback_ru: judgement.feedback_ru,
+        corrected: judgement.corrected,
+        errors,
+      },
+      proposedVerdict: judgement.verdict,
+      guarded: coherenceGuard(judgement.verdict, errors),
+      unknownErrorTypes: validateErrorTypes(errors, ctx.language),
+    };
+  });
 }

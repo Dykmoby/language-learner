@@ -123,7 +123,9 @@ The Coherence Guard reconciles the last field against the third — see [ADR 000
 
 Stable in storage, Russian labels rendered at display time.
 
-**Core (both Languages):** `word_order`, `spelling`, `punctuation`, `capitalization`, `vocabulary_choice`, `missing_word`, `extra_word`, `meaning_mismatch`, `register_style`
+**Core (both Languages):** `word_order`, `spelling`, `punctuation`, `capitalization`, `typography`, `vocabulary_choice`, `missing_word`, `extra_word`, `meaning_mismatch`, `register_style`
+
+> `typography` is reported by the Grader and then dropped by the server: sentence-initial capitalisation, the terminal full stop and stray whitespace are not language, and the Deterministic Check has always ignored all three. It never reaches the Coherence Guard, a stored Submission, or a Student's histogram. `punctuation` and `capitalization` keep their meaning for the cases that are real — a missing comma; `london` written for `London`.
 
 **English:** `article`, `tense`, `irregular_verb`, `subject_verb_agreement`, `preposition`, `plural_form`, `countability`, `modal_verb`, `conditional`, `gerund_vs_infinitive`, `phrasal_verb`
 
