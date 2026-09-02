@@ -205,7 +205,7 @@ test('an Exercise added in a Draft gets an id, and keeps it across the next publ
       document: {
         ...document,
         exercises: [...document.exercises, {
-          kind: 'fill_gap', prompt: 'Новое упражнение.', referenceAnswer: 'is', acceptedAnswers: [['is']],
+          kind: 'fill_gap', prompt: 'Новое упражнение: he ___ a doctor.', referenceAnswer: 'is', acceptedAnswers: [['is']],
         }],
       },
     });

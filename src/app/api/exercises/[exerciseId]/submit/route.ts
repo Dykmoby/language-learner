@@ -29,10 +29,15 @@ export async function POST(
   const exerciseId = Number((await params).exerciseId);
   if (!Number.isInteger(exerciseId)) return refuse('not_found');
 
-  const body = await request.json().catch(() => null) as { answer?: unknown } | null;
-  const answer = typeof body?.answer === 'string' ? body.answer : '';
+  // One value per gap, in reading order — a list of one for every Kind with a
+  // single place to answer. One shape rather than two, so nothing downstream has
+  // to ask how many gaps an Exercise had before it can read the body.
+  const body = await request.json().catch(() => null) as { answers?: unknown } | null;
+  const answers = Array.isArray(body?.answers) && body.answers.every((v) => typeof v === 'string')
+    ? body.answers as string[]
+    : [];
 
-  const started = submitAnswer(getDatabase().db, student.id, exerciseId, answer);
+  const started = submitAnswer(getDatabase().db, student.id, exerciseId, answers);
   if (!started.ok) return refuse(started.reason);
 
   const headers = {

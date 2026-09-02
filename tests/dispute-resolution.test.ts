@@ -399,7 +399,7 @@ test('and it reaches a Test’s batch too', () => {
   const exerciseId = saved.document.exercises[0]!.id!;
 
   const attempt = submitAttempt(handle.db, studentId, created.test.id, [
-    { exerciseId, answer: 'I have got a cat.' },
+    { exerciseId, answers: ['I have got a cat.'] },
   ]);
   assert.ok(attempt.ok);
 
@@ -421,7 +421,7 @@ test('and it reaches a Test’s batch too', () => {
 
   // A second attempt: the same Exercise, now with the confirmed answer in context.
   const again = submitAttempt(handle.db, studentId, created.test.id, [
-    { exerciseId, answer: 'I have a cat.' },
+    { exerciseId, answers: ['I have a cat.'] },
   ]);
   assert.ok(again.ok);
 

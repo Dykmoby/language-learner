@@ -458,6 +458,17 @@ ol.progress .segment.current { background: var(--accent); }
   border-radius: var(--radius);
 }
 .given.inline { display: inline-block; padding: var(--space-1) var(--space-2); }
+/* An answered gap wearing a state: the hue and the border are the gap's own,
+   because three gaps are three facts and a sentence marked as a whole leaves the
+   Student to work out which of the words was the wrong one. The dashed border
+   the unmarked form has becomes solid, so the mark reads as a judgement rather
+   than as the same box in a different colour. */
+.given.inline[class*='state-'] {
+  border-style: solid;
+  border-color: var(--ink, var(--line));
+  background: var(--wash, transparent);
+  color: var(--ink, var(--fg));
+}
 
 ul.choices { list-style: none; padding: 0; }
 ul.choices label {
@@ -646,6 +657,17 @@ pre.streaming {
   background: var(--wash, transparent);
 }
 .review ul.choices li.state-incorrect { text-decoration: line-through; }
+
+/* A fill-gap has no options to mark, so the review marks the words themselves,
+   sitting in the sentence they were written into — the same two states, from the
+   same system. */
+.review .given strong[class*='state-'] {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius);
+  color: var(--ink, var(--fg));
+  background: var(--wash, transparent);
+}
+.review .given strong.state-incorrect { text-decoration: line-through; }
 
 /* The state's name, in the state's own colour, on a line that is otherwise
    muted metadata. */

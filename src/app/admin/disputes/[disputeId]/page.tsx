@@ -97,7 +97,7 @@ export default async function DisputePage(
       <ResolveDispute
         disputeId={dispute.id}
         ruling={dispute.ruling}
-        answer={submission.answer}
+        values={opened.answerValues}
       />
     </main>
   );

@@ -19,7 +19,7 @@ const A_DOCUMENT: LessonDocument = {
   grammarFocus: 'Неопределённый артикль a/an',
   theoryMarkdown: '# Артикли\n\nВ английском языке есть артикли.',
   exercises: [
-    { id: 1, kind: 'fill_gap', prompt: 'Вставьте артикль.', referenceAnswer: 'an', acceptedAnswers: [['an']] },
+    { id: 1, kind: 'fill_gap', prompt: 'Вставьте артикль: I have ___ apple.', referenceAnswer: 'an', acceptedAnswers: [['an']] },
   ],
 };
 
@@ -116,7 +116,7 @@ test('two entries claiming the same Exercise row are refused', () => {
   // the document, one in the Practice, and nothing said about it. Unreachable
   // today — the document is composed on the server — but the Exercise forms are
   // what will reach it.
-  const shared = { kind: 'fill_gap' as const, prompt: 'Вставьте.', referenceAnswer: 'is', acceptedAnswers: [['is']] };
+  const shared = { kind: 'fill_gap' as const, prompt: 'Вставьте: he ___ here.', referenceAnswer: 'is', acceptedAnswers: [['is']] };
   assert.deepEqual(
     documentFaults({
       ...A_DOCUMENT,

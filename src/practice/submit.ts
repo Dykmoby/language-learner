@@ -21,7 +21,7 @@ import { acceptedAnswersFor, variantsOf } from '../content/accepted.ts';
 import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
-import { deterministicCheck } from './deterministic-check.ts';
+import { answerOf, judge, nothingAnswered } from './judgement.ts';
 import { disputesOn } from './disputes.ts';
 import { openExercise, type LessonRefusal, type OpenExercise } from './lessons.ts';
 import { isComplete, practiceProgress, type ExerciseState } from './progress.ts';
@@ -47,6 +47,8 @@ export type StartedSubmission =
 type SubmissionFields = {
   status: SubmissionStatus;
   answer: string;
+  /** What was written in each gap. Empty on every Kind with one place to answer. */
+  answerGaps?: string[];
   failureReason?: string | null;
   proposedVerdict?: Verdict | null;
   guardedVerdict?: Verdict | null;
@@ -81,6 +83,7 @@ function writeSubmission(
       exerciseId,
       attempt: (highest?.value ?? 0) + 1,
       answer: fields.answer,
+      answerGaps: fields.answerGaps ?? [],
       status: fields.status,
       failureReason: fields.failureReason ?? null,
       proposedVerdict: fields.proposedVerdict ?? null,
@@ -195,14 +198,17 @@ export function submitAnswer(
   db: Db,
   studentId: number,
   exerciseId: number,
-  answer: string,
+  answers: readonly string[],
 ): StartedSubmission | SubmitRefusal {
   const opened = openExercise(db, studentId, exerciseId);
   if (!opened.ok) return opened;
 
   const refusal = notAnswerable(opened.exerciseProgress.state);
   if (refusal) return refusal;
-  if (answer.trim() === '') return { ok: false, reason: 'empty_answer' };
+  // Asked of the gaps rather than of the sentence: an unanswered fill-gap still
+  // reads as its prompt, `___` and all, so the sentence can never say whether
+  // anything was written.
+  if (nothingAnswered(answers)) return { ok: false, reason: 'empty_answer' };
 
   const { exercise, exercises, progress } = opened;
   const previousExerciseId = progress.currentExerciseId;
@@ -212,27 +218,25 @@ export function submitAnswer(
     // Check names both. Without the second, upholding a Dispute on a fill-gap
     // would write a variant nothing ever consults.
     //
-    // The sole position, because an Exercise has one place to answer: #83 is
-    // where a prompt with several gaps renders several inputs and each is judged
-    // against its own position.
-    const [accepted] = acceptedAnswersFor(db, exercise);
-    const outcome = deterministicCheck(answer, accepted ?? [], {
-      caseSensitive: exercise.caseSensitive,
-    });
+    // Every Gap, each judged against its own values: a prompt with three of them
+    // is three facts being checked, and the Verdict says how many held.
+    const judgement = judge(exercise, answers, acceptedAnswersFor(db, exercise));
+
     // Both Verdict columns are set from the comparison, exactly as they are set
     // from the Grader on the other path (ADR 0003 asks for both; here they agree
     // by construction, and a row that recorded only one would read differently
     // from a Grader-judged row for no reason).
-    const verdict: Verdict = outcome.correct ? 'correct' : 'incorrect';
+    const verdict: Verdict = judgement.verdict;
 
     const row = writeSubmission(db, studentId, exerciseId, {
       status: 'graded',
-      answer,
+      answer: judgement.answer,
+      answerGaps: judgement.answerGaps,
       proposedVerdict: verdict,
       guardedVerdict: verdict,
       // Never the Reference Answer on a wrong answer: that is what Reveal is for,
       // and it is offered after three attempts, not after one.
-      corrected: outcome.correct ? outcome.matched : null,
+      corrected: judgement.corrected,
     });
 
     return {
@@ -245,13 +249,16 @@ export function submitAnswer(
         verdict,
         failure: null,
         feedbackRu: null,
-        corrected: outcome.correct ? outcome.matched : null,
+        corrected: judgement.corrected,
+        gaps: judgement.gaps,
         errors: [],
         progression: progressionAfter(db, studentId, exerciseId, exercises, previousExerciseId),
       },
     };
   }
 
+  // Answered in one place, and read as what was written there.
+  const answer = answerOf(exercise, answers);
   const handle = grade(graderRequestFor(db, studentId, opened, answer));
 
   // Started here, not inside the stream: the chain below is running before this
@@ -279,6 +286,7 @@ export function submitAnswer(
         failure: 'broken',
         feedbackRu: null,
         corrected: null,
+        gaps: [],
         errors: [],
         progression: {
           advanced: false, nextExerciseId: previousExerciseId, lessonComplete: false,
@@ -336,6 +344,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
       failure: outcome.failure.likelyRateLimit ? 'busy' : 'broken',
       feedbackRu: null,
       corrected: null,
+      gaps: [],
       errors: [],
       progression: progressionAfter(db, studentId, exerciseId, exercises, previousExerciseId),
     };
@@ -373,6 +382,9 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     failure: null,
     feedbackRu: response.feedback_ru,
     corrected: response.corrected,
+    // Nothing the Grader judges is judged gap by gap: it reads a whole answer,
+    // and its Errors are where it says which part of one was wrong.
+    gaps: [],
     errors: response.errors.map((error) => ({
       type: error.type,
       span: error.span,

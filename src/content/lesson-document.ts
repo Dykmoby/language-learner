@@ -15,13 +15,13 @@
 // is published into the tables a Student reads.
 
 import {
-  EXERCISE_KINDS, answersAreChoices, exerciseFaults, isBlank, isDeterministic, offersChoices,
+  EXERCISE_KINDS, answersAreChoices, exerciseFaults, gapsOf, isBlank, isDeterministic, offersChoices,
   type AcceptedAnswers, type AuthoredExercise, type ExerciseFaultCode, type ExerciseKind,
 } from './exercise-validity.ts';
 
 /**
- * The accepted answers copied position by position, so an edit to one document
- * cannot reach into the one it was made from.
+ * The accepted answers copied Gap by Gap, so an edit to one document cannot
+ * reach into the one it was made from.
  */
 function copyAccepted(accepted: AcceptedAnswers | undefined): string[][] {
   return (accepted ?? []).map((values) => [...values]);
@@ -138,7 +138,7 @@ export function withKind(exercise: DocumentExercise, kind: ExerciseKind): Docume
   const keepsChoices = answersMeanTheSame
     && offersChoices(kind) && offersChoices(exercise.kind);
 
-  return {
+  const next: DocumentExercise = {
     ...(exercise.id === undefined ? {} : { id: exercise.id }),
     kind,
     prompt: exercise.prompt,
@@ -147,6 +147,13 @@ export function withKind(exercise: DocumentExercise, kind: ExerciseKind): Docume
     caseSensitive: isDeterministic(kind) ? exercise.caseSensitive ?? false : false,
     choices: keepsChoices ? [...(exercise.choices ?? [])] : [],
   };
+
+  // Becoming a fill-gap means the prompt now says how many places there are to
+  // answer, and a word order's single accepted ordering is not one per gap.
+  // Routed through the same function a prompt edit uses, so there is one rule
+  // about what a fill-gap's Gaps are rather than two that can disagree —
+  // and `discardedByKindChange` asks this function, so the author is warned.
+  return next.kind === 'fill_gap' ? withPrompt(next, next.prompt) : next;
 }
 
 /**
@@ -185,6 +192,33 @@ export function discardedByKindChange(exercise: DocumentExercise, kind: Exercise
   const lostChoices = Math.max(0, filled(exercise.choices) - filled(after.choices));
 
   return lostReference + lostAnswers + lostChoices;
+}
+
+/**
+ * The same Exercise under a new prompt, with its accepted answers following the
+ * gaps the prompt now has.
+ *
+ * A fill-gap's prompt is what says how many places there are to answer, so
+ * editing it is editing that count. The lists are kept by position and the
+ * surplus is dropped — visibly, because the form shows one box per gap and the
+ * box goes with the gap. Leaving them would be an Exercise the validity rules
+ * refuse over a list the author can no longer see, let alone delete.
+ *
+ * Every other Kind has one place to answer whatever its prompt says, so nothing
+ * about its answers depends on the prompt.
+ */
+export function withPrompt(exercise: DocumentExercise, prompt: string): DocumentExercise {
+  if (exercise.kind !== 'fill_gap') return { ...exercise, prompt };
+
+  const accepted = exercise.acceptedAnswers ?? [];
+  return {
+    ...exercise,
+    prompt,
+    acceptedAnswers: Array.from(
+      { length: gapsOf(exercise.kind, prompt) },
+      (_, at) => [...(accepted[at] ?? [])],
+    ),
+  };
 }
 
 /** An empty Exercise of a Kind, as a form hands one to an author. */
@@ -259,24 +293,24 @@ function asStringArray(value: unknown): string[] | null {
 }
 
 /**
- * The accepted answers as they arrive: one list of short strings per position.
+ * The accepted answers as they arrive: one list of short strings per Gap.
  *
  * Blank entries go the same way `asStringArray` drops them, and for the same
- * reason. An empty position is **kept**: a gap nobody has written an answer for
- * yet is a real thing an author can produce, and dropping it would turn an
- * Exercise that is refused by name into one whose positions silently stopped
- * matching its prompt.
+ * reason. An empty one is **kept**: a Gap nobody has written an answer for yet
+ * is a real thing an author can produce, and dropping it would turn an Exercise
+ * that is refused by name into one whose Gaps silently stopped matching its
+ * prompt.
  */
 function asAcceptedAnswers(value: unknown): string[][] | null {
   if (value === undefined) return [];
   if (!Array.isArray(value)) return null;
 
-  const positions: string[][] = [];
+  const gaps: string[][] = [];
   for (const entry of value) {
     if (!Array.isArray(entry) || !entry.every((item) => typeof item === 'string')) return null;
-    positions.push((entry as string[]).filter((item) => item.trim() !== ''));
+    gaps.push((entry as string[]).filter((item) => item.trim() !== ''));
   }
-  return positions;
+  return gaps;
 }
 
 /**

@@ -131,9 +131,9 @@ export const exercises = sqliteTable('exercises', {
   // The canonical answer the Admin writes. Shown to the Grader as context and to
   // the Student on Reveal.
   referenceAnswer: text('reference_answer').notNull(),
-  // Deterministic Check Kinds only: one list per position, because a prompt may
-  // have several places to answer and each has its own accepted values. Unused
-  // by Grader-judged Kinds, which store no positions at all.
+  // Deterministic Check Kinds only: one list per Gap, because a prompt may have
+  // several places to answer and each has its own accepted values. Unused by
+  // Grader-judged Kinds, which store no Gaps at all.
   acceptedAnswers: text('accepted_answers', { mode: 'json' })
     .$type<string[][]>().notNull().default([]),
   caseSensitive: integer('case_sensitive', { mode: 'boolean' }).notNull().default(false),
@@ -283,7 +283,25 @@ export const submissions = sqliteTable('submissions', {
   // What produces Progressive Hints: attempt N is graded with attempts 1..N-1 in
   // context, and no session state exists anywhere (ADR 0004).
   attempt: integer('attempt').notNull(),
+  // The answer as a person reads it. For a fill-gap that is the prompt with the
+  // gaps filled in, because «кошка, стол» is storage rather than an answer, and
+  // this column is what the Test review, the Dispute screen and the Grader's
+  // Progressive Hints all show. Put back into the sentence **once**, where the
+  // answer is written down — not at each of the screens that show one, any of
+  // which could forget.
   answer: text('answer').notNull(),
+  // What the Student wrote in each gap, in reading order — a fill-gap only.
+  //
+  // Kept beside the sentence rather than instead of it, because the two answer
+  // different questions and only one of them survives an edit to the prompt: a
+  // sentence reassembled later would put this Student's words into whatever the
+  // Exercise says today. This is what a Dispute promotes to an Accepted Variant
+  // and what marks the gaps that were not accepted; the sentence is what is read.
+  //
+  // Empty on every other Kind, the way `choices` is empty on a Kind with nothing
+  // to offer: one place to answer needs no list to say so.
+  answerGaps: text('answer_gaps', { mode: 'json' })
+    .$type<string[]>().notNull().default([]),
 
   // The Test attempt this answer was given in, or null for a Practice Submission.
   //

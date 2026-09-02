@@ -27,7 +27,8 @@ export type TestExerciseView = {
 /** One answer, as the browser sends the whole attempt at once. */
 export type AttemptAnswer = {
   exerciseId: number;
-  answer: string;
+  /** One value per gap, in reading order — a list of one where there is one. */
+  answers: string[];
 };
 
 export type AttemptExerciseView = {
@@ -42,7 +43,18 @@ export type AttemptExerciseView = {
   prompt: string;
   /** What the Student was offered, so a wrong option can be marked among them. */
   choices: string[];
+  /**
+   * The answer as a person reads it. A fill-gap's is the sentence, gaps filled
+   * in, because that is what the review is for — «кошка, стол» is storage.
+   */
   answer: string;
+  /**
+   * What was written in each gap, so the review can mark the ones that were not
+   * accepted where the sentence alone could only be right or wrong as a whole.
+   */
+  answerGaps: string[];
+  /** Which of those gaps were accepted, in reading order. */
+  gaps: boolean[];
   /** 'awaiting_grading' and 'grading_failed' are not wrong answers and never render as one. */
   status: 'graded' | 'grading_failed' | 'awaiting_grading';
   verdict: Verdict | null;

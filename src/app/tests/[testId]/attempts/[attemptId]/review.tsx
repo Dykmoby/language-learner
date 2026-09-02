@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { ru, errorTypeLabel } from '../../../../../ru.ts';
 import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
+import { AnsweredSentence } from '../../../../shared/answered-sentence.tsx';
 import { DisputeForm } from '../../../../shared/dispute-form.tsx';
 import { stateClass, stateOfVerdict, stateWords, type VerdictState } from '../../../../shared/verdict-state.ts';
 import { VerdictLine } from '../../../../shared/verdict-line.tsx';
@@ -213,9 +214,25 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
           ) : null}
 
           <p className="given">
-            {ru.test.yourAnswer}: {exercise.answer.trim() === ''
+            {ru.test.yourAnswer}: {exercise.answerGaps.every((value) => value.trim() === '')
+              && exercise.answer.trim() === ''
               ? <span className="muted">{ru.test.noAnswer}</span>
-              : <strong>{exercise.answer}</strong>}
+              : exercise.kind === 'fill_gap'
+                ? (
+                  // A fill-gap has no options to mark, so the review marks the
+                  // words themselves, sitting in the sentence they were written
+                  // into. Rebuilt rather than printed from `answer`, because a
+                  // review has to say *which* Gap was wrong: three Gaps are three
+                  // facts, and a sentence marked as a whole leaves a Student
+                  // comparing it to the Reference Answer word by word.
+                  <AnsweredSentence
+                    prompt={exercise.prompt}
+                    answers={exercise.answerGaps}
+                    gaps={exercise.gaps}
+                    mark="strong"
+                  />
+                )
+                : <strong>{exercise.answer}</strong>}
           </p>
 
           {exercise.feedbackRu ? <p className="feedback">{exercise.feedbackRu}</p> : null}

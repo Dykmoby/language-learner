@@ -65,7 +65,7 @@ async function answer(client: Client, exerciseId: number, text: string): Promise
   const response = await client.fetch(`/api/exercises/${exerciseId}/submit`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answer: text }),
+    body: JSON.stringify({ answers: [text] }),
   });
   assert.ok(response.ok, `answering was refused with ${response.status}`);
   const frames = (await response.text()).split('\n').filter((line) => line.trim() !== '')
@@ -164,7 +164,7 @@ test('Test attempts are summarised beside the Lessons, each with its score', asy
   const sat = await client.fetch(`/api/tests/${testId}/attempts`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answers: [{ exerciseId, answer: 'a' }] }),
+    body: JSON.stringify({ answers: [{ exerciseId, answers: ['a'] }] }),
   });
   assert.equal(sat.status, 200, 'the attempt was accepted');
 

@@ -17,7 +17,7 @@ function answer(
 ): SubmissionRow {
   rows += 1;
   return {
-    id: rows, studentId: 1, exerciseId, attempt: 1, answer: 'a', testAttemptId: 9,
+    id: rows, studentId: 1, exerciseId, attempt: 1, answer: 'a', answerGaps: [], testAttemptId: 9,
     status, failureReason: null, proposedVerdict: guardedVerdict, guardedVerdict,
     feedbackRu: null, corrected: null, createdAt: new Date(),
   };
