@@ -202,7 +202,10 @@ export function graderRequestFor(
     effort: course.graderEffort,
     context,
     submission: answer,
-    guidance: currentGuidance(db),
+    // Both editable blocks, in the order the prompt states: the global guidance
+    // (issue #79) and then this Course's own instruction (issue #80), which is
+    // what holds where the two disagree.
+    instructions: { guidance: currentGuidance(db), course: course.graderInstruction },
   };
 }
 

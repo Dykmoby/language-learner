@@ -27,7 +27,9 @@ import { isBlank } from '../content/exercise-validity.ts';
 // The offerable choices and the Haiku rule live in a module the browser can
 // import: the form that offers them runs there, and a constant shared with this
 // module would drag SQLite into the bundle with it.
-import { DEFAULT_GRADER_MODEL, graderModelFault, isCefrLevel } from '../content/course-options.ts';
+import {
+  COURSE_INSTRUCTION_MAX_LENGTH, DEFAULT_GRADER_MODEL, graderModelFault, isCefrLevel,
+} from '../content/course-options.ts';
 import type { Effort } from '../claude/effort.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -38,6 +40,7 @@ export const AUTHORING_FAULTS = [
   'level_unknown',
   'grader_model_forbidden',
   'grader_model_unknown',
+  'course_instruction_too_long',
   'lesson_title_empty',
   'course_not_found',
   'student_not_found',
@@ -72,6 +75,13 @@ export type CourseInput = {
    * A caller that says nothing must never change how anything grades.
    */
   graderEffort?: Effort | null;
+  /**
+   * The Course's own instruction for the Grader — issue #80. Left out is the
+   * empty string, which is what a Course ships with. The New Course form does
+   * not offer it; an imported file carries one, which is why it is here rather
+   * than only on the settings side.
+   */
+  graderInstruction?: string;
   title: string;
 };
 
@@ -102,6 +112,19 @@ export function resolvedGraderEffort(input: { graderEffort?: Effort | null }): E
   return input.graderEffort === undefined ? 'low' : input.graderEffort;
 }
 
+/**
+ * The one bound on a Course's instruction, checked wherever a Course arrives.
+ *
+ * Both routes in are held to it — the settings screen and an imported file — for
+ * the reason the model rule is checked in both: an import must not be a way to
+ * put a text into a prompt that the screen would have refused.
+ */
+function instructionFaults(instruction: string | undefined): AuthoringFaultCode[] {
+  return (instruction ?? '').length > COURSE_INSTRUCTION_MAX_LENGTH
+    ? ['course_instruction_too_long']
+    : [];
+}
+
 export function courseFaults(input: CourseInput): AuthoringFaultCode[] {
   const faults: AuthoringFaultCode[] = [];
 
@@ -111,6 +134,8 @@ export function courseFaults(input: CourseInput): AuthoringFaultCode[] {
 
   const modelFault = graderModelFault(resolvedGraderModel(input));
   if (modelFault !== null) faults.push(modelFault);
+
+  faults.push(...instructionFaults(input.graderInstruction));
 
   return faults;
 }
@@ -124,6 +149,8 @@ export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
     level: input.level,
     graderModel: resolvedGraderModel(input),
     graderEffort: resolvedGraderEffort(input),
+    // Carried as written rather than trimmed: it is a prompt, not a title.
+    graderInstruction: input.graderInstruction ?? '',
     title: input.title.trim(),
     createdAt: new Date(),
   }).returning().get();
@@ -153,6 +180,15 @@ export type CourseSettings = {
   graderModel?: string;
   /** As on the way in: `null` is «По умолчанию», left out is `low` (issue #76). */
   graderEffort?: Effort | null;
+  /**
+   * This Course's own instruction for the Grader — issue #80, ADR 0008.
+   *
+   * Empty is allowed and means the Course has nothing of its own to say, which
+   * is also what it ships with. Left out leaves whatever the Course already
+   * holds: a caller sending only a title must not silently erase an instruction
+   * somebody wrote.
+   */
+  graderInstruction?: string;
 };
 
 export type UpdateCourseResult = { ok: true; course: CourseRow } | Refused;
@@ -175,6 +211,8 @@ export function courseSettingsFaults(
 
   const modelFault = graderModelFault(settledGraderModel(input, course));
   if (modelFault !== null) faults.push(modelFault);
+
+  faults.push(...instructionFaults(input.graderInstruction));
 
   return faults;
 }
@@ -207,6 +245,10 @@ export function updateCourse(db: Db, courseId: number, input: CourseSettings): U
     title: input.title.trim(),
     graderModel: settledGraderModel(input, course),
     graderEffort: resolvedGraderEffort(input),
+    // Left out leaves what is there. An empty string is a real edit — "this
+    // Course has nothing of its own to say" — and is not the same as saying
+    // nothing about the field at all.
+    ...(input.graderInstruction === undefined ? {} : { graderInstruction: input.graderInstruction }),
   }).where(eq(courses.id, courseId)).returning().get();
 
   return { ok: true, course: updated };

@@ -21,6 +21,7 @@ import { DETERMINISTIC_COURSE } from './helpers/fixtures.ts';
 import { acceptedVariants, courses, exercises, exerciseSets, lessons } from '../src/db/schema.ts';
 import { createTest, saveTest, publishTest } from '../src/admin/tests.ts';
 import { assembleCourseExport, COURSE_EXPORT_VERSION, type CourseExport } from '../src/admin/course-export.ts';
+import { COURSE_INSTRUCTION_MAX_LENGTH } from '../src/content/course-options.ts';
 import { importCourse } from '../src/admin/course-import.ts';
 import { imageUrl, isStoredImageName } from '../src/content/uploads.ts';
 import { DEFAULT_GRADER_MODEL } from '../src/content/course-options.ts';
@@ -452,6 +453,47 @@ test('a file claiming the current version with an Effort that is not one is refu
     assert.ok(!result.ok);
     assert.deepEqual(result.faults.map((fault) => fault.code), ['not_an_export'],
       'a file that claims 3 and holds something that is not an Effort is broken, not old');
+  } finally {
+    target.cleanup();
+  }
+});
+
+test("a Course's own instruction travels, and a file written before them arrives empty", () => {
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    const instruction = 'В этом курсе заглавные буквы проверяются строго.';
+    const carrying = JSON.stringify({ ...file, course: { ...file.course, graderInstruction: instruction } });
+
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, carrying);
+    assert.ok(result.ok, `import refused: ${JSON.stringify(result.ok ? [] : result.faults)}`);
+    assert.equal(result.course.graderInstruction, instruction, 'carried as written');
+
+    // A file from before version 4 has no instruction in it. That reads back as
+    // an empty one, which is what a Course that never had one holds anyway —
+    // there is nothing here to tell apart.
+    const { graderInstruction: _dropped, ...course } = file.course;
+    const older = JSON.stringify({ ...file, version: 3, course });
+    const earlier = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, older);
+    assert.ok(earlier.ok, `import refused: ${JSON.stringify(earlier.ok ? [] : earlier.faults)}`);
+    assert.equal(earlier.course.graderInstruction, '');
+  } finally {
+    target.cleanup();
+  }
+});
+
+test('an over-long instruction in a file is refused, the way the settings screen refuses one', () => {
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    const tooLong = JSON.stringify({
+      ...file,
+      course: { ...file.course, graderInstruction: 'я'.repeat(COURSE_INSTRUCTION_MAX_LENGTH + 1) },
+    });
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, tooLong);
+    assert.ok(!result.ok);
+    assert.deepEqual(result.faults.map((fault) => fault.code), ['course_instruction_too_long'],
+      'an import is not a way past a rule the screen enforces');
   } finally {
     target.cleanup();
   }

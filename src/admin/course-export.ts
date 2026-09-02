@@ -59,8 +59,12 @@ type Db = BetterSQLite3Database<typeof schema>;
  * that version has no Effort in it and reads back as `low`, which is what every
  * Course was grading at when it was written — never as «По умолчанию», which
  * would be a restored Course that grades differently from the one exported.
+ *
+ * 4 is where a Course started carrying its own instruction for the Grader (#80).
+ * A file below that version has none, and reads back with an empty one — which
+ * is what a Course that has never had an instruction holds anyway.
  */
-export const COURSE_EXPORT_VERSION = 3;
+export const COURSE_EXPORT_VERSION = 4;
 
 /**
  * Every version this build can read back.
@@ -69,7 +73,7 @@ export const COURSE_EXPORT_VERSION = 3;
  * export a restore rather than a snapshot with a shelf life — and a file from a
  * later one is refused as such rather than guessed at.
  */
-export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, 2, COURSE_EXPORT_VERSION];
+export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, 2, 3, COURSE_EXPORT_VERSION];
 
 export type ExportedCourse = {
   language: Language;
@@ -81,6 +85,11 @@ export type ExportedCourse = {
    * had an Effort", which reads back as `low`, and the two are different Courses.
    */
   graderEffort: Effort | null;
+  /**
+   * The Course's own instruction for the Grader — issue #80. Empty on a Course
+   * that has none, and on every file written before version 4.
+   */
+  graderInstruction: string;
   title: string;
 };
 
@@ -188,6 +197,7 @@ export function assembleCourseExport(
       level: course.level,
       graderModel: course.graderModel,
       graderEffort: course.graderEffort,
+      graderInstruction: course.graderInstruction,
       title: course.title,
     },
     lessons: exportedLessons,
@@ -330,6 +340,12 @@ export function parseCourseExport(value: unknown): CourseExport | null {
   const graderEffort = version < 3 ? 'low' : asEffort(fields.graderEffort);
   if (graderEffort === undefined) return null;
 
+  // Absent is empty rather than a shape fault, whatever the version claims: a
+  // Course with nothing of its own to say and one written before Courses could
+  // say anything hold the same text, so there is nothing here to tell apart.
+  const graderInstruction = fields.graderInstruction ?? '';
+  if (typeof graderInstruction !== 'string') return null;
+
   if (body.lessons !== undefined && !Array.isArray(body.lessons)) return null;
   if (body.tests !== undefined && !Array.isArray(body.tests)) return null;
 
@@ -375,6 +391,7 @@ export function parseCourseExport(value: unknown): CourseExport | null {
       level: fields.level,
       graderModel: fields.graderModel,
       graderEffort,
+      graderInstruction,
       title: fields.title,
     },
     lessons,

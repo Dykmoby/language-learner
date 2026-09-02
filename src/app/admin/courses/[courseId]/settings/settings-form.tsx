@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { ru, faultMessage } from '../../../../../ru.ts';
-import { GRADER_MODELS } from '../../../../../content/course-options.ts';
+import { COURSE_INSTRUCTION_MAX_LENGTH, GRADER_MODELS } from '../../../../../content/course-options.ts';
 import type { Effort } from '../../../../../claude/effort.ts';
 import { GraderEffortPicker } from '../../../grader-effort-picker.tsx';
 
@@ -21,17 +21,21 @@ type Props = {
   initialGraderModel: string;
   /** `null` is «По умолчанию» — the parameter is not sent to the model at all. */
   initialGraderEffort: Effort | null;
+  /** This Course's own instruction for the Grader. Empty where it has none. */
+  initialGraderInstruction: string;
   /** Already in Russian, and already not editable. */
   language: string;
   level: string;
 };
 
 export function CourseSettingsForm({
-  courseId, initialTitle, initialGraderModel, initialGraderEffort, language, level,
+  courseId, initialTitle, initialGraderModel, initialGraderEffort, initialGraderInstruction,
+  language, level,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [graderModel, setGraderModel] = useState(initialGraderModel);
   const [graderEffort, setGraderEffort] = useState<Effort | null>(initialGraderEffort);
+  const [graderInstruction, setGraderInstruction] = useState(initialGraderInstruction);
   const [busy, setBusy] = useState(false);
   const [faults, setFaults] = useState<string[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
@@ -55,7 +59,7 @@ export function CourseSettingsForm({
       const response = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, graderModel, graderEffort }),
+        body: JSON.stringify({ title, graderModel, graderEffort, graderInstruction }),
       });
       const body = (await response.json().catch(() => null)) as
         { ok?: boolean; faults?: string[] } | null;
@@ -109,6 +113,27 @@ export function CourseSettingsForm({
         disabled={busy}
         onEffort={(next) => edited(setGraderEffort)(next)}
       />
+
+      {/* Issue #80 — plain text, not markdown: this goes into a prompt, not onto
+          a page. There is no «Вернуть исходный текст» beside it, and nothing is
+          hidden by its absence: what a Course ships with is the empty string, so
+          emptying the field *is* restoring the default, and a button that typed
+          nothing into an already-empty field would only suggest there was some
+          remembered text behind it. */}
+      <h2>{ru.admin.graderInstructionTitle}</h2>
+      <p className="muted">{ru.admin.graderInstructionExplanation}</p>
+      <p className="muted">{ru.admin.graderInstructionPrecedence}</p>
+      <label>
+        <span>{ru.admin.graderInstructionField}</span>
+        <textarea
+          value={graderInstruction}
+          rows={10}
+          maxLength={COURSE_INSTRUCTION_MAX_LENGTH}
+          onChange={(e) => edited(setGraderInstruction)(e.target.value)}
+          disabled={busy}
+        />
+      </label>
+      <p className="muted">{ru.admin.graderInstructionHint(COURSE_INSTRUCTION_MAX_LENGTH)}</p>
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (

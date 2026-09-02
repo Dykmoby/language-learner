@@ -102,6 +102,14 @@ _Avoid_: mistake, issue, problem
 A value from the fixed enum of fault categories — a shared core plus a per-Language extension. Stable in storage; only its Russian label changes.
 _Avoid_: category, tag, label
 
+**Grading Guidance**:
+The block of the Grader's system prompt an Admin edits, applying to every Course at once. The rest of the prompt is fixed in code and out of reach.
+_Avoid_: prompt, system prompt, instructions
+
+**Course Instruction**:
+A Course's own instruction for the Grader, edited from its settings screen. Reaches the Grader after the Grading Guidance, and wins where the two disagree — it is the more specific of the two.
+_Avoid_: course prompt, course guidance, override
+
 **Progressive Hint**:
 The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions.
 _Avoid_: tip, clue

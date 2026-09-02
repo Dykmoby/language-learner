@@ -283,6 +283,9 @@ function writeContent(tx: Tx, file: CourseExport, stored: Map<string, string>): 
     // умолчанию» and has to survive the trip, and `resolvedGraderEffort` is the
     // one place that knows an absent Effort means `low` rather than that.
     graderEffort: resolvedGraderEffort(file.course),
+    // Carried as written. It is a prompt, not a title: trimming it would edit an
+    // instruction somebody wrote, and it is refused for length before this runs.
+    graderInstruction: file.course.graderInstruction,
     title: file.course.title.trim(),
     createdAt: new Date(),
   }).returning().get();

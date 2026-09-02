@@ -53,8 +53,14 @@ export async function PATCH(
   const graderEffort = asEffort(body?.graderEffort);
   if (graderEffort === false) return NextResponse.json({ error: 'malformed' }, { status: 400 });
 
+  // An empty string is a real edit — "this Course has nothing of its own to say"
+  // — so only a non-string is malformed. Absent leaves what the Course holds.
+  const graderInstruction = body?.graderInstruction === undefined
+    ? undefined : asString(body.graderInstruction);
+  if (graderInstruction === null) return NextResponse.json({ error: 'malformed' }, { status: 400 });
+
   const { db } = getDatabase();
-  const saved = updateCourse(db, courseId, { title, graderModel, graderEffort });
+  const saved = updateCourse(db, courseId, { title, graderModel, graderEffort, graderInstruction });
   if (!saved.ok) {
     return NextResponse.json({ ok: false, faults: saved.faults }, { status: 422 });
   }
@@ -66,6 +72,7 @@ export async function PATCH(
         title: saved.course.title,
         graderModel: saved.course.graderModel,
         graderEffort: saved.course.graderEffort,
+        graderInstruction: saved.course.graderInstruction,
       },
     },
     { headers: { 'cache-control': 'no-store' } },

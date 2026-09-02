@@ -86,6 +86,8 @@ test('the file carries the Course, its published Lessons in order, and its Tests
       // Issue #76 — the Effort travels with the Course, so a restored Course
       // grades the way the exported one did.
       graderEffort: 'low',
+      // Issue #80 — and the Course's own instruction, empty on one that has none.
+      graderInstruction: '',
       title: DETERMINISTIC_COURSE.title,
     });
 

@@ -96,7 +96,7 @@ test('a Course configured to grade with Haiku fails closed, without spending a c
   const outcome = await grade({
     model: 'claude-haiku-4-5',
     submission: 'I have cat.',
-    guidance: SHIPPED_GUIDANCE,
+    instructions: { guidance: SHIPPED_GUIDANCE, course: '' },
     effort: 'low',
     context: {
       language: 'en', level: 'A1', lessonTitle: 'Урок', grammarFocus: 'Articles',

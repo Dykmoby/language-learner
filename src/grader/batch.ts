@@ -15,7 +15,7 @@ import {
   buildBatchSystemPrompt, buildBatchUserPrompt, judgeBatch, parseBatchOutput,
   type BatchContext, type JudgedExercise,
 } from './batch-contract.ts';
-import { graderModelRefusal } from './contract.ts';
+import { graderModelRefusal, type GraderInstructions } from './contract.ts';
 import type { GradingFailure } from './grade.ts';
 import { callClaude, EMPTY_USAGE, type CallOutcome, type ClaudeUsage } from '../claude/harness.ts';
 import { effortTimeoutMs, type Effort } from '../claude/effort.ts';
@@ -25,8 +25,13 @@ export type BatchRequest = {
   /** Per-Course, per ADR 0002. Never a Haiku model — see the ADR. */
   model: string;
   context: BatchContext;
-  /** The editable grading guidance — issue #79, ADR 0006. */
-  guidance: string;
+  /**
+   * The global guidance (issue #79, ADR 0006) and this Course's own instruction
+   * (issue #80, ADR 0008) — the same two a Practice Submission in the Course is
+   * judged against. A Test judged by different instructions from the Practice
+   * that prepared for it would be a mirror of something else.
+   */
+  instructions: GraderInstructions;
   /** The Course's Effort — issue #76. `null` is «По умолчанию». */
   effort: Effort | null;
 };
@@ -65,7 +70,7 @@ export async function gradeBatch(request: BatchRequest): Promise<BatchGradingOut
   const call = callClaude({
     lane: 'grading',
     model: request.model,
-    systemPrompt: buildBatchSystemPrompt(request.context.language, request.guidance),
+    systemPrompt: buildBatchSystemPrompt(request.context.language, request.instructions),
     prompt: buildBatchUserPrompt(request.context),
     // The Course's, exactly as a Practice Submission in the same Course — a Test
     // judged by less reasoning than the Practice that prepared for it would be a

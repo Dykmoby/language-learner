@@ -1,0 +1,24 @@
+-- A Course's own instruction for the Grader (#80, ADR 0008).
+--
+-- The grading guidance in `grader_guidance` applies to every Course at once, and
+-- Courses differ in what they are teaching: the capitalisation strictness a
+-- Course about orthography wants is exactly what a conversational one wants
+-- dropped. Both texts reach the Grader, the global one first, and where they
+-- disagree this one holds — it is the more specific of the two.
+--
+-- NOT NULL with an empty default, and deliberately unlike the global block. That
+-- one is a whole row that may be absent, because "never edited" has to be
+-- distinguishable from "deliberately empty" — the shipped guidance lives in the
+-- code and «Вернуть исходный текст» is a delete. Here the shipped default *is*
+-- the empty string: a Course ships with nothing of its own to say, so there is
+-- no second state to tell apart, and every Course that existed before this
+-- column gets exactly what a new one gets.
+--
+-- ORDERING. This sits after #76's 0017. drizzle's SQLite migrator applies a
+-- migration only when its journal `when` is greater than the newest `created_at`
+-- already in `__drizzle_migrations` — it compares timestamps, not indices. A
+-- migration landing in the folder with a `when` below one already applied is
+-- skipped in silence. tests/migration-journal.test.ts asserts the journal stays
+-- monotonic so the next branch to add one cannot get this wrong.
+
+ALTER TABLE `courses` ADD `grader_instruction` text DEFAULT '' NOT NULL;

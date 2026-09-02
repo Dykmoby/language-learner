@@ -195,8 +195,9 @@ async function measure(subject: StabilityCase, model: string, times: number): Pr
       // else. `low` is what every earlier measurement was taken at.
       effort: 'low',
       model, context: subject.context, submission: subject.submission,
-      // The shipped guidance, so a stability measurement is comparable across installations and across time.
-      guidance: SHIPPED_GUIDANCE,
+      // The shipped prompt and no Course instruction, so a stability measurement
+      // is comparable across installations and across time.
+      instructions: { guidance: SHIPPED_GUIDANCE, course: '' },
     }).result;
     runs.push(outcome.ok
       ? {

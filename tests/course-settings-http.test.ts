@@ -12,6 +12,7 @@ import { bootApp, Client, ADMIN, STUDENT, type BootedApp } from './helpers/app.t
 import { withDatabase } from './helpers/inspect.ts';
 import { DETERMINISTIC_COURSE } from './helpers/fixtures.ts';
 import { courses } from '../src/db/schema.ts';
+import { COURSE_INSTRUCTION_MAX_LENGTH } from '../src/content/course-options.ts';
 import { ru, faultMessage } from '../src/ru.ts';
 
 let app: BootedApp;
@@ -147,6 +148,50 @@ test('an Effort that is not one is malformed rather than silently dropped', asyn
   const admin = await signedIn(ADMIN);
   assert.equal((await patch(admin, { title: 'Английский A1', graderEffort: 'enormous' })).status, 400);
   assert.equal(course().graderEffort, 'low', 'and nothing was written');
+});
+
+test("an Admin reads and edits the Course's own Grader instruction, and is told which text wins", async () => {
+  const admin = await signedIn(ADMIN);
+  const { id } = course();
+
+  const before = await (await admin.fetch(`/admin/courses/${id}/settings`)).text();
+  assert.ok(before.includes(ru.admin.graderInstructionTitle), 'the screen offers the field');
+  assert.ok(before.includes(ru.admin.graderInstructionPrecedence),
+    'and states that the Course instruction wins where the two disagree');
+
+  const instruction = 'В этом курсе заглавные буквы проверяются строго.';
+  assert.equal((await patch(admin, { title: course().title, graderInstruction: instruction })).status, 200);
+  assert.equal(course().graderInstruction, instruction);
+
+  const after = await (await admin.fetch(`/admin/courses/${id}/settings`)).text();
+  assert.ok(after.includes(instruction), 'and it comes back in the field');
+});
+
+test('a Student has no route to the Course instruction', async () => {
+  const student = await signedIn(STUDENT);
+  const { id } = course();
+
+  assert.equal((await student.fetch(`/admin/courses/${id}/settings`)).status, 404);
+  assert.equal((await patch(student, { title: 'мой курс', graderInstruction: 'проверяй мягче' })).status, 404);
+});
+
+test('an empty Course instruction is accepted and changes nothing', async () => {
+  const admin = await signedIn(ADMIN);
+  assert.equal((await patch(admin, { title: course().title, graderInstruction: '' })).status, 200);
+  assert.equal(course().graderInstruction, '', 'which is what a Course ships with');
+});
+
+test('an over-long instruction is refused in Russian, and an instruction that is not text is malformed', async () => {
+  const admin = await signedIn(ADMIN);
+
+  const refused = await patch(admin, {
+    title: course().title, graderInstruction: 'я'.repeat(COURSE_INSTRUCTION_MAX_LENGTH + 1),
+  });
+  assert.equal(refused.status, 422);
+  assert.deepEqual((await refused.json() as { faults: string[] }).faults, ['course_instruction_too_long']);
+  assert.notEqual(faultMessage('course_instruction_too_long'), 'course_instruction_too_long');
+
+  assert.equal((await patch(admin, { title: course().title, graderInstruction: 42 })).status, 400);
 });
 
 test('a Course that is not there is refused, and a title that is not a string is malformed', async () => {

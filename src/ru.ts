@@ -166,6 +166,19 @@ export const ru = {
     graderEffortField: 'Усилие Проверяющего',
     graderEffortHint:
       'Сколько рассуждения Проверяющий тратит на оценку. Чем выше, тем дольше студент ждёт проверки: на «Максимальном» одна проверка может идти несколько минут.',
+
+    // The Course's own instruction for the Grader — issue #80, ADR 0008. The
+    // screen states the precedence out loud: an Admin who does not know which of
+    // the two texts wins will write one that contradicts the other and never
+    // find out which was followed.
+    graderInstructionTitle: 'Указания Проверяющему для этого курса',
+    graderInstructionExplanation:
+      'Общие указания действуют для всех курсов сразу, но курсы учат разному: строгость к заглавным буквам, нужная курсу по орфографии, мешает разговорному курсу.',
+    graderInstructionPrecedence:
+      'Проверяющий получает оба текста: сначала общий, потом этот. Там, где они расходятся, действует указание курса — оно точнее.',
+    graderInstructionField: 'Указания для курса',
+    graderInstructionHint: (max: number) =>
+      `Обычный текст, не разметка. До ${max} символов. Пустое поле допустимо и ничего не меняет — именно с ним курс и создаётся.`,
     createCourse: 'Создать курс',
     creatingCourse: 'Создание курса…',
     courseCreated: 'Курс создан.',
@@ -327,6 +340,9 @@ export const ru = {
     grader_model_forbidden:
       'Haiku не проверяет ответы ни на одном языке: он уверенно объясняет грамматику неверно. Выберите Sonnet 5 или Opus 5.',
     grader_model_unknown: 'Такой модели нет в списке. Выберите Sonnet 5 или Opus 5.',
+    // The bound is on the stored text, so an over-long instruction is refused
+    // rather than trimmed on the way in and silently graded against.
+    course_instruction_too_long: 'Указания для курса слишком длинные. Сократите текст.',
     lesson_title_empty: 'Заполните название урока.',
     course_not_found: 'Курс не найден. Обновите страницу.',
     student_not_found: 'Студент не найден. Обновите страницу.',

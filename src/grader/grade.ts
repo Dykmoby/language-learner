@@ -15,7 +15,8 @@
 import {
   buildSystemPrompt, buildUserPrompt, buildStudentBlock,
   parseGraderOutput, validateErrorTypes, coherenceGuard, graderModelRefusal,
-  type ExerciseContext, type GraderResponse, type GuardOutcome, type Verdict,
+  type ExerciseContext, type GraderInstructions, type GraderResponse,
+  type GuardOutcome, type Verdict,
 } from './contract.ts';
 import { withoutTypography } from './typography.ts';
 import {
@@ -40,13 +41,15 @@ export type GradeRequest = {
    */
   effort: Effort | null;
   /**
-   * The editable grading guidance (issue #79, ADR 0006), read from the database
-   * by whoever built this request. It is a parameter rather than a read inside
-   * `grade` because this module has never touched the database, and because a
-   * test that wants to know what a particular guidance does to a Verdict should
-   * be able to say so.
+   * The two editable blocks of the prompt — the global guidance (issue #79, ADR
+   * 0006) and this Course's own instruction (issue #80, ADR 0008) — read from
+   * the database by whoever built this request.
+   *
+   * A parameter rather than a read inside `grade` because this module has never
+   * touched the database, and because a test that wants to know what a particular
+   * instruction does to a Verdict should be able to say so.
    */
-  guidance: string;
+  instructions: GraderInstructions;
 };
 
 /** The harness's accounting, under the name the Grader's callers already use. */
@@ -148,7 +151,7 @@ export function grade(request: GradeRequest): GradingHandle {
   const call = callClaude({
     lane: 'grading',
     model: request.model,
-    systemPrompt: buildSystemPrompt(request.context.language, request.guidance),
+    systemPrompt: buildSystemPrompt(request.context.language, request.instructions),
     prompt: [buildUserPrompt(request.context), '', buildStudentBlock(request.submission)].join('\n'),
     // Per Course since issue #76. `low` is still what the spike measured as
     // matching or beating every alternative, and is what every Course created
