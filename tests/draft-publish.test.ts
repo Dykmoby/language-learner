@@ -19,6 +19,7 @@ import {
   openDraft, saveDraft, publishDraft, publishedDocument, latestDraft,
   lessonsWithUnpublishedChanges,
 } from '../src/admin/drafts.ts';
+import { judge } from '../src/practice/judgement.ts';
 
 function freshDatabase() {
   const { path, cleanup } = tempDatabasePath();
@@ -130,6 +131,43 @@ test('publishing makes the Draft the Lesson a Student reads', () => {
     assert.equal(after.title, 'Новое название');
     assert.equal(after.theoryMarkdown, '# Новая теория\n\nТекст.');
     assert.equal(openDraft(handle.db, lesson.id)!.hasUnpublishedChanges, false, 'nothing is ahead any more');
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('a generated multi-gap fill-gap publishes and is answerable without an Admin editing it', () => {
+  // Issue #84's end of the claim: a Draft Claude wrote in the new shape goes
+  // through the ordinary save and the ordinary publish, and the row a Student
+  // then answers holds one list of accepted values per gap.
+  const handle = freshDatabase();
+  try {
+    const lesson = firstLesson(handle.db);
+    const base = publishedDocument(handle.db, lesson.id)!;
+    const draft = saved(handle.db, {
+      lessonId: lesson.id,
+      studentId: admin(handle.db).id,
+      document: {
+        ...base,
+        exercises: [{
+          kind: 'fill_gap',
+          prompt: 'Заполните пропуски: ___ have ___ apple.',
+          referenceAnswer: 'I have an apple.',
+          acceptedAnswers: [['I'], ['an']],
+          caseSensitive: false,
+          choices: [],
+        }],
+      },
+    });
+
+    assert.equal(publishDraft(handle.db, draft.id).ok, true);
+
+    const [published] = exercisesOf(handle.db, lesson.id);
+    assert.deepEqual(published!.acceptedAnswers, [['I'], ['an']], 'one list per gap, in reading order');
+    assert.equal(published!.referenceAnswer, 'I have an apple.', 'the canonical answer is the sentence');
+    assert.equal(judge(published!, ['I', 'an'], published!.acceptedAnswers).verdict, 'correct');
+    assert.equal(judge(published!, ['an', 'I'], published!.acceptedAnswers).verdict, 'incorrect',
+      'and a value accepted at one gap is not accepted at another');
   } finally {
     handle.cleanup();
   }

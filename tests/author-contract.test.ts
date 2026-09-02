@@ -105,6 +105,85 @@ test('the system prompt describes every Kind, derived from the rules that judge 
   assert.match(prompt, /exactly once/);
 });
 
+test('the contract asks for a fill-gap\'s accepted answers per gap, and a matching prompt', () => {
+  // Issue #84. Left as "one list", Claude kept writing one-gap fill-gaps and
+  // whole sentences into a field that means "the values accepted at this
+  // position" — Drafts an Admin has to catch by eye.
+  const prompt = buildAuthorSystemPrompt('en');
+  const fillGap = prompt.slice(prompt.indexOf('  fill_gap'), prompt.indexOf('  multiple_choice'));
+
+  assert.match(fillGap, /ONE list per gap/, 'one list of accepted values per place a Student answers');
+  assert.match(fillGap, /as many lists as the prompt has ___/, 'and a prompt whose gap count matches');
+  assert.match(fillGap, /marked ___/, 'spelled with the token the renderer actually splits on');
+  assert.match(
+    fillGap,
+    /"referenceAnswer": the complete sentence with the answers in place/,
+    'the canonical answer is what Reveal shows, word for word — never a list or a delimited string',
+  );
+
+  // The single-Gap Kinds keep their own rule: they are picked or arranged rather
+  // than filled in, and have one place to answer whatever the prompt contains.
+  const multipleChoice = prompt.slice(prompt.indexOf('  multiple_choice'), prompt.indexOf('  word_order'));
+  assert.match(multipleChoice, /a list holding ONE list/);
+
+  assert.match(
+    prompt,
+    /a fill-gap has exactly as many accepted-answer lists as its prompt has ___/,
+    'and the rule that will reject the whole Lesson is stated before the call is spent',
+  );
+});
+
+test('Refinement asks for the same shape, because there is one system prompt behind both', () => {
+  // Refinement exchanges the whole Draft every turn, so a rule stated only to
+  // Generation would be a rule the second turn forgot. Both callers reach the
+  // model through authorLesson, which builds this one prompt — asserted here
+  // rather than by a second copy of the fill-gap rule for Refinement.
+  const source = readFileSync(new URL('../src/authoring/call.ts', import.meta.url), 'utf8');
+  assert.match(source, /systemPrompt: buildAuthorSystemPrompt\(call\.language\)/);
+
+  const refinement = readFileSync(new URL('../src/authoring/refinement.ts', import.meta.url), 'utf8');
+  assert.match(refinement, /authorLesson\(/, 'Refinement goes through the same call');
+  assert.ok(!/buildAuthorSystemPrompt|systemPrompt:/.test(refinement), 'and builds no prompt of its own');
+});
+
+test('a generated fill-gap whose gap count disagrees with its answers is refused', () => {
+  // Refused rather than reported: an Exercise with an input nothing judges, or a
+  // list of accepted values with no input in front of it, cannot be rendered —
+  // the same treatment every other incoherent Exercise gets.
+  const twoGapsOneList: LessonDocument = {
+    ...LESSON,
+    exercises: [{
+      kind: 'fill_gap',
+      prompt: 'Заполните пропуски: ___ have ___ cat.',
+      referenceAnswer: 'I have a cat.',
+      acceptedAnswers: [['I']],
+      caseSensitive: false,
+      choices: [],
+    }],
+  };
+
+  const review = checkGeneratedLesson(twoGapsOneList, { ...REQUEST, exerciseCount: 1, kindMix: {} });
+  assert.deepEqual(review.faults.map((fault) => fault.code), ['gap_count_mismatch']);
+  assert.equal(review.faults[0]!.exercisePosition, 1);
+});
+
+test('a generated multi-gap fill-gap with a list per gap is storable as it stands', () => {
+  const multiGap: LessonDocument = {
+    ...LESSON,
+    exercises: [{
+      kind: 'fill_gap',
+      prompt: 'Заполните пропуски: ___ have ___ cat.',
+      referenceAnswer: 'I have a cat.',
+      acceptedAnswers: [['I'], ['a']],
+      caseSensitive: false,
+      choices: [],
+    }],
+  };
+
+  const review = checkGeneratedLesson(multiGap, { ...REQUEST, exerciseCount: 1, kindMix: {} });
+  assert.deepEqual(review, { faults: [], mismatches: [] });
+});
+
 test('the system prompt names the Language it is writing for', () => {
   assert.match(buildAuthorSystemPrompt('tj'), /Tajik/);
   assert.ok(!buildAuthorSystemPrompt('tj').includes('learning English'));
@@ -334,7 +413,7 @@ test('the Author\'s contract imports nothing that touches the SDK or the databas
 
   for (const imported of imports) {
     assert.ok(
-      /^\.\.\/(grader\/contract|content\/exercise-validity|content\/lesson-document)\.ts$/.test(imported),
+      /^\.\.\/(grader\/contract|content\/exercise-validity|content\/gaps|content\/lesson-document)\.ts$/.test(imported),
       `${imported} is not one of the pure modules this may depend on`,
     );
   }

@@ -27,6 +27,10 @@ import {
   EXERCISE_KINDS, answersAreChoices, isBlank, isDeterministic, offersChoices,
   type ExerciseKind,
 } from '../content/exercise-validity.ts';
+// The token itself, so the prompt spells the notation the same way the renderer
+// splits on it. A prompt that taught `...` while the code counted `___` would
+// produce Drafts refused for obeying their instructions.
+import { GAP } from '../content/gaps.ts';
 import {
   documentFaults, parseLessonDocument,
   type DocumentFault, type LessonDocument,
@@ -176,6 +180,14 @@ const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', tj: 'Tajik' };
 function kindRules(): string[] {
   return EXERCISE_KINDS.map((kind) => {
     const parts: string[] = [];
+
+    // Issue #84. A fill-gap's prompt is the field that decides how many places
+    // there are to answer, which makes it a field rule of this Kind rather than
+    // only the shared "the task, in Russian" above.
+    if (kind === 'fill_gap') {
+      parts.push(`"prompt": each place the student writes is marked ${GAP}, and there may be several`);
+    }
+
     if (offersChoices(kind)) {
       parts.push(kind === 'multiple_choice'
         ? '"choices": at least two options the student picks between'
@@ -184,13 +196,21 @@ function kindRules(): string[] {
       parts.push('"choices": []');
     }
 
-    if (isDeterministic(kind)) {
-      // A list per Gap, holding what is accepted there. Exactly one of them, even
-      // now that a fill-gap prompt may carry several: teaching the contract to
-      // ask for a Gap count that matches its own prompt is #84, and until then a
-      // one-gap fill-gap is the only shape Generation is asked for — a Draft
-      // where the two disagree is refused by the review rules before an Admin
-      // sees it.
+    if (kind === 'fill_gap') {
+      // Issue #84. A fill-gap's prompt decides how many places there are to
+      // answer, so the contract asks for the two together — a list per Gap, and
+      // a prompt whose `___` count matches. Left as "one list", Claude kept
+      // writing whole sentences into a field that means "what is accepted at
+      // this position", which is a Draft an Admin has to catch by eye.
+      parts.push(
+        '"acceptedAnswers": ONE list per gap, in reading order, each holding every value'
+        + ` accepted at that gap — as many lists as the prompt has ${GAP}, exactly`,
+        '"referenceAnswer": the complete sentence with the answers in place, which is what'
+        + ' the student is shown if they ask for the answer',
+      );
+    } else if (isDeterministic(kind)) {
+      // One place to answer, whatever the prompt contains: these are picked or
+      // arranged rather than filled in. The single list is that one Gap.
       parts.push(answersAreChoices(kind)
         ? '"acceptedAnswers": a list holding ONE list, of one or more entries copied EXACTLY from "choices"'
         : '"acceptedAnswers": a list holding ONE list, of every wording that is correct, at least one');
@@ -253,6 +273,8 @@ export function buildAuthorSystemPrompt(language: Language): string {
     `  - two accepted answers that compare equal are one answer written twice`,
     `  - a word-order exercise has at most 12 fragments, and every accepted ordering`,
     `    must use every fragment exactly once`,
+    `  - a fill-gap has exactly as many accepted-answer lists as its prompt has ${GAP},`,
+    `    and every one of those lists holds at least one value`,
     `  - no field is empty except where a kind says it is []`,
   ].join('\n');
 }
