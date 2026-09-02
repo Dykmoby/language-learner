@@ -10,7 +10,7 @@ import { grade, type GradeRequest } from './grade.ts';
 
 // English, so the check runs on the faster of the two Grader models (ADR 0002).
 // The answer has one planted error: the missing indefinite article.
-const KNOWN_INPUT: GradeRequest = {
+const KNOWN_INPUT: Omit<GradeRequest, 'guidance'> = {
   model: 'claude-sonnet-5',
   submission: 'I have cat.',
   context: {
@@ -51,8 +51,14 @@ export type HealthResult = {
   };
 };
 
-export async function runHealthCheck(): Promise<HealthResult> {
-  const outcome = await grade(KNOWN_INPUT).result;
+/**
+ * The live grading guidance is a parameter and not a default, because issue #79
+ * wants exactly this: the check runs through the real Grader path, so an edit
+ * that breaks grading turns the Admin's health banner red on its own. A check
+ * run against the shipped text would go green over a broken prompt.
+ */
+export async function runHealthCheck(guidance: string): Promise<HealthResult> {
+  const outcome = await grade({ ...KNOWN_INPUT, guidance }).result;
 
   if (!outcome.ok) {
     return {

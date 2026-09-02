@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { callClaude, type ApiPushback, type Lane } from '../claude/harness.ts';
 import { config } from '../config.ts';
 import { grade } from '../grader/grade.ts';
+import { SHIPPED_GUIDANCE } from '../grader/guidance.ts';
 import type { ExerciseContext } from '../grader/contract.ts';
 
 // The health check's known input, for the same reason it uses it: one planted
@@ -96,6 +97,9 @@ async function gradingCall(label: string): Promise<ProbeResult> {
   const startedAt = performance.now();
   const outcome = await grade({
     model: 'claude-sonnet-5', context: KNOWN_CONTEXT, submission: KNOWN_ANSWER,
+    // A probe measures the shipped prompt. An installation's edited guidance
+    // would make two runs of this incomparable.
+    guidance: SHIPPED_GUIDANCE,
   }).result;
 
   return {

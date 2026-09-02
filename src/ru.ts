@@ -330,6 +330,46 @@ export const ru = {
     current_password_wrong: 'Текущий пароль введён неверно.',
   },
 
+  // Issue #79 / ADR 0006 — the one block of the Grader's prompt an Admin edits.
+  // The screen says what it is for and what it cannot touch, because an Admin
+  // who does not know where the line is will eventually try to move it.
+  guidance: {
+    title: 'Указания Проверяющему',
+    link: 'Указания Проверяющему',
+    explanation:
+      'Этот текст получает Проверяющий при каждой проверке — и в практике, и в проверочной работе. Здесь задаётся, насколько строго проверять, что считать несущественным и каким тоном писать студенту.',
+    // The fixed skeleton, named plainly. ADR 0006 is the long version.
+    fixedExplanation:
+      'Формат ответа, список типов ошибок, правило про span и блок, ограждающий ответ студента, остаются в коде и отсюда не меняются: на них держатся разбор ответа и защита от подмены инструкций.',
+    field: 'Указания',
+    // Plain text, not markdown: this goes into a prompt, not onto a page.
+    hint: (max: number) => `Обычный текст, не разметка. До ${max} символов. Пустое поле допустимо — тогда Проверяющий получает только формат ответа.`,
+    save: 'Сохранить',
+    saving: 'Сохранение…',
+    saved: 'Сохранено.',
+    restore: 'Вернуть исходный текст',
+    restoring: 'Возвращение…',
+    shipped: 'Сейчас действует текст, поставляемый с приложением.',
+    editedBy: (who: string, when: string) => `Последнее изменение: ${who}, ${when}.`,
+    // The account that made the edit has since been deleted. The edit still
+    // stands — it is the application's text, not that person's.
+    editedByUnknown: (when: string) => `Последнее изменение: ${when}. Автор удалён.`,
+    // The Health Check runs through the real Grader path, so a broken edit shows
+    // up there on its own. Said out loud so the Admin knows where to look.
+    healthNote:
+      'Проверка Проверяющего идёт через тот же путь, поэтому неудачная правка видна на ней сразу.',
+    writeFailed: 'Не удалось сохранить. Попробуйте ещё раз.',
+  },
+
+  // Why the guidance was refused, keyed by the stable code — the same split as
+  // every other fault dictionary. A test asserts every code has exactly one
+  // entry here and that the dictionary invents none.
+  guidanceFaults: {
+    // The bound is on the stored text, so an over-long guidance is refused
+    // rather than trimmed on the way in and silently graded against.
+    guidance_too_long: 'Указания слишком длинные. Сократите текст.',
+  },
+
   health: {
     title: 'Проверка Проверяющего',
     // Says plainly what pressing the button costs: one real graded call.
@@ -721,6 +761,9 @@ export const ru = {
     spelling: 'Орфография',
     punctuation: 'Пунктуация',
     capitalization: 'Заглавная буква',
+    // Reported by the Grader and dropped before storage (design.md § Error Type
+    // enum), so this label is only ever read of a row written before #78.
+    typography: 'Оформление текста',
     vocabulary_choice: 'Выбор слова',
     missing_word: 'Пропущено слово',
     extra_word: 'Лишнее слово',
@@ -1113,6 +1156,7 @@ export function faultMessage(code: string): string {
   const generation: Record<string, string> = ru.generationFaults;
   const tests: Record<string, string> = ru.testFaults;
   const imports: Record<string, string> = ru.importFaults;
+  const guidance: Record<string, string> = ru.guidanceFaults;
   return lessonLevel[code] ?? exerciseLevel[code] ?? authoring[code] ?? accounts[code]
-    ?? uploads[code] ?? generation[code] ?? tests[code] ?? imports[code] ?? code;
+    ?? uploads[code] ?? generation[code] ?? tests[code] ?? imports[code] ?? guidance[code] ?? code;
 }

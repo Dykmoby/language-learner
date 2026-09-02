@@ -327,6 +327,13 @@ export const submissions = sqliteTable('submissions', {
   proposedVerdict: text('proposed_verdict', { enum: VERDICTS }),
   guardedVerdict: text('guarded_verdict', { enum: VERDICTS }),
 
+  // The server removed an Error the Grader reported — issue #78's typography
+  // drop. Without this the two Verdicts above would differ for a reason that has
+  // nothing to do with the Grader, and the guard-firing tally reads exactly that
+  // difference as the Grader contradicting itself. Defaulted false, which is
+  // what every row written before this column is: nothing was dropped from it.
+  typographyDropped: integer('typography_dropped', { mode: 'boolean' }).notNull().default(false),
+
   feedbackRu: text('feedback_ru'),
   corrected: text('corrected'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
@@ -467,3 +474,31 @@ export const healthChecks = sqliteTable('health_checks', {
 }, (t) => [index('health_checks_ran_at_idx').on(t.ranAt)]);
 
 export type HealthCheckRow = typeof healthChecks.$inferSelect;
+
+// The one block of the Grader's system prompt an Admin can edit — issue #79.
+//
+// How the Grader judges (how strict to be, what to let pass, what tone to take)
+// is the part of the prompt most likely to want tuning and the least dangerous
+// to touch. The skeleton around it stays in code and out of reach: ADR 0006 says
+// which parts those are and why.
+//
+// One row, id 1, or none. No row means the guidance shipped in the code, which
+// is what makes «Вернуть исходный текст» a delete rather than a write of
+// remembered text — and it keeps an empty block, which is allowed and means
+// "nothing beyond the skeleton", distinct from never having been edited.
+//
+// No version history: this is a text edited twice a year, not a Draft. Who last
+// changed it and when is recorded, because a prompt that starts grading
+// differently is a question somebody will ask.
+export const graderGuidance = sqliteTable('grader_guidance', {
+  id: integer('id').primaryKey(),
+  guidance: text('guidance').notNull(),
+  // Nullable and `set null`, like every other authorship reference in this
+  // schema: deleting an account must not fail because that person once edited
+  // the guidance, and must not take the guidance with it either. The text is the
+  // system's; the name beside it is a courtesy.
+  updatedBy: integer('updated_by').references(() => students.id, { onDelete: 'set null' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export type GraderGuidanceRow = typeof graderGuidance.$inferSelect;

@@ -92,9 +92,11 @@ test('a Course configured to grade with Haiku fails closed, without spending a c
   // Student as a Verdict.
   const { grade } = await import('../src/grader/grade.ts');
   const started = performance.now();
+  const { SHIPPED_GUIDANCE } = await import('../src/grader/guidance.ts');
   const outcome = await grade({
     model: 'claude-haiku-4-5',
     submission: 'I have cat.',
+    guidance: SHIPPED_GUIDANCE,
     context: {
       language: 'en', level: 'A1', lessonTitle: 'Урок', grammarFocus: 'Articles',
       prompt: 'Переведите: У меня есть кошка.', referenceAnswer: 'I have a cat.',

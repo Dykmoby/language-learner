@@ -17,6 +17,7 @@ import {
   parseGraderOutput, validateErrorTypes, coherenceGuard, graderModelRefusal,
   type ExerciseContext, type GraderResponse, type GuardOutcome, type Verdict,
 } from './contract.ts';
+import { withoutTypography } from './typography.ts';
 import {
   callClaude, EMPTY_USAGE,
   type ApiPushback, type CallFailure, type CallOutcome, type ClaudeUsage,
@@ -28,6 +29,14 @@ export type GradeRequest = {
   model: string;
   context: ExerciseContext;
   submission: string;
+  /**
+   * The editable grading guidance (issue #79, ADR 0006), read from the database
+   * by whoever built this request. It is a parameter rather than a read inside
+   * `grade` because this module has never touched the database, and because a
+   * test that wants to know what a particular guidance does to a Verdict should
+   * be able to say so.
+   */
+  guidance: string;
 };
 
 /** The harness's accounting, under the name the Grader's callers already use. */
@@ -70,6 +79,13 @@ export type GradingOutcome =
       /** What the Grader proposed, kept apart from the guarded value (ADR 0003). */
       proposedVerdict: Verdict;
       guarded: GuardOutcome;
+      /**
+       * The server removed an Error the Grader reported (issue #78). Recorded so
+       * a Verdict the server moved by taking the Error out from under it is not
+       * read later as the Grader contradicting itself — which is the one thing
+       * ADR 0003's stored pair exists to measure.
+       */
+      typographyDropped: boolean;
       wasFenced: boolean;
       unknownErrorTypes: string[];
       usage: GraderUsage;
@@ -122,7 +138,7 @@ export function grade(request: GradeRequest): GradingHandle {
   const call = callClaude({
     lane: 'grading',
     model: request.model,
-    systemPrompt: buildSystemPrompt(request.context.language),
+    systemPrompt: buildSystemPrompt(request.context.language, request.guidance),
     prompt: [buildUserPrompt(request.context), '', buildStudentBlock(request.submission)].join('\n'),
     // design.md § Grading: adaptive thinking at low Effort. Not the Admin's
     // choice — a Verdict is not a place to spend minutes of reasoning, and the
@@ -162,15 +178,21 @@ function judge(outcome: CallOutcome, request: GradeRequest): GradingOutcome {
     console.warn(`[grader] ${request.model} wrapped its JSON in markdown fences`);
   }
 
+  // Issue #78 — before the Guard, before the row, before the histogram. A
+  // typography Error that survived to any of those would cost the Student a
+  // Verdict for something that is not language.
+  const typography = withoutTypography(parsed.value.errors, request.submission, parsed.value.corrected);
+
   return {
     ok: true,
     wallMs,
     usage,
     pushback,
-    response: parsed.value,
+    response: { ...parsed.value, errors: typography.errors },
     proposedVerdict: parsed.value.verdict,
-    guarded: coherenceGuard(parsed.value.verdict, parsed.value.errors),
+    guarded: coherenceGuard(parsed.value.verdict, typography.errors),
+    typographyDropped: typography.dropped,
     wasFenced: parsed.wasFenced,
-    unknownErrorTypes: validateErrorTypes(parsed.value.errors, request.context.language),
+    unknownErrorTypes: validateErrorTypes(typography.errors, request.context.language),
   };
 }

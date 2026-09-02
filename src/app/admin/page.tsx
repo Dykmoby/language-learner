@@ -64,6 +64,9 @@ export default async function AdminPage() {
         <a href="/admin/disputes">{ru.disputeReview.link}</a>
       </p>
       <p className="actions">
+        <a href="/admin/guidance">{ru.guidance.link}</a>
+      </p>
+      <p className="actions">
         <a href="/admin/health">{ru.admin.healthLink}</a>
       </p>
     </main>

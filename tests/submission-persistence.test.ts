@@ -57,6 +57,7 @@ function graded(response: GraderResponse, unknownErrorTypes: string[] = []): Gra
     response,
     proposedVerdict: response.verdict,
     guarded: coherenceGuard(response.verdict, response.errors),
+    typographyDropped: false,
     wasFenced: false,
     unknownErrorTypes,
     usage: EMPTY_USAGE,

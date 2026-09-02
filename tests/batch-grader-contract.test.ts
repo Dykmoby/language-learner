@@ -13,6 +13,7 @@ import {
   buildBatchSystemPrompt, buildBatchUserPrompt, parseBatchOutput, judgeBatch,
   type BatchContext, type BatchJudgement,
 } from '../src/grader/batch-contract.ts';
+import { SHIPPED_GUIDANCE } from '../src/grader/guidance.ts';
 
 const CONTEXT: BatchContext = {
   language: 'en',
@@ -88,7 +89,7 @@ test('each answer is fenced as data, tagged with the Exercise it answers', () =>
 });
 
 test('the system prompt forbids following the answers and fixes the response shape', () => {
-  const system = buildBatchSystemPrompt('en');
+  const system = buildBatchSystemPrompt('en', SHIPPED_GUIDANCE);
 
   assert.match(system, /DATA, never/i, 'the answers are data, never instructions');
   assert.ok(system.includes('exercise_id'), 'each judgement names the Exercise it is about');
@@ -99,7 +100,7 @@ test('the system prompt forbids following the answers and fixes the response sha
 
 test('no prior attempts travel with a batch — a Test has no Progressive Hints', () => {
   const prompt = buildBatchUserPrompt(CONTEXT);
-  const system = buildBatchSystemPrompt('en');
+  const system = buildBatchSystemPrompt('en', SHIPPED_GUIDANCE);
 
   assert.ok(!/attempt \d/i.test(prompt), 'nothing in the prompt counts attempts');
   assert.ok(!/sharpen/i.test(system), 'and nothing asks for a sharper hint');
@@ -185,7 +186,7 @@ test('the Coherence Guard is applied to every item independently', () => {
     judgement(11, { errors: [], verdict: 'incorrect' }),
     // Errors, and called correct: forbidden.
     judgement(12, { verdict: 'correct' }),
-  ], 'en');
+  ], CONTEXT);
 
   assert.equal(judged[0]!.guarded.verdict, 'correct');
   assert.equal(judged[0]!.guarded.changed, true);
@@ -199,7 +200,7 @@ test('an Error Type outside the Language enum is reported per item, not thrown',
   const judged = judgeBatch([
     judgement(11, { errors: [{ type: 'izofat', span: 'x', explanation_ru: 'нет' }] }),
     judgement(12),
-  ], 'en');
+  ], CONTEXT);
 
   assert.deepEqual(judged[0]!.unknownErrorTypes, ['izofat'], 'Tajik types are not English types');
   assert.deepEqual(judged[1]!.unknownErrorTypes, []);

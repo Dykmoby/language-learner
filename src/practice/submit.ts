@@ -21,6 +21,7 @@ import { acceptedAnswersFor, variantsOf } from '../content/accepted.ts';
 import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
+import { currentGuidance } from '../grader/guidance.ts';
 import { answerOf, judge, nothingAnswered } from './judgement.ts';
 import { disputesOn } from './disputes.ts';
 import { openExercise, type LessonRefusal, type OpenExercise } from './lessons.ts';
@@ -52,6 +53,7 @@ type SubmissionFields = {
   failureReason?: string | null;
   proposedVerdict?: Verdict | null;
   guardedVerdict?: Verdict | null;
+  typographyDropped?: boolean;
   feedbackRu?: string | null;
   corrected?: string | null;
   errors?: GraderError[];
@@ -88,6 +90,7 @@ function writeSubmission(
       failureReason: fields.failureReason ?? null,
       proposedVerdict: fields.proposedVerdict ?? null,
       guardedVerdict: fields.guardedVerdict ?? null,
+      typographyDropped: fields.typographyDropped ?? false,
       feedbackRu: fields.feedbackRu ?? null,
       corrected: fields.corrected ?? null,
       createdAt: new Date(),
@@ -189,7 +192,9 @@ export function graderRequestFor(
   };
 
   // Per Course, never per code branch — ADR 0002 puts the choice in the data.
-  return { model: course.graderModel, context, submission: answer };
+  // The guidance is global (issue #79) and read here rather than inside the
+  // Grader, which has never touched the database.
+  return { model: course.graderModel, context, submission: answer, guidance: currentGuidance(db) };
 }
 
 // --- submitting --------------------------------------------------------------
@@ -350,7 +355,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     };
   }
 
-  const { response, proposedVerdict, guarded } = outcome;
+  const { response, proposedVerdict, guarded, typographyDropped } = outcome;
 
   if (outcome.unknownErrorTypes.length > 0) {
     // Stored as it came — dropping the Error would hide a real fault from the
@@ -358,7 +363,11 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     // contract violation and the histogram in step 7 will trip over it.
     console.warn(`[grader] unknown Error Type(s): ${outcome.unknownErrorTypes.join(', ')}`);
   }
-  if (guarded.changed) {
+  // Not when the server itself removed the Error underneath the Verdict (#78) —
+  // that is this application moving a Verdict, not the Grader contradicting
+  // itself, and warning about it would make a routine lowercase sentence look
+  // like the failure ADR 0003 wrote this line to catch.
+  if (guarded.changed && !typographyDropped) {
     console.warn(`[grader] Coherence Guard fired: ${guarded.rule}`);
   }
 
@@ -369,6 +378,7 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     // run-to-run instability impossible to measure later (ADR 0003).
     proposedVerdict,
     guardedVerdict: guarded.verdict,
+    typographyDropped,
     feedbackRu: response.feedback_ru,
     corrected: response.corrected,
     errors: response.errors,

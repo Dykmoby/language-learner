@@ -32,6 +32,7 @@ function submission(
     // A Practice Submission, so it belongs to no Test attempt.
     testAttemptId: null,
     status, failureReason: null, proposedVerdict: guardedVerdict, guardedVerdict,
+    typographyDropped: false,
     feedbackRu: null, corrected: null, createdAt: new Date(),
   };
 }

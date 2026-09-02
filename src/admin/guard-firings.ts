@@ -35,6 +35,14 @@ export type JudgedSubmission = {
   kind: ExerciseKind;
   proposedVerdict: Verdict | null;
   guardedVerdict: Verdict | null;
+  /**
+   * The server removed an Error the Grader reported — issue #78's typography
+   * drop. Here for the same reason `kind` is: the two Verdicts on such a row
+   * differ because this application took the Error out from under the first one,
+   * not because the Grader contradicted itself, and counting it would report the
+   * typography filter as Grader incoherence.
+   */
+  typographyDropped: boolean;
 };
 
 export type GuardFirings = {
@@ -67,6 +75,7 @@ export function tallyGuardFirings(rows: readonly JudgedSubmission[]): GuardFirin
 
   for (const row of rows) {
     if (isDeterministic(row.kind)) continue;
+    if (row.typographyDropped) continue;
     // A failed grading has neither Verdict: there was no judgement, so there is
     // nothing for the guard to have moved.
     if (row.proposedVerdict === null || row.guardedVerdict === null) continue;
@@ -94,6 +103,7 @@ export function guardFirings(db: Db): GuardFirings {
     kind: exercises.kind,
     proposedVerdict: submissions.proposedVerdict,
     guardedVerdict: submissions.guardedVerdict,
+    typographyDropped: submissions.typographyDropped,
   })
     .from(submissions)
     .innerJoin(exercises, eq(exercises.id, submissions.exerciseId))

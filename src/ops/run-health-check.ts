@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../config.ts';
 import { openDatabase } from '../db/client.ts';
 import { runHealthCheck } from '../grader/health-check.ts';
+import { currentGuidance } from '../grader/guidance.ts';
 import { tryRecordHealthCheck } from './health-history.ts';
 
 // CLI: node src/ops/run-health-check.ts
@@ -31,7 +32,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     // Never throws: the Grader module's terminal result is a discriminated
     // union, so an unhealthy check is a value rather than an exception.
-    const result = await runHealthCheck();
+    const result = await runHealthCheck(currentGuidance(handle.db));
     // Recorded first, reported either way: if the row cannot be written the
     // journal still gets what a paid call found, and the non-zero exit below
     // says the run could not be kept.
