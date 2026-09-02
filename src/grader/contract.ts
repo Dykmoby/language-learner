@@ -456,10 +456,29 @@ export function buildUserPrompt(ctx: ExerciseContext): string {
       ``,
       `The student already tried this exercise. Earlier attempts, oldest first:`,
       ...ctx.priorSubmissions.map((s, i) => `  attempt ${i + 1}: ${s}`),
-      `This is attempt ${ctx.priorSubmissions.length + 1}. Sharpen the hint: nudge on`,
-      `attempt 1, name the error type on attempt 2, show the structure on attempt 3.`,
     );
   }
+
+  // Issue #81 — on every call, the first one included.
+  //
+  // The ladder used to travel only where earlier attempts existed, which left
+  // attempt one with no instruction to hold anything back at all: the Grader
+  // wrote the finished sentence into its explanation, and a Student who got one
+  // word wrong was handed the whole answer before they had a second try.
+  //
+  // It is the explanation this governs, never `corrected`. That field is what an
+  // Admin reviewing a Dispute reads, so it holds the corrected answer on every
+  // attempt; whether it reaches the browser is decided server-side, where it can
+  // be guaranteed — see practice/submit.ts.
+  parts.push(
+    ``,
+    `This is attempt ${ctx.priorSubmissions.length + 1}. Sharpen the hint as the attempts go:`,
+    `  attempt 1        — point at where the mistake is without naming it`,
+    `  attempt 2        — name the kind of mistake, without writing the correct form`,
+    `  attempt 3 and on — show the correct form`,
+    `Follow the rung for this attempt. It governs "feedback_ru" only: "corrected"`,
+    `always holds the corrected answer, whatever attempt this is.`,
+  );
 
   return parts.join('\n');
 }

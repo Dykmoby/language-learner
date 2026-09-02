@@ -86,7 +86,9 @@ Every Grader call is stateless but context-rich. It receives:
 - the Reference Answer and any Accepted Variants
 - the Student's earlier Submissions on this Exercise
 
-That last item is what produces Progressive Hints: attempt 1 nudges, attempt 2 names the error type, attempt 3 shows the structure.
+That last item is what produces Progressive Hints, and the attempt number is stated on every call — the first one included, where there is nothing earlier to count. The ladder: attempt 1 points at the mistake without naming it, attempt 2 names the kind of mistake without writing the correct form, attempt 3 and after show it.
+
+**The corrected answer is withheld from the Student until the third failed attempt.** Two halves, and only one of them is a guarantee. `corrected` is returned by the Grader and written to the Submission on every attempt — an Admin resolving a Dispute needs it — and simply does not travel to the browser until `revealOffered` is true, which is the same event as «three tries and it did not come». That is the guarantee. The ladder above is the other half: an explanation's job is to teach, so nothing can stop a Grader writing the finished form into `feedback_ru`, which is exactly why the field whose whole job is to hold the answer is the one held back. A Test is unaffected — it has one attempt and gives no feedback until submitted, so a review that hid the correction would leave a Student with nothing to learn from.
 
 ### Configuration
 
@@ -157,7 +159,7 @@ Grading runs to completion server-side and persists regardless of whether the cl
 
 - `correct` advances.
 - `partially_correct` keeps the Student on the Exercise with a sharper Progressive Hint.
-- After 3 failures, Reveal is offered → state becomes Completed With Help, which counts as complete but renders as a distinct segment in the progress bar.
+- After 3 failures, Reveal is offered → state becomes Completed With Help, which counts as complete but renders as a distinct segment in the progress bar. The same third failure is where the corrected answer starts reaching the browser (§ Grading).
 - Dispute unblocks progression immediately and queues for Admin review.
 - Lessons unlock sequentially, with a per-Course Admin toggle for free navigation.
 

@@ -73,6 +73,14 @@ export default async function DisputePage(
         <p className="muted">{ru.disputeReview.verdict}: {verdictLabel}</p>
       )}
       {submission.feedbackRu ? <p className="feedback">{submission.feedbackRu}</p> : null}
+      {/* Issue #81 — withheld from the Student until their third failed attempt,
+          and never from this screen. Reviewing an objection means reading what
+          the Grader thought the answer should have been. */}
+      {submission.corrected ? (
+        <p className="corrected">
+          {ru.disputeReview.graderCorrected}: <strong>{submission.corrected}</strong>
+        </p>
+      ) : null}
 
       <h2>{ru.disputeReview.graderErrors}</h2>
       {opened.errors.length === 0 ? (

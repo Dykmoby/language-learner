@@ -637,6 +637,11 @@ export const ru = {
     acceptedTitle: 'Уже принимаются',
     acceptedNone: 'Дополнительных принимаемых ответов пока нет.',
     studentAnswer: 'Ответ студента',
+    // The correction the Grader wrote, which since #81 the Student does not see
+    // until their third failed attempt. It is stored on every attempt precisely
+    // so that this screen can show it: a Verdict reviewed without the answer the
+    // Grader thought was right is a Verdict reviewed with half the evidence.
+    graderCorrected: 'Исправление Проверяющего',
     graderErrors: 'Что нашёл Проверяющий',
     graderNoErrors: 'Проверяющий не отметил ни одной ошибки.',
     verdict: 'Оценка',

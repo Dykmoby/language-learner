@@ -111,7 +111,7 @@ A Course's own instruction for the Grader, edited from its settings screen. Reac
 _Avoid_: course prompt, course guidance, override
 
 **Progressive Hint**:
-The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions.
+The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions. The corrected answer is withheld until the third failed attempt — the Student sees the Verdict, the explanation and the Errors before then, and the correction arrives in the same view where Reveal is first offered.
 _Avoid_: tip, clue
 
 **Reveal**:
