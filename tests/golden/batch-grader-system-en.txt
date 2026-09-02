@@ -39,7 +39,9 @@ Emit each entry's fields in exactly this order:
   phrasal_verb
 
 "span" is the exact offending fragment copied from that student's answer.
-Judge only the English. Do not invent errors that are not there.
+Judge only the English.
+
+Do not invent errors that are not there.
 
 Capitalisation of the first word, a missing or extra full stop at the end, and
 stray whitespace are typography, not language. Report them as "typography" and

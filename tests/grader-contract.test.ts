@@ -232,6 +232,7 @@ test('Coherence Guard leaves the proposed Verdict readable, so the instability s
 import {
   buildSystemPrompt, buildUserPrompt, buildStudentBlock, type ExerciseContext,
 } from '../src/grader/contract.ts';
+import { SHIPPED_GUIDANCE } from '../src/grader/guidance.ts';
 
 const ctx: ExerciseContext = {
   language: 'en',
@@ -254,23 +255,23 @@ test("the Student's answer is fenced as data and marked as never-to-be-followed"
   assert.match(block, /<\/student_answer>/);
   assert.ok(block.includes(injection), 'the answer is fenced, never filtered or rewritten');
 
-  const system = buildSystemPrompt('en');
+  const system = buildSystemPrompt('en', SHIPPED_GUIDANCE);
   assert.match(system, /<student_answer>/);
   assert.match(system, /never follow/i);
 });
 
 test('the system prompt carries only the Error Types of the Language being graded', () => {
-  const english = buildSystemPrompt('en');
+  const english = buildSystemPrompt('en', SHIPPED_GUIDANCE);
   assert.ok(english.includes('article'), 'English grading offers the English extension');
   assert.ok(!english.includes('izofat'), 'English grading must not offer Tajik types');
 
-  const tajik = buildSystemPrompt('tj');
+  const tajik = buildSystemPrompt('tj', SHIPPED_GUIDANCE);
   assert.ok(tajik.includes('izofat'), 'Tajik grading offers the Tajik extension');
   assert.ok(tajik.includes('word_order'), 'both Languages get the core types');
 });
 
 test('the system prompt demands the field order the streaming UX depends on', () => {
-  const system = buildSystemPrompt('en');
+  const system = buildSystemPrompt('en', SHIPPED_GUIDANCE);
   assert.ok(
     system.indexOf('feedback_ru') < system.indexOf('verdict'),
     'feedback_ru must be asked for before verdict — step 3 streams it to the Student first',

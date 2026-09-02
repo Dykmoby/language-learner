@@ -21,6 +21,7 @@ import { acceptedAnswersFor, variantsOf } from '../content/accepted.ts';
 import { writeSubmissionErrors } from '../grader/errors.ts';
 import type { ExerciseContext, GraderError, Language, Verdict } from '../grader/contract.ts';
 import { grade, type GradeRequest, type GradingOutcome } from '../grader/grade.ts';
+import { currentGuidance } from '../grader/guidance.ts';
 import { deterministicCheck } from './deterministic-check.ts';
 import { disputesOn } from './disputes.ts';
 import { openExercise, type LessonRefusal, type OpenExercise } from './lessons.ts';
@@ -186,7 +187,9 @@ export function graderRequestFor(
   };
 
   // Per Course, never per code branch — ADR 0002 puts the choice in the data.
-  return { model: course.graderModel, context, submission: answer };
+  // The guidance is global (issue #79) and read here rather than inside the
+  // Grader, which has never touched the database.
+  return { model: course.graderModel, context, submission: answer, guidance: currentGuidance(db) };
 }
 
 // --- submitting --------------------------------------------------------------

@@ -29,6 +29,14 @@ export type GradeRequest = {
   model: string;
   context: ExerciseContext;
   submission: string;
+  /**
+   * The editable grading guidance (issue #79, ADR 0006), read from the database
+   * by whoever built this request. It is a parameter rather than a read inside
+   * `grade` because this module has never touched the database, and because a
+   * test that wants to know what a particular guidance does to a Verdict should
+   * be able to say so.
+   */
+  guidance: string;
 };
 
 /** The harness's accounting, under the name the Grader's callers already use. */
@@ -123,7 +131,7 @@ export function grade(request: GradeRequest): GradingHandle {
   const call = callClaude({
     lane: 'grading',
     model: request.model,
-    systemPrompt: buildSystemPrompt(request.context.language),
+    systemPrompt: buildSystemPrompt(request.context.language, request.guidance),
     prompt: [buildUserPrompt(request.context), '', buildStudentBlock(request.submission)].join('\n'),
     // design.md § Grading: adaptive thinking at low Effort. Not the Admin's
     // choice — a Verdict is not a place to spend minutes of reasoning, and the

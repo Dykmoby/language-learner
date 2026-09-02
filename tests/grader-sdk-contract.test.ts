@@ -5,6 +5,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { grade } from '../src/grader/grade.ts';
+import { SHIPPED_GUIDANCE } from '../src/grader/guidance.ts';
 import type { ExerciseContext } from '../src/grader/contract.ts';
 
 const CONTEXT: ExerciseContext = {
@@ -20,7 +21,7 @@ after(() => { process.env.HOME = realHome; });
 test('the terminal result is a failure value, never a rejected promise', { timeout: 180_000 }, async () => {
   // A caller must not be able to render a failure as a wrong answer, and an
   // exception is exactly how that happens.
-  const outcome = await grade({ model: 'claude-sonnet-5', context: CONTEXT, submission: 'I have cat.' }).result;
+  const outcome = await grade({ model: 'claude-sonnet-5', context: CONTEXT, submission: 'I have cat.', guidance: SHIPPED_GUIDANCE }).result;
 
   assert.equal(outcome.ok, false);
   if (outcome.ok) return;
@@ -32,7 +33,7 @@ test('the terminal result is a failure value, never a rejected promise', { timeo
 test('grading runs to completion even though nobody subscribes to the stream', { timeout: 180_000 }, async () => {
   // design.md § Failure behaviour: grading runs to completion server-side whether
   // or not the client is still listening. A stream nobody pulls must not stall it.
-  const handle = grade({ model: 'claude-sonnet-5', context: CONTEXT, submission: 'I have cat.' });
+  const handle = grade({ model: 'claude-sonnet-5', context: CONTEXT, submission: 'I have cat.', guidance: SHIPPED_GUIDANCE });
   const outcome = await handle.result;
   assert.equal(outcome.ok, false, 'it finished without anyone reading the deltas');
 });
@@ -41,7 +42,7 @@ test('the stream is exposed alongside the terminal result and terminates', { tim
   // Nothing subscribes in step 2. The stream exists because streaming is
   // mandatory for step 3, and retrofitting it into a promise-shaped API later is
   // a rewrite.
-  const handle = grade({ model: 'claude-sonnet-5', context: CONTEXT, submission: 'I have cat.' });
+  const handle = grade({ model: 'claude-sonnet-5', context: CONTEXT, submission: 'I have cat.', guidance: SHIPPED_GUIDANCE });
 
   const deltas: string[] = [];
   for await (const delta of handle.deltas) deltas.push(delta);

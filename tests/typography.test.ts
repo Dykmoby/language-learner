@@ -13,6 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { coherenceGuard, buildSystemPrompt, errorTypesFor, type GraderError } from '../src/grader/contract.ts';
 import { withoutTypography } from '../src/grader/typography.ts';
+import { SHIPPED_GUIDANCE } from '../src/grader/guidance.ts';
 
 function err(type: string, span = 'x'): GraderError {
   return { type, span, explanation_ru: 'причина' };
@@ -26,7 +27,7 @@ test('typography is a core Error Type in both Languages', () => {
 });
 
 test('the prompt tells the Grader what belongs under typography and what does not', () => {
-  const system = buildSystemPrompt('en');
+  const system = buildSystemPrompt('en', SHIPPED_GUIDANCE);
   assert.ok(system.includes('typography'), 'the type is offered');
   // The distinction this ticket exists to draw. Asserted on the prompt because
   // it cannot be asserted on the model.

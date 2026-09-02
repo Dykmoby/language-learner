@@ -25,6 +25,7 @@
 
 import { fileURLToPath } from 'node:url';
 import { grade } from '../grader/grade.ts';
+import { SHIPPED_GUIDANCE } from '../grader/guidance.ts';
 import type { ExerciseContext, GraderError, Verdict } from '../grader/contract.ts';
 
 /**
@@ -188,7 +189,10 @@ async function measure(subject: StabilityCase, model: string, times: number): Pr
   // Sequentially, on purpose. Identical calls are the point, and two of them in
   // flight at once would be measuring the queue as well as the model.
   for (let i = 0; i < times; i += 1) {
-    const outcome = await grade({ model, context: subject.context, submission: subject.submission }).result;
+    const outcome = await grade({ model, context: subject.context, submission: subject.submission,
+      // The shipped guidance, so a stability measurement is comparable across installations and across time.
+      guidance: SHIPPED_GUIDANCE,
+    }).result;
     runs.push(outcome.ok
       ? {
           proposed: outcome.proposedVerdict,

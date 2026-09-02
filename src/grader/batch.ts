@@ -24,6 +24,8 @@ export type BatchRequest = {
   /** Per-Course, per ADR 0002. Never a Haiku model — see the ADR. */
   model: string;
   context: BatchContext;
+  /** The editable grading guidance — issue #79, ADR 0006. */
+  guidance: string;
 };
 
 // The same two arms the single-Submission path has, and for the same reason:
@@ -60,7 +62,7 @@ export async function gradeBatch(request: BatchRequest): Promise<BatchGradingOut
   const call = callClaude({
     lane: 'grading',
     model: request.model,
-    systemPrompt: buildBatchSystemPrompt(request.context.language),
+    systemPrompt: buildBatchSystemPrompt(request.context.language, request.guidance),
     prompt: buildBatchUserPrompt(request.context),
     // As the Grader's: a Verdict is not a place to spend minutes of reasoning,
     // and the spike measured adaptive+low as matching or beating every

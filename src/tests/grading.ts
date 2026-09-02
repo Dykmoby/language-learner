@@ -23,6 +23,7 @@ import {
 } from '../db/schema.ts';
 import type { BatchContext, JudgedExercise } from '../grader/batch-contract.ts';
 import { gradeBatch } from '../grader/batch.ts';
+import { currentGuidance } from '../grader/guidance.ts';
 import { replaceSubmissionErrors } from '../grader/errors.ts';
 import type { Language } from '../grader/contract.ts';
 
@@ -44,7 +45,7 @@ const inFlight = new Set<number>();
 export function batchRequestFor(
   db: Db,
   attemptId: number,
-): { model: string; context: BatchContext; submissionByExercise: Map<number, number> } | null {
+): { model: string; context: BatchContext; guidance: string; submissionByExercise: Map<number, number> } | null {
   const found = db.select({ attempt: testAttempts, test: tests, course: courses })
     .from(testAttempts)
     .innerJoin(tests, eq(tests.id, testAttempts.testId))
@@ -74,6 +75,10 @@ export function batchRequestFor(
   return {
     // Per Course, never per code branch — ADR 0002 puts the choice in the data.
     model: found.course.graderModel,
+    // Global, and the same text a Practice Submission is judged against — issue
+    // #79. A Test judged by different instructions from the Practice that
+    // prepared for it would be a mirror of something else.
+    guidance: currentGuidance(db),
     context: {
       language: found.course.language as Language,
       level: found.course.level,
@@ -198,7 +203,9 @@ export async function gradeAttempt(db: Db, attemptId: number): Promise<void> {
   inFlight.add(attemptId);
   try {
     const submissionIds = [...request.submissionByExercise.values()];
-    const outcome = await gradeBatch({ model: request.model, context: request.context });
+    const outcome = await gradeBatch({
+      model: request.model, context: request.context, guidance: request.guidance,
+    });
 
     if (!outcome.ok) {
       markBatchFailed(db, submissionIds, `${outcome.failure.kind}: ${outcome.failure.reason}`);
