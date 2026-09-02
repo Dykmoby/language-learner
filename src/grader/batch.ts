@@ -18,6 +18,7 @@ import {
 import { graderModelRefusal } from './contract.ts';
 import type { GradingFailure } from './grade.ts';
 import { callClaude, EMPTY_USAGE, type CallOutcome, type ClaudeUsage } from '../claude/harness.ts';
+import { effortTimeoutMs, type Effort } from '../claude/effort.ts';
 import { config } from '../config.ts';
 
 export type BatchRequest = {
@@ -26,6 +27,8 @@ export type BatchRequest = {
   context: BatchContext;
   /** The editable grading guidance — issue #79, ADR 0006. */
   guidance: string;
+  /** The Course's Effort — issue #76. `null` is «По умолчанию». */
+  effort: Effort | null;
 };
 
 // The same two arms the single-Submission path has, and for the same reason:
@@ -64,11 +67,14 @@ export async function gradeBatch(request: BatchRequest): Promise<BatchGradingOut
     model: request.model,
     systemPrompt: buildBatchSystemPrompt(request.context.language, request.guidance),
     prompt: buildBatchUserPrompt(request.context),
-    // As the Grader's: a Verdict is not a place to spend minutes of reasoning,
-    // and the spike measured adaptive+low as matching or beating every
-    // alternative. What changes for a batch is the clock, not the effort.
-    effort: 'low',
-    timeoutMs: config.testGrading.timeoutMs,
+    // The Course's, exactly as a Practice Submission in the same Course — a Test
+    // judged by less reasoning than the Practice that prepared for it would be a
+    // mirror of something else (issue #76).
+    ...(request.effort === null ? {} : { effort: request.effort }),
+    // Its own base, and the same ladder. A batch is many answers in one call and
+    // its clock was already longer than the Grader's before Effort was a choice;
+    // what the Effort changes is the multiple, not the base.
+    timeoutMs: effortTimeoutMs(config.testGrading.timeoutMs, request.effort),
     maxTurns: 1, // single-shot, ADR 0004
   });
 

@@ -117,6 +117,38 @@ test('every refusal reason arrives at once, and nothing is written', async () =>
   assert.equal(after.graderModel, before.graderModel);
 });
 
+test('an Admin chooses the Grader Effort, on both the New Course form and the settings screen', async () => {
+  const admin = await signedIn(ADMIN);
+  const { id } = course();
+
+  for (const path of ['/admin', `/admin/courses/${id}/settings`]) {
+    const html = await (await admin.fetch(path)).text();
+    assert.ok(html.includes(ru.admin.graderEffortField), `${path} offers the Effort`);
+    assert.ok(html.includes(ru.generation.effortDefault), `${path} offers «По умолчанию»`);
+    assert.ok(html.includes(ru.admin.graderEffortHint), `${path} says what raising it costs`);
+  }
+});
+
+test('the Effort is saved, and «По умолчанию» is stored as the absence of a choice', async () => {
+  const admin = await signedIn(ADMIN);
+  assert.equal(course().graderEffort, 'low', 'a seeded Course grades like every other one');
+
+  assert.equal((await patch(admin, { title: course().title, graderEffort: 'high' })).status, 200);
+  assert.equal(course().graderEffort, 'high');
+
+  assert.equal((await patch(admin, { title: course().title, graderEffort: null })).status, 200);
+  assert.equal(course().graderEffort, null, '«По умолчанию» is null, never a sixth level');
+
+  // Put back, so the Courses this suite leaves behind grade the way they did.
+  assert.equal((await patch(admin, { title: course().title, graderEffort: 'low' })).status, 200);
+});
+
+test('an Effort that is not one is malformed rather than silently dropped', async () => {
+  const admin = await signedIn(ADMIN);
+  assert.equal((await patch(admin, { title: 'Английский A1', graderEffort: 'enormous' })).status, 400);
+  assert.equal(course().graderEffort, 'low', 'and nothing was written');
+});
+
 test('a Course that is not there is refused, and a title that is not a string is malformed', async () => {
   const admin = await signedIn(ADMIN);
 

@@ -12,6 +12,11 @@ import { grade, type GradeRequest } from './grade.ts';
 // The answer has one planted error: the missing indefinite article.
 const KNOWN_INPUT: Omit<GradeRequest, 'guidance'> = {
   model: 'claude-sonnet-5',
+  // The check belongs to no Course, so there is no Course Effort to take (issue
+  // #76). `low` is what the check has always run at and what its 90s clock is
+  // sized for — and what it measures is whether grading works at all, which is
+  // not a question more reasoning answers.
+  effort: 'low',
   submission: 'I have cat.',
   context: {
     language: 'en',

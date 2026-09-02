@@ -96,6 +96,10 @@ export function pushedBack(results: readonly ProbeResult[]): ProbeResult[] {
 async function gradingCall(label: string): Promise<ProbeResult> {
   const startedAt = performance.now();
   const outcome = await grade({
+    // The probe measures the lane under load, not a Course. `low` is what it has
+    // always run at, and the number it reports is only comparable to earlier
+    // runs if that stays fixed.
+    effort: 'low',
     model: 'claude-sonnet-5', context: KNOWN_CONTEXT, submission: KNOWN_ANSWER,
     // A probe measures the shipped prompt. An installation's edited guidance
     // would make two runs of this incomparable.

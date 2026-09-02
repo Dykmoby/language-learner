@@ -120,6 +120,13 @@
       "when": 1788334181755,
       "tag": "0016_grader_guidance",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1788335568049,
+      "tag": "0017_grader_effort_per_course",
+      "breakpoints": true
     }
   ]
 }

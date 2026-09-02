@@ -189,7 +189,12 @@ async function measure(subject: StabilityCase, model: string, times: number): Pr
   // Sequentially, on purpose. Identical calls are the point, and two of them in
   // flight at once would be measuring the queue as well as the model.
   for (let i = 0; i < times; i += 1) {
-    const outcome = await grade({ model, context: subject.context, submission: subject.submission,
+    const outcome = await grade({
+      // Fixed rather than per Course: this measures the Verdict's run-to-run
+      // instability, and varying the Effort between runs would measure something
+      // else. `low` is what every earlier measurement was taken at.
+      effort: 'low',
+      model, context: subject.context, submission: subject.submission,
       // The shipped guidance, so a stability measurement is comparable across installations and across time.
       guidance: SHIPPED_GUIDANCE,
     }).result;

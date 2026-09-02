@@ -39,6 +39,7 @@ export default async function CourseSettingsPage({ params }: { params: Promise<{
         courseId={course.id}
         initialTitle={course.title}
         initialGraderModel={course.graderModel}
+        initialGraderEffort={course.graderEffort}
         language={ru.languages[course.language] ?? course.language}
         level={course.level}
       />

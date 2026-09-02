@@ -12,21 +12,26 @@
 import { useState } from 'react';
 import { ru, faultMessage } from '../../../../../ru.ts';
 import { GRADER_MODELS } from '../../../../../content/course-options.ts';
+import type { Effort } from '../../../../../claude/effort.ts';
+import { GraderEffortPicker } from '../../../grader-effort-picker.tsx';
 
 type Props = {
   courseId: number;
   initialTitle: string;
   initialGraderModel: string;
+  /** `null` is «По умолчанию» — the parameter is not sent to the model at all. */
+  initialGraderEffort: Effort | null;
   /** Already in Russian, and already not editable. */
   language: string;
   level: string;
 };
 
 export function CourseSettingsForm({
-  courseId, initialTitle, initialGraderModel, language, level,
+  courseId, initialTitle, initialGraderModel, initialGraderEffort, language, level,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [graderModel, setGraderModel] = useState(initialGraderModel);
+  const [graderEffort, setGraderEffort] = useState<Effort | null>(initialGraderEffort);
   const [busy, setBusy] = useState(false);
   const [faults, setFaults] = useState<string[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
@@ -50,7 +55,7 @@ export function CourseSettingsForm({
       const response = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, graderModel }),
+        body: JSON.stringify({ title, graderModel, graderEffort }),
       });
       const body = (await response.json().catch(() => null)) as
         { ok?: boolean; faults?: string[] } | null;
@@ -98,6 +103,12 @@ export function CourseSettingsForm({
         </select>
       </label>
       <p className="muted">{ru.admin.graderModelChangeHint}</p>
+
+      <GraderEffortPicker
+        effort={graderEffort}
+        disabled={busy}
+        onEffort={(next) => edited(setGraderEffort)(next)}
+      />
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (

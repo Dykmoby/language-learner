@@ -97,6 +97,7 @@ test('a Course configured to grade with Haiku fails closed, without spending a c
     model: 'claude-haiku-4-5',
     submission: 'I have cat.',
     guidance: SHIPPED_GUIDANCE,
+    effort: 'low',
     context: {
       language: 'en', level: 'A1', lessonTitle: 'Урок', grammarFocus: 'Articles',
       prompt: 'Переведите: У меня есть кошка.', referenceAnswer: 'I have a cat.',

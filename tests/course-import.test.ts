@@ -402,3 +402,57 @@ test('something that is not an export at all is refused as such', () => {
     target.cleanup();
   }
 });
+
+test('a file written before Courses carried an Effort imports as low, not as the default', () => {
+  // The same permanence the per-gap tolerance has, and the same reason: an
+  // export is a restore format. A version 2 file describes a Course that was
+  // grading at `low`, so that is what it has to come back as — reading it as
+  // «По умолчанию» would restore a Course that grades differently from the one
+  // somebody exported.
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    const { graderEffort: _dropped, ...course } = file.course;
+    const asVersionTwo = JSON.stringify({ ...file, version: 2, course });
+
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, asVersionTwo);
+    assert.ok(result.ok, `import refused: ${JSON.stringify(result.ok ? [] : result.faults)}`);
+    assert.equal(result.course.graderEffort, 'low');
+  } finally {
+    target.cleanup();
+  }
+});
+
+test('«По умолчанию» survives the round trip as itself', () => {
+  // Null is a real answer — the parameter is not sent to the model at all — so
+  // it travels as null rather than as an absent key. An absent key means "written
+  // before Courses had an Effort", and the two are different Courses.
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    const asDefault = JSON.stringify({ ...file, course: { ...file.course, graderEffort: null } });
+
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, asDefault);
+    assert.ok(result.ok, `import refused: ${JSON.stringify(result.ok ? [] : result.faults)}`);
+    assert.equal(result.course.graderEffort, null);
+
+    const reexported = assembleCourseExport(target.db, result.course.id, target.uploadDir)!;
+    assert.equal(reexported.course.graderEffort, null);
+  } finally {
+    target.cleanup();
+  }
+});
+
+test('a file claiming the current version with an Effort that is not one is refused', () => {
+  const { file } = sourceFile();
+  const target = box(false);
+  try {
+    const broken = JSON.stringify({ ...file, course: { ...file.course, graderEffort: 'enormous' } });
+    const result = importCourse(target.db, { uploadDir: target.uploadDir, ...LIMITS }, broken);
+    assert.ok(!result.ok);
+    assert.deepEqual(result.faults.map((fault) => fault.code), ['not_an_export'],
+      'a file that claims 3 and holds something that is not an Effort is broken, not old');
+  } finally {
+    target.cleanup();
+  }
+});

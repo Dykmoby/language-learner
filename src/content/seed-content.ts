@@ -77,7 +77,13 @@ export function seedCourseContent(db: Db, fixture: CourseFixture = ENGLISH_A1): 
           .where(eq(courses.id, existing.id)).returning().get())
       : (tx.insert(courses).values({
           language: fixture.language, level: fixture.level,
-          graderModel: fixture.graderModel, title: fixture.title, createdAt: new Date(),
+          graderModel: fixture.graderModel,
+          // Stated rather than left to the column's nullability: null there is
+          // «По умолчанию» (issue #76), and a seeded Course must grade the way
+          // every other Course in the system does rather than at whatever the
+          // model picks.
+          graderEffort: 'low',
+          title: fixture.title, createdAt: new Date(),
         }).returning().get());
 
     const seededLessons = fixture.lessons.map((lessonFixture, index) => {

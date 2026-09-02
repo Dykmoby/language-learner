@@ -32,6 +32,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import { courses, lessons, tests } from '../db/schema.ts';
 import type { Language } from '../grader/contract.ts';
+import { EFFORTS, type Effort } from '../claude/effort.ts';
 import {
   parseLessonDocument, type LessonDocument, type DocumentExercise,
 } from '../content/lesson-document.ts';
@@ -53,8 +54,13 @@ type Db = BetterSQLite3Database<typeof schema>;
  * 2 is where an Exercise's accepted answers became a list per gap. A version 1
  * file holds one flat list of whole answers, and reads back through
  * `perGapAcceptedAnswers` below.
+ *
+ * 3 is where a Course started carrying the Grader's Effort (#76). A file below
+ * that version has no Effort in it and reads back as `low`, which is what every
+ * Course was grading at when it was written — never as «По умолчанию», which
+ * would be a restored Course that grades differently from the one exported.
  */
-export const COURSE_EXPORT_VERSION = 2;
+export const COURSE_EXPORT_VERSION = 3;
 
 /**
  * Every version this build can read back.
@@ -63,12 +69,18 @@ export const COURSE_EXPORT_VERSION = 2;
  * export a restore rather than a snapshot with a shelf life — and a file from a
  * later one is refused as such rather than guessed at.
  */
-export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, COURSE_EXPORT_VERSION];
+export const READABLE_EXPORT_VERSIONS: readonly number[] = [1, 2, COURSE_EXPORT_VERSION];
 
 export type ExportedCourse = {
   language: Language;
   level: string;
   graderModel: string;
+  /**
+   * The Grader's Effort — issue #76. `null` is «По умолчанию», and travels as
+   * `null` rather than as an absent key: absent means "written before Courses
+   * had an Effort", which reads back as `low`, and the two are different Courses.
+   */
+  graderEffort: Effort | null;
   title: string;
 };
 
@@ -175,6 +187,7 @@ export function assembleCourseExport(
       language: course.language,
       level: course.level,
       graderModel: course.graderModel,
+      graderEffort: course.graderEffort,
       title: course.title,
     },
     lessons: exportedLessons,
@@ -272,6 +285,20 @@ function perGapAcceptedAnswers(document: unknown): unknown {
   };
 }
 
+/**
+ * The Effort a version 3 file carries, or `undefined` where it carries something
+ * that is not one.
+ *
+ * `null` is a real answer — «По умолчанию» — so it cannot double as the failure,
+ * which is why this reports the failure as `undefined` instead.
+ */
+function asEffort(value: unknown): Effort | null | undefined {
+  if (value === null) return null;
+  return typeof value === 'string' && (EFFORTS as readonly string[]).includes(value)
+    ? value as Effort
+    : undefined;
+}
+
 function parseImages(value: unknown): Record<string, string> | null {
   if (value === undefined) return {};
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
@@ -295,6 +322,13 @@ export function parseCourseExport(value: unknown): CourseExport | null {
   const fields = course as Record<string, unknown>;
   if (typeof fields.language !== 'string' || typeof fields.level !== 'string'
     || typeof fields.graderModel !== 'string' || typeof fields.title !== 'string') return null;
+
+  // Asked by version rather than guessed at from the value, the way the per-gap
+  // wrapping above is: a file written before version 3 has no Effort in it and
+  // was grading at `low`, so that is what it comes back as. A file that claims 3
+  // and holds something that is not an Effort is broken rather than old.
+  const graderEffort = version < 3 ? 'low' : asEffort(fields.graderEffort);
+  if (graderEffort === undefined) return null;
 
   if (body.lessons !== undefined && !Array.isArray(body.lessons)) return null;
   if (body.tests !== undefined && !Array.isArray(body.tests)) return null;
@@ -340,6 +374,7 @@ export function parseCourseExport(value: unknown): CourseExport | null {
       language: fields.language as Language,
       level: fields.level,
       graderModel: fields.graderModel,
+      graderEffort,
       title: fields.title,
     },
     lessons,

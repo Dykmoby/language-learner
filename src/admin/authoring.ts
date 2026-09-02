@@ -28,6 +28,7 @@ import { isBlank } from '../content/exercise-validity.ts';
 // import: the form that offers them runs there, and a constant shared with this
 // module would drag SQLite into the bundle with it.
 import { DEFAULT_GRADER_MODEL, graderModelFault, isCefrLevel } from '../content/course-options.ts';
+import type { Effort } from '../claude/effort.ts';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -62,6 +63,15 @@ export type CourseInput = {
    * ADR says it should have.
    */
   graderModel?: string;
+  /**
+   * How much reasoning the Grader spends on a Verdict here — issue #76.
+   *
+   * Three states, and they are all real. `null` is «По умолчанию»: the parameter
+   * is not sent to the model at all. Left out entirely is not that — it takes
+   * `low`, which is what every Course graded at while this was fixed in code.
+   * A caller that says nothing must never change how anything grades.
+   */
+  graderEffort?: Effort | null;
   title: string;
 };
 
@@ -88,6 +98,10 @@ export function resolvedGraderModel(input: CourseInput): string {
  * bad file with nothing written — and a second copy of these rules would be a
  * second place for them to drift.
  */
+export function resolvedGraderEffort(input: { graderEffort?: Effort | null }): Effort | null {
+  return input.graderEffort === undefined ? 'low' : input.graderEffort;
+}
+
 export function courseFaults(input: CourseInput): AuthoringFaultCode[] {
   const faults: AuthoringFaultCode[] = [];
 
@@ -109,6 +123,7 @@ export function createCourse(db: Db, input: CourseInput): CreateCourseResult {
     language: input.language as Language,
     level: input.level,
     graderModel: resolvedGraderModel(input),
+    graderEffort: resolvedGraderEffort(input),
     title: input.title.trim(),
     createdAt: new Date(),
   }).returning().get();
@@ -136,6 +151,8 @@ export type CourseSettings = {
    * Grader refuses it, and every Submission in the Course would fail to grade.
    */
   graderModel?: string;
+  /** As on the way in: `null` is «По умолчанию», left out is `low` (issue #76). */
+  graderEffort?: Effort | null;
 };
 
 export type UpdateCourseResult = { ok: true; course: CourseRow } | Refused;
@@ -189,6 +206,7 @@ export function updateCourse(db: Db, courseId: number, input: CourseSettings): U
   const updated = db.update(courses).set({
     title: input.title.trim(),
     graderModel: settledGraderModel(input, course),
+    graderEffort: resolvedGraderEffort(input),
   }).where(eq(courses.id, courseId)).returning().get();
 
   return { ok: true, course: updated };

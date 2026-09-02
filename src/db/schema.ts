@@ -16,6 +16,9 @@ import {
   EXERCISE_KINDS, DETERMINISTIC_KINDS, isDeterministic, type ExerciseKind,
 } from '../content/exercise-validity.ts';
 import type { LessonDocument } from '../content/lesson-document.ts';
+// The Efforts, from the module the browser can import: the picker that offers
+// them runs there, and the harness that sends them spawns a subprocess.
+import { EFFORTS } from '../claude/effort.ts';
 
 // A Student is every account. Admin is a role a Student additionally holds —
 // a flag, not a separate table and not a separate account, because the Admin
@@ -53,6 +56,7 @@ export type StudentRow = typeof students.$inferSelect;
 // so the columns and the rules can never drift apart.
 export { EXERCISE_KINDS, DETERMINISTIC_KINDS, isDeterministic };
 export type { ExerciseKind };
+export { EFFORTS };
 
 // A Course sits inside one Language and is fixed at a single CEFR level for its
 // whole duration, so the level never has to be resolved per Lesson.
@@ -63,6 +67,17 @@ export const courses = sqliteTable('courses', {
   // Per ADR 0002: Sonnet 5 for English, Opus 5 for Tajik, overridable per Course
   // without a code change.
   graderModel: text('grader_model').notNull(),
+  // How much reasoning the Grader spends on a Verdict in this Course — issue #76,
+  // ADR 0007. Nullable, and null is «По умолчанию»: the parameter is not sent at
+  // all, which is the absence of a choice rather than a sixth value of one. That
+  // is the same shape Generation has used since it existed, and it is why this
+  // column is not `notNull().default('low')` — a default here would make the two
+  // states impossible to tell apart.
+  //
+  // Every Course that existed before the column migrated to 'low' rather than to
+  // null, because 'low' is what they were all grading at in code. Nothing may
+  // start grading differently because a column was added.
+  graderEffort: text('grader_effort', { enum: EFFORTS }),
   title: text('title').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });

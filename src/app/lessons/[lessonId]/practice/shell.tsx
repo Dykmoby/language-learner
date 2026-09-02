@@ -15,7 +15,7 @@
 // on the same wire in the same shape, and finding out would only let the two
 // paths drift apart.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import type { ExerciseKind } from '../../../../db/schema.ts';
 import { takeFrames, type ResultFrame, type RevealResult } from '../../../../practice/wire.ts';
@@ -65,6 +65,10 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
   // written, and how many places that is is the Exercise's business.
   const [answers, setAnswers] = useState<string[]>([]);
   const [streamed, setStreamed] = useState('');
+  // Issue #76 — a Course whose Grader runs at a high Effort is checked in
+  // minutes, and the Student chose none of that. After about a minute the wait
+  // says so, rather than showing the same sentence it showed at three seconds.
+  const [checkingLong, setCheckingLong] = useState(false);
   const [result, setResult] = useState<ResultFrame | null>(null);
   const [revealed, setRevealed] = useState<RevealResult | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -100,6 +104,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     }
 
     setPhase('checking');
+    setCheckingLong(false);
     setStreamed('');
     setResult(null);
     setRefusal(null);
@@ -144,6 +149,16 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
       setPhase('answering');
     }
   }
+
+  // A minute, not a spinner threshold: the measured Verdict is 4-7 seconds, so
+  // anything still running at sixty is either a Course set high or something
+  // wrong — and the Student can act on neither, which is exactly why they are
+  // told it is the first.
+  useEffect(() => {
+    if (phase !== 'checking') return;
+    const timer = setTimeout(() => setCheckingLong(true), 60_000);
+    return () => clearTimeout(timer);
+  }, [phase]);
 
   async function reveal() {
     if (!current) return;
@@ -224,7 +239,9 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
               in the row the buttons were in, at the height the buttons were, so
               submitting does not move the answer the Student is still reading. */}
           <p className="actions" role="status">
-            <span className="muted">{ru.practice.checking}</span>
+            <span className="muted">
+              {checkingLong ? ru.practice.stillChecking : ru.practice.checking}
+            </span>
           </p>
           {streamed ? <p className="feedback">{streamed}</p> : null}
         </div>

@@ -337,6 +337,9 @@ test('the Grader is given the Course model, the grammar focus, the Reference Ans
 
     // ADR 0002 — the model is per Course, data rather than a code branch.
     assert.equal(request.model, DETERMINISTIC_COURSE.graderModel);
+    // ADR 0007 — and so is the Effort, which also decides the clock the call
+    // runs against. A seeded Course grades at `low`, like every other one.
+    assert.equal(request.effort, 'low');
     assert.equal(request.submission, 'I have a cat.');
     assert.equal(request.context.language, 'en');
     assert.equal(request.context.level, DETERMINISTIC_COURSE.level);

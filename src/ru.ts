@@ -159,6 +159,13 @@ export const ru = {
     graderModelField: 'Модель Проверяющего',
     graderModelHint:
       'Подставляется по языку курса: английский — Sonnet 5, таджикский — Opus 5. Можно изменить.',
+
+    // The Grader's Effort, per Course — issue #76, ADR 0007. The hint names the
+    // cost out loud: raising it makes a Student wait, and the Admin choosing it
+    // is not the person who waits.
+    graderEffortField: 'Усилие Проверяющего',
+    graderEffortHint:
+      'Сколько рассуждения Проверяющий тратит на оценку. Чем выше, тем дольше студент ждёт проверки: на «Максимальном» одна проверка может идти несколько минут.',
     createCourse: 'Создать курс',
     creatingCourse: 'Создание курса…',
     courseCreated: 'Курс создан.',
@@ -520,6 +527,12 @@ export const ru = {
     // The Student waits roughly three seconds before the first token arrives.
     // This says what is happening in that gap rather than spinning at them.
     checking: 'Проверяющий читает ваш ответ…',
+    // Issue #76 — a Course set to a high Effort is checked in minutes rather than
+    // seconds, and the Student chose none of that. After about a minute the wait
+    // stops looking like a stuck screen and says so. It names the setting rather
+    // than apologising: «долго» without a reason reads as a fault.
+    stillChecking:
+      'Проверка идёт дольше обычного: в этом курсе Проверяющий разбирает ответ подробнее. Это не сбой — дождитесь ответа.',
     emptyAnswer: 'Сначала напишите ответ.',
     next: 'Дальше',
     correct: 'Верно!',

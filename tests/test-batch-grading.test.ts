@@ -126,6 +126,10 @@ test('one request carries every free-form answer of the attempt, and nothing jud
   assert.equal(translation.referenceAnswer, 'I have a cat.');
   assert.deepEqual(translation.acceptedVariants, ['I have got a cat.'], 'teacher-confirmed answers travel too');
   assert.equal(request!.model, DETERMINISTIC_COURSE.graderModel, 'per Course, per ADR 0002');
+  // The same Course's Effort a Practice Submission in it is judged at (ADR 0007).
+  // A Test judged with less reasoning than the Practice that prepared for it
+  // would be a mirror of something else.
+  assert.equal(request!.effort, 'low');
   assert.equal(request!.context.language, 'en');
 });
 
