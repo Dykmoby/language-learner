@@ -123,6 +123,15 @@ export const ru = {
     // Out of the Admin section, back to the Student's own screens. The Admin is
     // a Student too, and this is the sentence that says so.
     backToCourses: 'К моим курсам',
+
+    // The three states of the theme control beside the account. «Как в системе»
+    // is a state rather than the absence of one: it is the setting that keeps
+    // following the machine, and a Student who has picked a side has to be able
+    // to hand the decision back.
+    theme: 'Оформление',
+    themeAuto: 'Как в системе',
+    themeLight: 'Светлая тема',
+    themeDark: 'Тёмная тема',
   },
 
   home: {

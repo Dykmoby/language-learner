@@ -214,13 +214,55 @@ main {
   color: var(--accent);
 }
 
-.appNav .account {
+/* The foot of the column, held down: whatever the Lesson rail above it is doing,
+   who you are and how to leave are in the same place on every screen. */
+.appNav .accountBlock {
   margin-top: auto;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-3);
   padding-top: var(--space-4);
   border-top: var(--border-width) solid var(--line);
+}
+
+/* Three states of one setting, so they are drawn as one control: a sunken track
+   with the chosen segment lifted out of it, which is the same figure as the
+   progress bar's filled part sitting in its track. */
+.appNav .schemeToggle {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.appNav .schemeToggle button:not([class*='mantine-']) {
+  flex: 1;
+  min-width: var(--space-6);
+  min-height: var(--space-6);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: var(--border-width) solid transparent;
+  background: transparent;
+  color: var(--fg-muted);
+  box-shadow: none;
+}
+.appNav .schemeToggle button:not([class*='mantine-']):hover {
+  background: transparent;
+  color: var(--fg);
+}
+.appNav .schemeToggle button:not([class*='mantine-'])[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.appNav .account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 .appNav .account .who {
   flex: 1;
@@ -274,7 +316,16 @@ main {
   .appNav nav { flex-direction: row; flex-wrap: wrap; }
   .appNav .lessonRail,
   .appNav .groupLabel { display: none; }
-  .appNav .account { margin-top: 0; padding-top: 0; border-top: 0; }
+  /* The strip has no bottom to hold the account against, so it stops being a
+     block at the foot of a column and becomes one more thing on the row. */
+  .appNav .accountBlock {
+    margin-top: 0;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .appNav .schemeToggle { flex: none; }
   .appWork { width: 100%; }
 }
 

@@ -122,6 +122,19 @@ function parseDeclarations(body: string): Declaration[] {
 export type Tokens = Record<Theme, Map<string, string>>;
 
 /**
+ * Whether a rule paints the dark theme.
+ *
+ * The token layer keys dark off `data-mantine-color-scheme`, because which theme
+ * is on is a choice a person makes rather than only a thing the system reports.
+ * The old `prefers-color-scheme` form is still recognised so that a rule written
+ * either way is measured rather than silently counted as light.
+ */
+function isDarkRule(rule: Rule): boolean {
+  if (rule.at !== null && /prefers-color-scheme:\s*dark/.test(rule.at)) return true;
+  return /\[data-mantine-color-scheme=['"]?dark['"]?\]/.test(rule.selector);
+}
+
+/**
  * Every custom property the token layer declares, split by theme.
  *
  * Dark starts as a copy of light: the dark block redefines the tokens that
@@ -136,7 +149,7 @@ export function readTokens(css: string): Tokens {
   for (const rule of parseRules(css)) {
     const custom = rule.declarations.filter((d) => d.property.startsWith('--'));
     if (custom.length === 0) continue;
-    const isDark = rule.at !== null && /prefers-color-scheme:\s*dark/.test(rule.at);
+    const isDark = isDarkRule(rule);
     for (const { property, value } of custom) {
       if (isDark) dark.set(property, value);
       else light.set(property, value);
@@ -154,7 +167,7 @@ export function themeBlocks(css: string): Tokens {
   const light = new Map<string, string>();
   const dark = new Map<string, string>();
   for (const rule of parseRules(css)) {
-    const isDark = rule.at !== null && /prefers-color-scheme:\s*dark/.test(rule.at);
+    const isDark = isDarkRule(rule);
     for (const { property, value } of rule.declarations) {
       if (!property.startsWith('--')) continue;
       (isDark ? dark : light).set(property, value);
