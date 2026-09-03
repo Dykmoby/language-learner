@@ -44,9 +44,15 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
 
   return (
     <main>
-      <h1>{ru.draft.historyTitle}</h1>
-      <p className="muted">{open.course.title} · {open.lesson.title}</p>
-      <p className="muted">{ru.draft.historyExplanation}</p>
+      <div className="pageHead">
+        <div>
+          <p className="muted">
+            <a href={`/admin/lessons/${lessonId}`}>{open.lesson.title}</a>
+          </p>
+          <h1>{ru.draft.historyTitle}</h1>
+          <p className="muted">{ru.draft.historyExplanation}</p>
+        </div>
+      </div>
 
       {history.length === 0 ? (
         <p className="muted">{ru.draft.historyEmpty}</p>
@@ -149,7 +155,6 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
         </>
       )}
 
-      <p><a href={`/admin/lessons/${lessonId}`}>{ru.draft.backToDraft}</a></p>
     </main>
   );
 }

@@ -18,6 +18,7 @@
 // box beside a Lesson that plainly came from one.
 
 import { useState } from 'react';
+import { Button, Textarea } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import type { LessonDocument } from '../../../../content/lesson-document.ts';
 import type { Effort } from '../../../../claude/effort.ts';
@@ -74,8 +75,8 @@ export function RefinePanel({
   }
 
   return (
-    <section>
-      <h2>{ru.refinement.title}</h2>
+    <section className="panel">
+      <h3>{ru.refinement.title}</h3>
       <p className="muted">{ru.refinement.explanation}</p>
 
       {fromDraftId === null ? <p className="muted">{ru.refinement.saveFirst}</p> : null}
@@ -93,11 +94,14 @@ export function RefinePanel({
         </ol>
       )}
 
-      <label>
-        <span>{ru.refinement.message}</span>
-        <textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} disabled={busy} />
-      </label>
-      <p className="muted">{ru.refinement.messageHint}</p>
+      <Textarea
+        label={ru.refinement.message}
+        description={ru.refinement.messageHint}
+        rows={3}
+        value={message}
+        disabled={busy}
+        onChange={(event) => setMessage(event.currentTarget.value)}
+      />
 
       <ModelAndEffort
         model={model}
@@ -116,17 +120,16 @@ export function RefinePanel({
       {threadLost ? <p className="muted" role="status">{ru.refinement.threadLost}</p> : null}
 
       <p className="actions">
-        <button
-          type="button"
+        <Button 
           onClick={send}
           disabled={busy || fromDraftId === null || message.trim() === ''}
         >
           {stream.running ? ru.refinement.sending : ru.refinement.send}
-        </button>
+        </Button>
         {stream.running ? (
-          <button type="button" className="secondary" onClick={stream.cancel}>
+          <Button  variant="default" onClick={stream.cancel}>
             {ru.refinement.cancel}
-          </button>
+          </Button>
         ) : null}
       </p>
 

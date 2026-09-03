@@ -18,11 +18,10 @@ export default async function HealthPage() {
 
   return (
     <main>
-      <h1>{ru.health.title}</h1>
+      <div className="pageHead"><div><h1>{ru.health.title}</h1></div></div>
       <HealthBanner standing={currentHealthStanding(db)} />
       <p className="muted">{ru.health.explanation}</p>
       <HealthPanel />
-      <p><a href="/admin">{ru.admin.back}</a></p>
     </main>
   );
 }

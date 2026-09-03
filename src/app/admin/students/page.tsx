@@ -19,7 +19,7 @@ export default async function AdminStudentsPage() {
 
   return (
     <main>
-      <h1>{ru.admin.accountsTitle}</h1>
+      <div className="pageHead"><div><h1>{ru.admin.accountsTitle}</h1></div></div>
 
       <StudentsAdmin
         actingStudentId={admin.id}
@@ -36,7 +36,6 @@ export default async function AdminStudentsPage() {
         }))}
       />
 
-      <p><a href="/admin">{ru.admin.back}</a></p>
     </main>
   );
 }

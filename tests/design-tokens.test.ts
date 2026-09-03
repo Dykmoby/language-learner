@@ -63,6 +63,9 @@ function textPairings(): Pairing[] {
   }
 
   pairings.push({ fg: '--accent-on', bg: '--accent', why: 'the label on a primary button' });
+  // A hover that dropped the label below the floor would be a button that is
+  // legible until you reach for it.
+  pairings.push({ fg: '--accent-on', bg: '--accent-hover', why: 'the label on a primary button, hovered' });
   pairings.push({ fg: '--accent', bg: '--accent-quiet', why: 'a link inside a highlighted panel' });
   pairings.push({ fg: '--fg', bg: '--accent-quiet', why: 'text inside a highlighted panel' });
 
@@ -123,13 +126,38 @@ const EXEMPT: Record<string, string> = {
   '--surface': 'a surface',
   '--surface-sunken': 'a surface',
   '--accent-quiet': 'a surface',
-  '--accent-on': 'checked against --accent, the only thing it is ever painted on',
+  '--accent-on': 'checked against --accent and --accent-hover, the only things it is ever painted on',
 };
 
-/** Tokens that are not colours: the type scale, the spacing scale, the rails. */
+/**
+ * Mantine's ten-step ramp, which is the shape its theme wants a colour in.
+ *
+ * Exempt as a family rather than one line each, because the reason is one
+ * reason: no step of it is ever read. `theme.ts` maps every Mantine variant
+ * variable that paints a surface — filled, filled-hover, light, outline — onto
+ * `--accent`, `--accent-hover` and `--accent-quiet`, all three of which are
+ * measured above. The ramp is there so Mantine's own variables resolve to
+ * something in the right family if a component reaches for a step directly.
+ */
+for (let step = 0; step <= 9; step += 1) {
+  EXEMPT[`--brand-${step}`] = "a step of Mantine's ramp — every surface that carries text is painted from --accent, --accent-hover or --accent-quiet";
+}
+
+/**
+ * Tokens that are not colours: the type scale, the spacing scale, the rails, and
+ * the two geometry families the navigation column and the elevation steps need.
+ *
+ * `--shadow-` is the one that deserves a sentence. A shadow does contain a
+ * colour, and it is on this list anyway, because a contrast ratio is a question
+ * about two things a reader has to tell apart and nobody reads a shadow. What
+ * separates a card from the page it sits on is its border, which is `--line` and
+ * is measured. A shadow that vanished entirely would cost this design nothing it
+ * is holding on to.
+ */
 const NON_COLOUR_PREFIXES = [
   '--font-', '--text-', '--weight-', '--leading-', '--measure',
   '--space-', '--radius', '--border-width', '--control-', '--rail-',
+  '--nav-', '--shadow-',
 ];
 
 function isColourToken(name: string): boolean {

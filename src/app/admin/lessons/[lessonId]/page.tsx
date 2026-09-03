@@ -31,12 +31,21 @@ export default async function DraftPage({ params }: { params: Promise<{ lessonId
 
   return (
     <main>
-      <h1>{ru.draft.title}</h1>
-      <p className="muted">
-        {open.course.title}
-        {' · '}{ru.draft.exerciseCount(open.document.exercises.length)}
-      </p>
-      <p className="muted">{ru.draft.explanation}</p>
+      <div className="pageHead">
+        <div>
+          <p className="muted">
+            <a href={`/admin/courses/${open.course.id}`}>{open.course.title}</a>
+          </p>
+          <h1>{open.lesson.title}</h1>
+          <p className="facts">
+            <span>{ru.draft.title}</span>
+            <span>{ru.draft.exerciseCount(open.document.exercises.length)}</span>
+          </p>
+        </div>
+        <p className="actions">
+          <a href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyTitle}</a>
+        </p>
+      </div>
 
       <DraftEditor
         lessonId={lessonId}
@@ -53,10 +62,7 @@ export default async function DraftPage({ params }: { params: Promise<{ lessonId
           .map((turn) => ({ draftId: turn.draftId, message: turn.message }))}
       />
 
-      <p className="actions">
-        <a href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyTitle}</a>
-      </p>
-      <p><a href={`/admin/courses/${open.course.id}`}>{ru.draft.backToCourse}</a></p>
+
     </main>
   );
 }

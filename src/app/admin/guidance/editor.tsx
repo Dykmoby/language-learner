@@ -8,6 +8,7 @@
 // offer and is not pretended at.
 
 import { useState } from 'react';
+import { Button, Textarea } from '@mantine/core';
 import { ru, faultMessage } from '../../../ru.ts';
 
 type Standing = {
@@ -77,17 +78,15 @@ export function GuidanceEditor({
 
   return (
     <>
-      <label>
-        <span>{ru.guidance.field}</span>
-        <textarea
-          value={text}
-          rows={12}
-          maxLength={maxLength}
-          onChange={(e) => { setText(e.target.value); setFaults([]); setSaved(false); }}
-          disabled={busy !== null}
-        />
-      </label>
-      <p className="muted">{ru.guidance.hint(maxLength)}</p>
+      <Textarea
+        label={ru.guidance.field}
+        description={ru.guidance.hint(maxLength)}
+        value={text}
+        rows={12}
+        maxLength={maxLength}
+        disabled={busy !== null}
+        onChange={(event) => { setText(event.currentTarget.value); setFaults([]); setSaved(false); }}
+      />
 
       <p className="muted">{provenance(standing)}</p>
 
@@ -100,12 +99,12 @@ export function GuidanceEditor({
       {saved ? <p role="status">{ru.guidance.saved}</p> : null}
 
       <p className="actions">
-        <button type="button" onClick={() => send('PUT')} disabled={busy !== null}>
+        <Button onClick={() => send('PUT')} disabled={busy !== null}>
           {busy === 'save' ? ru.guidance.saving : ru.guidance.save}
-        </button>
-        <button type="button" onClick={() => send('DELETE')} disabled={busy !== null}>
+        </Button>
+        <Button variant="default" onClick={() => send('DELETE')} disabled={busy !== null}>
           {busy === 'restore' ? ru.guidance.restoring : ru.guidance.restore}
-        </button>
+        </Button>
       </p>
     </>
   );

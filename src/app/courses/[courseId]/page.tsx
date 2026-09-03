@@ -8,9 +8,24 @@ import { currentStudent } from '../../../auth/current-student.ts';
 import { getDatabase } from '../../../db/index.ts';
 import { courseOutline, enrolledCourses, rememberCurrentCourse } from '../../../practice/lessons.ts';
 import { courseTests } from '../../../tests/taking.ts';
+import { courseProgress } from '../../../progress/report.ts';
+import { ProgressBar } from '../../shared/progress-bar.tsx';
+import { stateClass } from '../../shared/verdict-state.ts';
 import { CourseTests } from './tests.tsx';
 
 export const dynamic = 'force-dynamic';
+
+/** The tick a finished Lesson wears, at the size a list row wants. */
+const TICK = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 13l4 4L19 7" />
+  </svg>
+);
+const LOCK = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </svg>
+);
 
 export default async function CoursePage({ params }: { params: Promise<{ courseId: string }> }) {
   const student = await currentStudent();
@@ -26,44 +41,78 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
 
   rememberCurrentCourse(db, student.id, course.id);
   const outline = courseOutline(db, student.id, course.id);
+  const report = courseProgress(db, student.id, course.id);
   // Published Tests only, and listed apart from the Lessons: a Test gates
   // nothing, so it does not belong in a list whose order is what unlocks what.
   const tests = courseTests(db, student.id, course.id);
 
   return (
     <main>
-      <h1>{course.title}</h1>
-      <p className="muted">{course.level} · {ru.courses.lessonCount(outline.length)}</p>
+      <div className="pageHead">
+        <div>
+          <h1>{course.title}</h1>
+          <p className="facts">
+            <span>{course.level}</span>
+            <span>{ru.courses.lessonCount(outline.length)}</span>
+          </p>
+        </div>
+        {/* The one number that answers "how is this going", beside a way to the
+            screen that answers it properly. */}
+        <div className="figure">
+          <span>
+            <span className="big">{ru.progress.percent(report.course.percent)}</span>
+            <span className="under">{ru.progress.courseTotal}</span>
+          </span>
+          <a href={`/courses/${course.id}/progress`}>{ru.progress.link}</a>
+        </div>
+      </div>
 
       <h2>{ru.course.lessonsTitle}</h2>
       <ol className="lessons">
-        {outline.map(({ lesson, unlocked, complete, progress }) => (
-          <li key={lesson.id} className={unlocked ? undefined : 'locked'}>
-            {unlocked ? (
-              <a href={`/lessons/${lesson.id}`}>{lesson.title}</a>
-            ) : (
-              <span>{lesson.title}</span>
-            )}
-            <span className="muted">
-              {' — '}
-              {!unlocked
-                ? ru.course.locked
-                : complete
-                  ? ru.course.complete
-                  : `${ru.course.inProgress}: ${progress.counts.completed + progress.counts.completedWithHelp}/${progress.counts.total}`}
-              {/* A disputed Exercise stops holding the Student without having
-                  been finished, so a Lesson can read as done while an objection
-                  in it is still open. Saying so is the difference between a
-                  complete Lesson and one nobody has ruled on yet. */}
-              {progress.counts.disputed > 0
-                ? ` · ${ru.practice.disputedCount(progress.counts.disputed)}`
-                : ''}
-            </span>
-          </li>
-        ))}
+        {outline.map(({ lesson, unlocked, complete, progress }, index) => {
+          const withHelp = progress.counts.completedWithHelp > 0;
+          const mark = !unlocked
+            ? <span className="mark">{LOCK}</span>
+            : complete
+              ? <span className={`mark ${stateClass(withHelp ? 'help' : 'correct')}`}>{TICK}</span>
+              : <span className="mark">{index + 1}</span>;
+
+          return (
+            <li key={lesson.id} className={unlocked ? undefined : 'locked'}>
+              {mark}
+              <span className="body">
+                {unlocked
+                  ? <a href={`/lessons/${lesson.id}`}>{lesson.title}</a>
+                  : <span>{lesson.title}</span>}
+                <span className="muted">
+                  {!unlocked
+                    ? ru.course.locked
+                    : complete
+                      ? ru.course.complete
+                      : `${ru.course.inProgress}: ${progress.counts.completed + progress.counts.completedWithHelp}/${progress.counts.total}`}
+                  {/* A disputed Exercise stops holding the Student without having
+                      been finished, so a Lesson can read as done while an objection
+                      in it is still open. Saying so is the difference between a
+                      complete Lesson and one nobody has ruled on yet. */}
+                  {progress.counts.disputed > 0
+                    ? ` · ${ru.practice.disputedCount(progress.counts.disputed)}`
+                    : ''}
+                </span>
+              </span>
+              {unlocked ? (
+                <ProgressBar
+                  segments={progress.exercises.map((exercise) => ({
+                    position: exercise.position,
+                    state: exercise.state,
+                  }))}
+                />
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
 
-      <h2>{ru.test.sectionTitle}</h2>
+      <h2 id="tests">{ru.test.sectionTitle}</h2>
       <CourseTests
         tests={tests.map(({ test, exerciseCount, attempts }) => ({
           id: test.id,
@@ -72,13 +121,10 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
           attempts,
         }))}
       />
-
-      <p className="actions">
-        <a href={`/courses/${course.id}/progress`}>{ru.progress.link}</a>
-      </p>
-      {/* No back-link. This one pointed at the home screen, which redirects to
-          the Current Course — and working in a Course is what makes it the
-          Current Course, so it led back here. The header carries the way out. */}
+      {/* No back-link. The navigation column carries the way out, and this one
+          pointed at the home screen — which redirects to the Current Course, and
+          working in a Course is what makes it the Current Course, so it led
+          back here. */}
     </main>
   );
 }

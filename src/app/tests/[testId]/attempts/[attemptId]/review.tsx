@@ -16,6 +16,7 @@
 // not collapsed, and it must never read as a wrong answer.
 
 import { useEffect, useState } from 'react';
+import { Button } from '@mantine/core';
 import { ru, errorTypeLabel } from '../../../../../ru.ts';
 import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
@@ -114,9 +115,9 @@ export function AttemptReview({ initial }: { initial: AttemptView }) {
               again costs nothing but the call. */}
           <VerdictLine state="failed" role="alert" detail={ru.test.gradingFailed} />
           <p className="actions">
-            <button type="button" onClick={() => void regrade()} disabled={regrading}>
+            <Button onClick={() => void regrade()} disabled={regrading}>
               {regrading ? ru.test.regrading : ru.test.regrade}
-            </button>
+            </Button>
           </p>
         </>
       ) : null}
@@ -130,7 +131,6 @@ export function AttemptReview({ initial }: { initial: AttemptView }) {
         ))}
       </ol>
 
-      <p><a href={`/tests/${view.testId}`}>{ru.test.backToTest}</a></p>
     </section>
   );
 }
@@ -177,14 +177,13 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
     // The state carries the hue and the rail; the review adds only what is about
     // the review — a correct Exercise is collapsed, so its box is quieter.
     <li className={state === null ? undefined : stateClass(state)}>
-      <p className="muted">
-        {ru.test.position(exercise.position, total)}
-        {' · '}
+      <p className="reviewHead">
+        <span className="muted">{ru.test.position(exercise.position, total)}</span>
         <span className={state === null ? 'muted' : 'stateName'}>{stateLabel(exercise)}</span>
-        {' '}
-        <button type="button" className="secondary" onClick={() => setOpen(!open)}>
+        <span className="spacer" />
+        <Button variant="default" size="compact-sm" onClick={() => setOpen(!open)}>
           {open ? ru.test.hideExercise : ru.test.showExercise}
-        </button>
+        </Button>
       </p>
 
       {open ? (

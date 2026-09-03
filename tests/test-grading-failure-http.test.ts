@@ -90,6 +90,20 @@ async function settled(client: Client, attemptId: number): Promise<AttemptView> 
   }
 }
 
+/**
+ * Whether any element on the page wears a state class.
+ *
+ * Anchored to a `class` attribute rather than searched for as a substring,
+ * because the token layer's own names contain these: Mantine's variables are
+ * resolved onto ours, so `--mantine-color-error: var(--state-incorrect-ink)`
+ * appears in the document's inline style block and a plain `includes` matches it
+ * on every screen. The question these assertions ask is what an element is drawn
+ * as, so they ask about the attribute that decides it.
+ */
+function wears(html: string, state: string): boolean {
+  return new RegExp(`class="[^"]*\\b${state}\\b`).test(html);
+}
+
 test('a failed batch leaves the answers unjudged and the attempt unscored', { timeout: 180_000 }, async () => {
   const client = await signedIn(STUDENT);
 
@@ -154,8 +168,8 @@ test('the review says the checking failed, and never that the answer is wrong', 
   // and told apart by one sentence of Russian — which is not a distinction a
   // Student reads at a glance, and not one that survives a screen rendering
   // colour badly.
-  assert.ok(html.includes('state-failed'), 'and is drawn as a failure');
-  assert.ok(!html.includes('state-incorrect'), 'never as a wrong answer');
+  assert.ok(wears(html, 'state-failed'), 'and is drawn as a failure');
+  assert.ok(!wears(html, 'state-incorrect'), 'never as a wrong answer');
 });
 
 test('asking again judges the same answers rather than writing new ones', { timeout: 180_000 }, async () => {

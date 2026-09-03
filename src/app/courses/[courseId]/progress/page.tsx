@@ -58,8 +58,19 @@ export default async function ProgressPage({
 
   return (
     <main>
-      <p className="muted"><a href={`/courses/${courseId}`}>{view.course.title}</a></p>
-      <h1>{ru.progress.title}</h1>
+      <div className="pageHead">
+        <div>
+          <p className="muted">{view.course.title}</p>
+          <h1>{ru.progress.title}</h1>
+        </div>
+        {viewer.isAdmin ? (
+          <StudentPicker
+            courseId={courseId}
+            students={studentsInCourse(db, courseId).map((s) => ({ id: s.id, username: s.username }))}
+            selected={view.student.id}
+          />
+        ) : null}
+      </div>
 
       {/* An Admin looking at somebody else's record is told whose it is, every
           time — a screen that does not say invites a decision about the wrong
@@ -68,13 +79,22 @@ export default async function ProgressPage({
         <p className="viewingStudent">{ru.progress.viewingStudent(view.student.username)}</p>
       ) : null}
 
-      {viewer.isAdmin ? (
-        <StudentPicker
-          courseId={courseId}
-          students={studentsInCourse(db, courseId).map((s) => ({ id: s.id, username: s.username }))}
-          selected={view.student.id}
-        />
-      ) : null}
+      {/* The Course on exactly the same terms as one Lesson, summed from the same
+          tallies rather than derived a second time. */}
+      <div className="figure">
+        <span>
+          <span className="big">{ru.progress.percent(report.course.percent)}</span>
+          <span className="under">{ru.progress.courseTotal}</span>
+        </span>
+        <span className="muted">
+          {ru.progress.breakdown(
+            report.course.completed, report.course.completedWithHelp, report.course.total,
+          )}
+          {report.course.disputed > 0
+            ? ` · ${ru.practice.disputedCount(report.course.disputed)}`
+            : ''}
+        </span>
+      </div>
 
       <h2>{ru.progress.lessonsTitle}</h2>
       {report.lessons.length === 0 ? (
@@ -104,19 +124,6 @@ export default async function ProgressPage({
           ))}
         </ol>
       )}
-
-      <h2>{ru.progress.courseTotal}</h2>
-      {/* The Course on exactly the same terms as one Lesson, summed from the same
-          tallies rather than derived a second time. */}
-      <p className="score">{ru.progress.percent(report.course.percent)}</p>
-      <p className="muted">
-        {ru.progress.breakdown(
-          report.course.completed, report.course.completedWithHelp, report.course.total,
-        )}
-        {report.course.disputed > 0
-          ? ` · ${ru.practice.disputedCount(report.course.disputed)}`
-          : ''}
-      </p>
 
       <h2>{ru.errorStats.title}</h2>
       <ErrorHistogram counts={histogram} />

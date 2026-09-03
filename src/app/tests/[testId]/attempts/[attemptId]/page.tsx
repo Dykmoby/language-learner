@@ -31,12 +31,15 @@ export default async function AttemptPage(
 
   return (
     <main>
-      <p className="muted"><a href={`/tests/${testId}`}>{ru.test.backToTest}</a></p>
-      <h1>{ru.test.reviewTitle}</h1>
-      <p className="muted">
-        {opened.view.testTitle}
-        {' · '}{ru.test.attemptNumber(opened.view.attempt)}
-      </p>
+      <div className="pageHead">
+        <div>
+          <p className="muted">
+            <a href={`/tests/${testId}`}>{opened.view.testTitle}</a>
+          </p>
+          <h1>{ru.test.reviewTitle}</h1>
+          <p className="muted">{ru.test.attemptNumber(opened.view.attempt)}</p>
+        </div>
+      </div>
 
       <AttemptReview initial={opened.view} />
     </main>

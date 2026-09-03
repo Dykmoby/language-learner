@@ -19,6 +19,7 @@
 // rather than replaced by the drawing.
 
 import { useState } from 'react';
+import { Select } from '@mantine/core';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import type { LessonErrorCounts } from '../../../../progress/errors.ts';
 import { spanChart, type Series } from '../../../../progress/series.ts';
@@ -82,25 +83,23 @@ export function ChangeOverTime({ lessons }: { lessons: LessonErrorCounts[] }) {
 
   const chart = spanChart(lessons, from, to);
 
+  const span = lessons.map((lesson, index) => ({ value: String(index), label: lesson.title }));
+
   const pickers = (
-    <p className="actions spanPickers">
-      <label className="inline">
-        <span>{ru.changeOverTime.from}{': '}</span>
-        <select value={String(from)} onChange={(e) => setFrom(Number(e.target.value))}>
-          {lessons.map((lesson, index) => (
-            <option key={lesson.lessonId} value={index}>{lesson.title}</option>
-          ))}
-        </select>
-      </label>
-      <label className="inline">
-        <span>{ru.changeOverTime.to}{': '}</span>
-        <select value={String(to)} onChange={(e) => setTo(Number(e.target.value))}>
-          {lessons.map((lesson, index) => (
-            <option key={lesson.lessonId} value={index}>{lesson.title}</option>
-          ))}
-        </select>
-      </label>
-    </p>
+    <div className="spanPickers">
+      <Select
+        label={ru.changeOverTime.from}
+        value={String(from)}
+        data={span}
+        onChange={(value) => { if (value !== null) setFrom(Number(value)); }}
+      />
+      <Select
+        label={ru.changeOverTime.to}
+        value={String(to)}
+        data={span}
+        onChange={(value) => { if (value !== null) setTo(Number(value)); }}
+      />
+    </div>
   );
 
   // Said rather than drawn: an axis with nothing on it looks like a fault, and a

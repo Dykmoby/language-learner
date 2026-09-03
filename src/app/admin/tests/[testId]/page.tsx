@@ -23,14 +23,24 @@ export default async function AdminTestPage({ params }: { params: Promise<{ test
 
   return (
     <main>
-      <h1>{ru.testAdmin.title}</h1>
-      <p className="muted">
-        {open.course.title}
-        {' · '}{ru.admin.exerciseCount(open.document.exercises.length)}
-        {' · '}{open.test.publishedAt === null ? ru.testAdmin.unpublished : ru.testAdmin.published}
-      </p>
-      <p className="muted">{ru.testAdmin.explanation}</p>
-      <p className="muted">{ru.testAdmin.gatesNothing}</p>
+      <div className="pageHead">
+        <div>
+          <p className="muted">
+            <a href={`/admin/courses/${open.course.id}`}>{open.course.title}</a>
+          </p>
+          <h1>{open.document.title}</h1>
+          <p className="facts">
+            <span>{ru.testAdmin.title}</span>
+            <span>{ru.admin.exerciseCount(open.document.exercises.length)}</span>
+            <span>{open.test.publishedAt === null ? ru.testAdmin.unpublished : ru.testAdmin.published}</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="notice">
+        <p>{ru.testAdmin.explanation}</p>
+        <p className="muted">{ru.testAdmin.gatesNothing}</p>
+      </div>
 
       <TestEditor
         testId={open.test.id}
@@ -39,7 +49,6 @@ export default async function AdminTestPage({ params }: { params: Promise<{ test
         submissionCounts={open.submissionCounts}
       />
 
-      <p><a href={`/admin/courses/${open.course.id}`}>{ru.testAdmin.backToCourse}</a></p>
     </main>
   );
 }

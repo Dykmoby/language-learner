@@ -26,49 +26,43 @@ export default async function AdminPage() {
 
   return (
     <main>
-      <h1>{ru.admin.title}</h1>
+      <div className="pageHead">
+        <div><h1>{ru.admin.coursesTitle}</h1></div>
+      </div>
 
       <HealthBanner standing={health} />
 
-      <h2>{ru.admin.coursesTitle}</h2>
       {catalogue.length === 0 ? (
         <p className="muted">{ru.admin.noCourses}</p>
       ) : (
-        <ul className="cards">
+        <ul className="cardGrid">
           {catalogue.map(({ course, lessonCount }) => (
             <li key={course.id}>
-              <a href={`/admin/courses/${course.id}`}>{course.title}</a>
-              <span className="muted">
-                {' — '}
-                {ru.languages[course.language] ?? course.language}
-                {' · '}{course.level}
-                {' · '}{ru.courses.lessonCount(lessonCount)}
-              </span>
-              <br />
-              <span className="muted">{ru.admin.graderModel(course.graderModel)}</span>
+              <a className="title" href={`/admin/courses/${course.id}`}>{course.title}</a>
+              <p className="facts">
+                <span>{ru.languages[course.language] ?? course.language}</span>
+                <span>{course.level}</span>
+                <span>{ru.courses.lessonCount(lessonCount)}</span>
+              </p>
+              <span className="foot muted">{ru.admin.graderModel(course.graderModel)}</span>
             </li>
           ))}
         </ul>
       )}
 
-      <h2>{ru.admin.newCourseTitle}</h2>
-      <NewCourseForm />
-
-      <h2>{ru.transfer.importTitle}</h2>
-      <ImportCourseForm />
-
-      <p className="actions">
-        <a href="/admin/students">{ru.admin.accountsLink}</a>
-      </p>
-      <p className="actions">
-        <a href="/admin/disputes">{ru.disputeReview.link}</a>
-      </p>
-      <p className="actions">
-        <a href="/admin/guidance">{ru.guidance.link}</a>
-      </p>
-      <p className="actions">
-        <a href="/admin/health">{ru.admin.healthLink}</a>
-      </p>
+      {/* The four section links this screen used to end with are in the
+          navigation column now, where they are reachable from inside a Lesson
+          rather than only from here. */}
+      <div className="sideBySide">
+        <div className="main panel">
+          <h2>{ru.admin.newCourseTitle}</h2>
+          <NewCourseForm />
+        </div>
+        <div className="side panel">
+          <h2>{ru.transfer.importTitle}</h2>
+          <ImportCourseForm />
+        </div>
+      </div>
     </main>
   );
 }

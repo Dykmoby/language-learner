@@ -32,8 +32,14 @@ export default async function CourseSettingsPage({ params }: { params: Promise<{
 
   return (
     <main>
-      <h1>{ru.admin.settingsTitle}</h1>
-      <p className="muted">{course.title}</p>
+      <div className="pageHead">
+        <div>
+          <p className="muted">
+            <a href={`/admin/courses/${course.id}`}>{course.title}</a>
+          </p>
+          <h1>{ru.admin.settingsTitle}</h1>
+        </div>
+      </div>
 
       <CourseSettingsForm
         courseId={course.id}
@@ -45,7 +51,6 @@ export default async function CourseSettingsPage({ params }: { params: Promise<{
         level={course.level}
       />
 
-      <p><a href={`/admin/courses/${course.id}`}>{ru.admin.backToCourse}</a></p>
     </main>
   );
 }

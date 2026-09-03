@@ -31,13 +31,23 @@ export default async function TestPage({ params }: { params: Promise<{ testId: s
       {/* No Course breadcrumb: the header names the open Course and links back
           to it on every screen, and a Student may only be here at all if they
           are enrolled in it. */}
-      <h1>{opened.test.title}</h1>
-      <p className="muted">
-        {ru.test.exerciseCount(opened.exercises.length)}
-        {' · '}{ru.test.threshold(opened.test.passThreshold)}
-      </p>
-      <p className="muted">{ru.test.noFeedbackUntilSubmit}</p>
-      <p className="muted">{ru.test.gatesNothing}</p>
+      <div className="pageHead">
+        <div>
+          <p className="muted">{ru.test.sectionTitle}</p>
+          <h1>{opened.test.title}</h1>
+          <p className="facts">
+            <span>{ru.test.exerciseCount(opened.exercises.length)}</span>
+            <span>{ru.test.threshold(opened.test.passThreshold)}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Two sentences, said before the first answer rather than discovered
+          after the last one. */}
+      <div className="notice">
+        <p>{ru.test.noFeedbackUntilSubmit}</p>
+        <p className="muted">{ru.test.gatesNothing}</p>
+      </div>
 
       <TestShell
         testId={opened.test.id}

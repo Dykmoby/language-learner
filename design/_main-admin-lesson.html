@@ -1,0 +1,178 @@
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+
+    <!-- Sticky action bar: what state the Draft is in, and the two writes -->
+    <div style="border-bottom: 1px solid #e6e8ee; background: #ffffff; padding: 14px 32px; display: flex; align-items: center; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+        <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em">Урок 4. Present Perfect</span>
+        <span style="font-size: 12.5px; color: #8b93a3">Английский с нуля · 10 упражнений</span>
+      </div>
+      <span style="font-size: 12px; font-weight: 600; color: #7a4900; background: rgba(138,82,0,0.10); border-radius: 999px; padding: 5px 11px; white-space: nowrap">Есть неопубликованные изменения</span>
+      <span style="font-size: 12px; color: #59379a; background: rgba(100,64,159,0.10); border-radius: 999px; padding: 5px 11px; white-space: nowrap">Черновик от генерации</span>
+      <span style="flex-grow: 1"></span>
+      <a href="#" style="font-size: 13.5px; margin-right: 6px">История версий</a>
+      <button type="button" style="font-family: inherit; font-size: 14px; height: 40px; padding: 0 18px; border: 1px solid #dfe3ea; border-radius: 9px; background: #ffffff; color: #16181d; cursor: pointer">Сохранить</button>
+      <button type="button" style="font-family: inherit; font-size: 14px; font-weight: 500; height: 40px; padding: 0 18px; border: 0; border-radius: 9px; background: #3559c7; color: #ffffff; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,0.08)">Опубликовать</button>
+    </div>
+
+    <div style="display: flex; align-items: flex-start; gap: 24px; padding: 24px 32px 56px; min-width: 0">
+
+      <!-- Editor column -->
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 18px; min-width: 0">
+
+        <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); padding: 20px 22px; display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; gap: 14px">
+            <label style="display: flex; flex-direction: column; gap: 7px; flex-grow: 1">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Название урока</span>
+              <input type="text" value="Present Perfect" style="font-family: inherit; font-size: 14.5px; height: 40px; padding: 0 12px; border: 1px solid #dfe3ea; border-radius: 9px; outline: none">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 7px; flex-grow: 1">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Грамматический фокус</span>
+              <input type="text" value="связь прошлого с настоящим" style="font-family: inherit; font-size: 14.5px; height: 40px; padding: 0 12px; border: 1px solid #dfe3ea; border-radius: 9px; outline: none">
+            </label>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 7px">
+            <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Теория, markdown</span>
+            <textarea rows="8" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; line-height: 1.65; padding: 12px 14px; border: 1px solid #dfe3ea; border-radius: 9px; resize: vertical; outline: none">## Как образуется
+
+Вспомогательный глагол `have` или `has` плюс третья форма смыслового глагола.
+
+> Если в предложении названо конкретное прошедшее время — yesterday, in 2019 — present perfect не годится.</textarea>
+          </label>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <button type="button" style="font-family: inherit; font-size: 13px; height: 34px; padding: 0 13px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; color: #444b59; cursor: pointer; display: flex; align-items: center; gap: 7px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-6 6"/></svg>
+              Вставить картинку
+            </button>
+            <span style="font-size: 12px; color: #a7adba">до 4 МБ, PNG или JPEG</span>
+          </div>
+        </div>
+
+        <!-- Exercises -->
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8b93a3">Упражнения</h2>
+          <button type="button" style="font-family: inherit; font-size: 13px; height: 32px; padding: 0 12px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; color: #444b59; cursor: pointer">+ Добавить</button>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            <span style="font-size: 12px; font-weight: 600; color: #8b93a3">5</span>
+            <select style="font-family: inherit; font-size: 13px; height: 32px; padding: 0 9px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; outline: none"><option>Пропуски в предложении</option></select>
+            <span style="font-size: 11.5px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">Проверяется в коде</span>
+            <span style="font-size: 11.5px; color: #7a4900; background: rgba(138,82,0,0.10); border-radius: 999px; padding: 4px 10px">12 ответов уже сдано</span>
+            <span style="flex-grow: 1"></span>
+            <span style="display: flex; gap: 4px">
+              <button type="button" style="font-family: inherit; width: 32px; height: 32px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; color: #5b6371; cursor: pointer">↑</button>
+              <button type="button" style="font-family: inherit; width: 32px; height: 32px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; color: #5b6371; cursor: pointer">↓</button>
+              <button type="button" style="font-family: inherit; width: 32px; height: 32px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; color: #96201a; cursor: pointer">✕</button>
+            </span>
+          </div>
+
+          <label style="display: flex; flex-direction: column; gap: 7px">
+            <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Условие</span>
+            <textarea rows="2" style="font-family: inherit; font-size: 14px; line-height: 1.55; padding: 10px 12px; border: 1px solid #dfe3ea; border-radius: 9px; resize: none; outline: none">I ___ to London twice, and I ___ there again next spring.</textarea>
+          </label>
+          <span style="font-size: 12px; color: #a7adba">Каждый ___ — отдельный пропуск со своим списком принимаемых ответов.</span>
+
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+            <label style="display: flex; flex-direction: column; gap: 7px">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Принимается в 1-м пропуске</span>
+              <textarea rows="2" style="font-family: inherit; font-size: 13.5px; line-height: 1.5; padding: 9px 11px; border: 1px solid #dfe3ea; border-radius: 9px; resize: none; outline: none">have been
+'ve been</textarea>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 7px">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Принимается во 2-м пропуске</span>
+              <textarea rows="2" style="font-family: inherit; font-size: 13.5px; line-height: 1.5; padding: 9px 11px; border: 1px solid #dfe3ea; border-radius: 9px; resize: none; outline: none">am going
+'m going</textarea>
+            </label>
+          </div>
+
+          <label style="display: flex; flex-direction: column; gap: 7px">
+            <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Эталонный ответ</span>
+            <input type="text" value="I have been to London twice, and I am going there again next spring." style="font-family: inherit; font-size: 14px; height: 40px; padding: 0 12px; border: 1px solid #dfe3ea; border-radius: 9px; outline: none">
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: #444b59">
+            <input type="checkbox" style="width: 16px; height: 16px; accent-color: #3559c7">
+            Учитывать регистр
+          </label>
+        </div>
+
+        <div style="background: #fbfcfd; border: 1px dashed #dfe3ea; border-radius: 12px; padding: 16px 20px; font-size: 13.5px; color: #8b93a3">Упражнения 6–10 ниже</div>
+      </div>
+
+      <!-- Claude column: generation and refinement, side by side with the draft rather than under it -->
+      <div style="width: 380px; flex: none; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px">
+
+        <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); overflow: hidden">
+          <div style="padding: 14px 18px; border-bottom: 1px solid #eef0f4; display: flex; align-items: center; gap: 9px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3559c7" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z"/></svg>
+            <span style="font-size: 14px; font-weight: 600">Сгенерировать урок</span>
+          </div>
+          <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 13px">
+            <label style="display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Тема</span>
+              <textarea rows="2" style="font-family: inherit; font-size: 13.5px; line-height: 1.5; padding: 9px 11px; border: 1px solid #dfe3ea; border-radius: 9px; resize: none; outline: none">Present perfect в разговоре о поездках</textarea>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Словарь</span>
+              <textarea rows="2" style="font-family: inherit; font-size: 13.5px; line-height: 1.5; padding: 9px 11px; border: 1px solid #dfe3ea; border-radius: 9px; resize: none; outline: none">abroad, ever, never, already, yet</textarea>
+            </label>
+            <div style="display: flex; gap: 10px">
+              <label style="display: flex; flex-direction: column; gap: 6px; width: 96px">
+                <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Упражнений</span>
+                <input type="number" value="10" style="font-family: inherit; font-size: 13.5px; height: 36px; padding: 0 10px; border: 1px solid #dfe3ea; border-radius: 8px; outline: none">
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1">
+                <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Продолжить с урока</span>
+                <select style="font-family: inherit; font-size: 13.5px; height: 36px; padding: 0 9px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; outline: none"><option>3. Past Simple</option></select>
+              </label>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 7px">
+              <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Состав по видам</span>
+              <div style="display: flex; flex-direction: column; gap: 5px">
+                <div style="display: flex; align-items: center; gap: 10px"><span style="font-size: 13px; flex-grow: 1; color: #23262e">Пропуски</span><input type="number" value="4" style="font-family: inherit; font-size: 13px; width: 54px; height: 32px; padding: 0 8px; border: 1px solid #dfe3ea; border-radius: 7px; outline: none"></div>
+                <div style="display: flex; align-items: center; gap: 10px"><span style="font-size: 13px; flex-grow: 1; color: #23262e">Перевод</span><input type="number" value="3" style="font-family: inherit; font-size: 13px; width: 54px; height: 32px; padding: 0 8px; border: 1px solid #dfe3ea; border-radius: 7px; outline: none"></div>
+                <div style="display: flex; align-items: center; gap: 10px"><span style="font-size: 13px; flex-grow: 1; color: #23262e">Выбор варианта</span><input type="number" value="2" style="font-family: inherit; font-size: 13px; width: 54px; height: 32px; padding: 0 8px; border: 1px solid #dfe3ea; border-radius: 7px; outline: none"></div>
+                <div style="display: flex; align-items: center; gap: 10px"><span style="font-size: 13px; flex-grow: 1; color: #23262e">Порядок слов</span><input type="number" value="1" style="font-family: inherit; font-size: 13px; width: 54px; height: 32px; padding: 0 8px; border: 1px solid #dfe3ea; border-radius: 7px; outline: none"></div>
+              </div>
+              <span style="font-size: 11.5px; color: #a7adba">Без явного состава генерация перекашивает в выбор варианта — самый дешёвый вид и самый бесполезный.</span>
+            </div>
+
+            <div style="display: flex; gap: 10px">
+              <label style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1">
+                <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Модель</span>
+                <select style="font-family: inherit; font-size: 13px; height: 36px; padding: 0 9px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; outline: none"><option>claude-opus-5</option></select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; width: 128px">
+                <span style="font-size: 12.5px; font-weight: 500; color: #444b59">Effort</span>
+                <select style="font-family: inherit; font-size: 13px; height: 36px; padding: 0 9px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; outline: none"><option>high</option></select>
+              </label>
+            </div>
+            <span style="font-size: 11.5px; color: #a7adba">Чем выше Effort, тем дольше ждать — на max это минуты.</span>
+
+            <button type="button" style="font-family: inherit; font-size: 14px; font-weight: 500; height: 40px; border: 0; border-radius: 9px; background: #3559c7; color: #ffffff; cursor: pointer">Сгенерировать</button>
+          </div>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); overflow: hidden">
+          <div style="padding: 14px 18px; border-bottom: 1px solid #eef0f4; display: flex; align-items: center; gap: 9px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5b6371" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v11H8l-3 3z"/></svg>
+            <span style="font-size: 14px; font-weight: 600">Доработка с Claude</span>
+          </div>
+          <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+            <div style="background: #f7f8fa; border-radius: 10px; padding: 11px 13px; display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 11.5px; color: #8b93a3">Вы просили</span>
+              <span style="font-size: 13.5px; line-height: 1.55; color: #23262e">Сделай третье упражнение сложнее и добавь отрицание.</span>
+            </div>
+            <textarea rows="3" placeholder="Что поправить в черновике" style="font-family: inherit; font-size: 13.5px; line-height: 1.5; padding: 10px 12px; border: 1px solid #dfe3ea; border-radius: 9px; resize: none; outline: none"></textarea>
+            <button type="button" style="font-family: inherit; font-size: 14px; height: 40px; border: 1px solid #dfe3ea; border-radius: 9px; background: #ffffff; color: #16181d; cursor: pointer">Отправить</button>
+            <span style="font-size: 11.5px; color: #a7adba">Каждый ответ — новая версия черновика, все они восстановимы.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>

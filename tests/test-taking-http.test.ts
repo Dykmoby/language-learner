@@ -143,6 +143,20 @@ async function attemptView(client: Client, attemptId: number): Promise<AttemptVi
   return ((await response.json()) as { view: AttemptView }).view;
 }
 
+/**
+ * Whether any element on the page wears a state class.
+ *
+ * Anchored to a `class` attribute rather than searched for as a substring,
+ * because the token layer's own names contain these: Mantine's variables are
+ * resolved onto ours, so `--mantine-color-error: var(--state-incorrect-ink)`
+ * appears in the document's inline style block and a plain `includes` matches it
+ * on every screen. The question these assertions ask is what an element is drawn
+ * as, so they ask about the attribute that decides it.
+ */
+function wears(html: string, state: string): boolean {
+  return new RegExp(`class="[^"]*\\b${state}\\b`).test(html);
+}
+
 test('a published Test is listed in the Course and opens with nothing that answers it', async () => {
   const client = await signedIn(STUDENT);
 
@@ -361,8 +375,8 @@ test('the review shows a multi-gap answer as a sentence, with the wrong gap mark
 
   const html = await (await client.fetch(`/tests/${gapsTestId}/attempts/${view.attemptId}`)).text();
 
-  assert.ok(html.includes('state-correct'), 'the gap that was accepted');
-  assert.ok(html.includes('state-incorrect'), 'and the one that was not');
+  assert.ok(wears(html, 'state-correct'), 'the gap that was accepted');
+  assert.ok(wears(html, 'state-incorrect'), 'and the one that was not');
   // The pieces of the sentence, with the answers in place of the gaps.
   assert.ok(html.includes(' have '), 'the sentence is rebuilt around the answers');
   assert.ok(html.includes('I have an apple.'), 'and the Reference Answer is shown whole');

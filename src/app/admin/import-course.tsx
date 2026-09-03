@@ -8,6 +8,7 @@
 // exported last week should find out here, not afterwards.
 
 import { useRef, useState } from 'react';
+import { Button, FileButton } from '@mantine/core';
 import { ru } from '../../ru.ts';
 import { FaultList, type ReadableFault } from './forms/faults.tsx';
 
@@ -25,7 +26,8 @@ export function ImportCourseForm() {
   const [faults, setFaults] = useState<ReadableFault[]>([]);
   const [failed, setFailed] = useState(false);
   const [done, setDone] = useState<Imported | null>(null);
-  const input = useRef<HTMLInputElement | null>(null);
+  // Cleared after every attempt so the same file can be chosen twice running.
+  const reset = useRef<() => void>(null);
 
   async function send(file: File) {
     setImporting(true);
@@ -53,8 +55,7 @@ export function ImportCourseForm() {
       setFailed(true);
     } finally {
       setImporting(false);
-      // Cleared so the same file can be chosen twice running.
-      if (input.current) input.current.value = '';
+      reset.current?.();
     }
   }
 
@@ -63,18 +64,17 @@ export function ImportCourseForm() {
       <p className="muted">{ru.transfer.importHint}</p>
 
       <p className="actions">
-        <label htmlFor="course-file">{ru.transfer.importFile}</label>
-        <input
-          id="course-file"
-          ref={input}
-          type="file"
+        <FileButton
+          resetRef={reset}
           accept="application/json,.json"
-          disabled={importing}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void send(file);
-          }}
-        />
+          onChange={(file) => { if (file) void send(file); }}
+        >
+          {(props) => (
+            <Button {...props} variant="default" disabled={importing}>
+              {ru.transfer.importFile}
+            </Button>
+          )}
+        </FileButton>
       </p>
 
       {importing ? <p className="muted">{ru.transfer.importing}</p> : null}
