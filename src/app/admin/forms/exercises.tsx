@@ -18,6 +18,7 @@
 // again on the way into a published Lesson; this only makes the incoherent
 // shapes harder to type in the first place.
 
+import { Button } from '@mantine/core';
 import { ru } from '../../../ru.ts';
 import {
   EXERCISE_KINDS, gapsOf, isDeterministic, offersChoices, type ExerciseKind,
@@ -102,16 +103,17 @@ export function ExerciseList({
         {exercises.map((exercise, index) => {
           const made = exercise.id === undefined ? 0 : submissionCounts[exercise.id] ?? 0;
           return (
-            <li key={exercise.id ?? `new-${index}`}>
-              <p className="muted">
-                {ru.draft.exerciseAt(index + 1)}
-                {' · '}
-                {isDeterministic(exercise.kind) ? ru.judgedBy.deterministic : ru.judgedBy.grader}
+            <li key={exercise.id ?? `new-${index}`} className="exerciseForm">
+              <p className="head">
+                <span className="askKind">{ru.draft.exerciseAt(index + 1)}</span>
+                <span className="tag">
+                  {isDeterministic(exercise.kind) ? ru.judgedBy.deterministic : ru.judgedBy.grader}
+                </span>
+                {/* Said up front rather than only at the moment of removal: an
+                    Admin deciding what to change should know which Exercises
+                    already carry a Student's work. */}
+                {made === 0 ? null : <span className="tag state-partial">{ru.draft.hasSubmissions(made)}</span>}
               </p>
-              {/* Said up front rather than only at the moment of removal: an
-                  Admin deciding what to change should know which Exercises
-                  already carry a Student's work. */}
-              {made === 0 ? null : <p className="muted">{ru.draft.hasSubmissions(made)}</p>}
 
               <label>
                 <span>{ru.draft.exerciseKind}</span>
@@ -205,37 +207,37 @@ export function ExerciseList({
                     )}
                   </p>
                   <p className="actions">
-                    <button type="button" onClick={() => changeKind(index, pending.kind)} disabled={disabled}>
+                    <Button onClick={() => changeKind(index, pending.kind)} disabled={disabled}>
                       {ru.draft.confirmKindChange}
-                    </button>
-                    <button type="button" className="secondary" onClick={() => setPending(null)} disabled={disabled}>
+                    </Button>
+                    <Button variant="default" onClick={() => setPending(null)} disabled={disabled}>
                       {ru.draft.cancelKindChange}
-                    </button>
+                    </Button>
                   </p>
                 </>
               ) : pending?.what === 'remove' && pending.index === index ? (
                 <>
                   <p className="error" role="alert">{ru.draft.removeWithSubmissions(made)}</p>
                   <p className="actions">
-                    <button type="button" onClick={() => remove(index)} disabled={disabled}>
+                    <Button color="red" onClick={() => remove(index)} disabled={disabled}>
                       {ru.draft.confirmRemove}
-                    </button>
-                    <button type="button" className="secondary" onClick={() => setPending(null)} disabled={disabled}>
+                    </Button>
+                    <Button variant="default" onClick={() => setPending(null)} disabled={disabled}>
                       {ru.draft.cancelRemove}
-                    </button>
+                    </Button>
                   </p>
                 </>
               ) : (
                 <p className="actions">
-                  <button type="button" className="secondary" onClick={() => move(index, -1)} disabled={disabled || index === 0}>
+                  <Button variant="default" size="compact-sm" onClick={() => move(index, -1)} disabled={disabled || index === 0}>
                     {ru.common.moveUp}
-                  </button>
-                  <button type="button" className="secondary" onClick={() => move(index, 1)} disabled={disabled || index === exercises.length - 1}>
+                  </Button>
+                  <Button variant="default" size="compact-sm" onClick={() => move(index, 1)} disabled={disabled || index === exercises.length - 1}>
                     {ru.common.moveDown}
-                  </button>
-                  <button type="button" className="secondary" onClick={() => askToRemove(index)} disabled={disabled}>
+                  </Button>
+                  <Button variant="default" size="compact-sm" onClick={() => askToRemove(index)} disabled={disabled}>
                     {ru.draft.removeExercise}
-                  </button>
+                  </Button>
                 </p>
               )}
             </li>
@@ -244,14 +246,13 @@ export function ExerciseList({
       </ol>
 
       <p className="actions">
-        <button
-          type="button"
-          className="secondary"
+        <Button
+          variant="default"
           onClick={() => onChange([...exercises, blankExercise('fill_gap')])}
           disabled={disabled}
         >
           {ru.draft.addExercise}
-        </button>
+          </Button>
       </p>
     </>
   );
@@ -382,26 +383,24 @@ function ChoiceFields({ exercise, position, disabled, onChange }: ChoiceProps) {
                 </label>
               </>
             ) : null}
-            <button
-              type="button"
-              className="secondary"
+            <Button
+              variant="default"
               onClick={() => onChange(removeChoice(exercise, index))}
               disabled={disabled}
             >
               {ru.draft.removeChoice}
-            </button>
+              </Button>
           </li>
         ))}
       </ul>
       <p className="actions">
-        <button
-          type="button"
-          className="secondary"
+        <Button
+          variant="default"
           onClick={() => onChange({ ...exercise, choices: [...choices, ''] })}
           disabled={disabled}
         >
           {marked ? ru.draft.addChoice : ru.draft.addFragment}
-        </button>
+          </Button>
       </p>
     </>
   );

@@ -35,7 +35,7 @@ export default async function DisputesPage() {
 
   return (
     <main>
-      <h1>{ru.disputeReview.title}</h1>
+      <div className="pageHead"><div><h1>{ru.disputeReview.title}</h1></div></div>
 
       {waiting.length === 0 ? (
         <p className="muted">{ru.disputeReview.queueEmpty}</p>
@@ -75,7 +75,6 @@ export default async function DisputesPage() {
         </>
       )}
 
-      <p><a href="/admin">{ru.admin.title}</a></p>
     </main>
   );
 }

@@ -10,6 +10,7 @@
 // Course form's idiom — an Admin fixes a form rather than one field per attempt.
 
 import { useState } from 'react';
+import { Button, NativeSelect, Stack, TextInput, Textarea } from '@mantine/core';
 import { ru, faultMessage } from '../../../../../ru.ts';
 import { COURSE_INSTRUCTION_MAX_LENGTH, GRADER_MODELS } from '../../../../../content/course-options.ts';
 import type { Effort } from '../../../../../claude/effort.ts';
@@ -79,42 +80,43 @@ export function CourseSettingsForm({
 
   return (
     <>
-      <label>
-        <span>{ru.admin.courseTitleField}</span>
-        <input
-          type="text"
+      <Stack gap="sm">
+        <TextInput
+          label={ru.admin.courseTitleField}
           value={title}
-          onChange={(e) => edited(setTitle)(e.target.value)}
           disabled={busy}
+          onChange={(event) => edited(setTitle)(event.currentTarget.value)}
         />
-      </label>
 
-      <p>{ru.admin.languageFixed(language)}</p>
-      <p>{ru.admin.levelFixed(level)}</p>
-      <p className="muted">{ru.admin.fixedFactsHint}</p>
+        {/* Rendered as text rather than as disabled controls: a greyed-out
+            control reads as "not right now", and these two are never editable
+            at all. */}
+        <div className="fixedFacts">
+          <p>{ru.admin.languageFixed(language)}</p>
+          <p>{ru.admin.levelFixed(level)}</p>
+          <p className="muted">{ru.admin.fixedFactsHint}</p>
+        </div>
 
-      <label>
-        <span>{ru.admin.graderModelField}</span>
-        <select
+        {/* Haiku is absent by construction, per ADR 0002 — it cannot be
+            offered because it is not on this list, and the write refuses it by
+            name because a list is not a rule. */}
+        <NativeSelect
+          label={ru.admin.graderModelField}
+          description={ru.admin.graderModelChangeHint}
           value={graderModel}
-          onChange={(e) => edited(setGraderModel)(e.target.value)}
           disabled={busy}
-        >
-          {/* Haiku is absent by construction, per ADR 0002 — it cannot be
-              offered because it is not on this list, and the write refuses it by
-              name because a list is not a rule. */}
-          {GRADER_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}
-        </select>
-      </label>
-      <p className="muted">{ru.admin.graderModelChangeHint}</p>
+          onChange={(event) => edited(setGraderModel)(event.currentTarget.value)}
+          data={GRADER_MODELS.map((model) => ({ value: model, label: model }))}
+        />
 
-      <EffortSelect
+        <EffortSelect
         label={ru.admin.graderEffortField}
         hint={ru.admin.graderEffortHint}
         effort={graderEffort}
         disabled={busy}
-        onEffort={(next) => edited(setGraderEffort)(next)}
-      />
+          onEffort={(next) => edited(setGraderEffort)(next)}
+        />
+      </Stack>
 
       {/* Issue #80 — plain text, not markdown: this goes into a prompt, not onto
           a page. There is no «Вернуть исходный текст» beside it, and nothing is
@@ -125,17 +127,15 @@ export function CourseSettingsForm({
       <h2>{ru.admin.graderInstructionTitle}</h2>
       <p className="muted">{ru.admin.graderInstructionExplanation}</p>
       <p className="muted">{ru.admin.graderInstructionPrecedence}</p>
-      <label>
-        <span>{ru.admin.graderInstructionField}</span>
-        <textarea
-          value={graderInstruction}
-          rows={10}
-          maxLength={COURSE_INSTRUCTION_MAX_LENGTH}
-          onChange={(e) => edited(setGraderInstruction)(e.target.value)}
-          disabled={busy}
-        />
-      </label>
-      <p className="muted">{ru.admin.graderInstructionHint(COURSE_INSTRUCTION_MAX_LENGTH)}</p>
+      <Textarea
+        label={ru.admin.graderInstructionField}
+        description={ru.admin.graderInstructionHint(COURSE_INSTRUCTION_MAX_LENGTH)}
+        value={graderInstruction}
+        rows={10}
+        maxLength={COURSE_INSTRUCTION_MAX_LENGTH}
+        disabled={busy}
+        onChange={(event) => edited(setGraderInstruction)(event.currentTarget.value)}
+      />
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (
@@ -146,9 +146,9 @@ export function CourseSettingsForm({
       {saved ? <p className="ok" role="status">{ru.admin.settingsSaved}</p> : null}
 
       <p className="actions">
-        <button type="button" onClick={save} disabled={busy}>
+        <Button onClick={save} disabled={busy}>
           {busy ? ru.admin.savingSettings : ru.admin.saveSettings}
-        </button>
+        </Button>
       </p>
     </>
   );

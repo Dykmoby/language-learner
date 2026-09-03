@@ -7,6 +7,7 @@
 // Admin believe a Student's Lesson had just changed.
 
 import { useState } from 'react';
+import { Button } from '@mantine/core';
 import { ru } from '../../../../../ru.ts';
 
 export function RestoreButton({ lessonId, draftId }: { lessonId: number; draftId: number }) {
@@ -38,9 +39,9 @@ export function RestoreButton({ lessonId, draftId }: { lessonId: number; draftId
   return (
     <>
       <p className="actions">
-        <button type="button" onClick={restore} disabled={busy}>
+        <Button onClick={restore} disabled={busy}>
           {busy ? ru.draft.restoring : ru.draft.restore}
-        </button>
+        </Button>
       </p>
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {notice === null ? null : <p className="ok" role="status">{notice}</p>}

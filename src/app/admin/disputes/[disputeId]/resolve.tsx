@@ -13,6 +13,7 @@
 
 import { useState } from 'react';
 import { VerdictLine } from '../../../shared/verdict-line.tsx';
+import { Button } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import type { Variant } from '../../../../content/accepted.ts';
 import type { DisputeRuling } from '../../../../db/schema.ts';
@@ -138,20 +139,16 @@ export function ResolveDispute({ disputeId, ruling, candidates }: Props) {
         </fieldset>
       ) : null}
 
-      <p className="actions">
-        <button type="button" disabled={sending} onClick={() => void decide('upheld')}>
-          {ru.disputeReview.uphold}
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={sending}
-          onClick={() => void decide('rejected')}
-        >
-          {ru.disputeReview.reject}
-        </button>
-      </p>
+      <Button fullWidth disabled={sending} onClick={() => void decide('upheld')}>
+        {ru.disputeReview.uphold}
+      </Button>
       <p className="muted">{ru.disputeReview.upholdHint}</p>
+      <Button
+        fullWidth variant="default" disabled={sending}
+        onClick={() => void decide('rejected')}
+      >
+        {ru.disputeReview.reject}
+      </Button>
       <p className="muted">{ru.disputeReview.rejectHint}</p>
     </div>
   );

@@ -328,7 +328,9 @@ test('a span with no Errors says so rather than rendering as a broken chart', as
   const html = await progressHtml(client);
 
   assert.ok(html.includes(ru.changeOverTime.noErrors));
-  assert.ok(!html.includes('<svg'), 'and nothing is drawn');
+  // The chart's own element, not any `<svg>` on the page: the span pickers are
+  // Mantine listboxes now and each draws its own chevron.
+  assert.ok(!html.includes('class="chart"'), 'and nothing is drawn');
 });
 
 test('a span of Lessons can be chosen, and its Error Types are charted', async () => {
@@ -341,7 +343,7 @@ test('a span of Lessons can be chosen, and its Error Types are charted', async (
 
   assert.ok(html.includes(ru.changeOverTime.from), 'the span has two ends to choose');
   assert.ok(html.includes(ru.changeOverTime.to));
-  assert.ok(html.includes('<svg'), 'and the span is drawn');
+  assert.ok(html.includes('class="chart"'), 'and the span is drawn');
   assert.ok(html.includes(ru.changeOverTime.tableCaption), 'with the same numbers as text beside it');
 });
 

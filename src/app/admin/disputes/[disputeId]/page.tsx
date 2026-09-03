@@ -37,9 +37,15 @@ export default async function DisputePage(
 
   return (
     <main>
-      <p className="muted"><a href="/admin/disputes">{ru.disputeReview.back}</a></p>
-      <h1>{ru.disputeReview.title}</h1>
+      <div className="pageHead">
+        <div>
+          <p className="muted"><a href="/admin/disputes">{ru.disputeReview.back}</a></p>
+          <h1>{ru.disputeReview.title}</h1>
+        </div>
+      </div>
 
+      <div className="sideBySide">
+      <div className="main">
       <p className="muted">
         {ru.disputeReview.from(opened.studentUsername, opened.course.title)}
         {opened.origin === null ? null : (
@@ -116,12 +122,19 @@ export default async function DisputePage(
 
       <h2>{ru.disputeReview.comment}</h2>
       <VerdictLine state="disputed" words={dispute.comment} />
+      </div>
 
-      <ResolveDispute
-        disputeId={dispute.id}
-        ruling={dispute.ruling}
-        candidates={opened.candidates}
-      />
+      {/* The decision sits beside the material rather than under it. All of it
+          has to be readable while the ruling is made — a decision taken from any
+          one part of it alone is not a review. */}
+      <div className="side">
+        <ResolveDispute
+          disputeId={dispute.id}
+          ruling={dispute.ruling}
+          candidates={opened.candidates}
+        />
+      </div>
+      </div>
     </main>
   );
 }

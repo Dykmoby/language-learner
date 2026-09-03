@@ -51,12 +51,15 @@ export default async function PracticePage({ params }: { params: Promise<{ lesso
 
   return (
     <main>
-      <p className="muted">
-        <a href={`/courses/${opened.course.id}`}>{opened.course.title}</a>
-        {' · '}
-        <a href={`/lessons/${opened.lesson.id}`}>{ru.lesson.theory}</a>
-      </p>
-      <h1>{opened.lesson.title}</h1>
+      {/* No breadcrumb: the navigation column names the Course, lists its
+          Lessons and marks which half of this one is open. A second copy of that
+          across the top of the screen would be the same fact twice. */}
+      <div className="pageHead">
+        <div>
+          <p className="muted">{ru.practice.title}</p>
+          <h1>{opened.lesson.title}</h1>
+        </div>
+      </div>
 
       <PracticeShell
         current={current}

@@ -11,6 +11,7 @@
 // last saved rather than what is on the screen.
 
 import { useState } from 'react';
+import { Button, NumberInput, Stack, TextInput } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import type { TestDocument, TestFault } from '../../../../content/test-document.ts';
 import { ExerciseList } from '../../forms/exercises.tsx';
@@ -117,31 +118,29 @@ export function TestEditor({ testId, initial, published, submissionCounts }: Pro
 
   return (
     <section>
-      <label>
-        <span>{ru.testAdmin.titleField}</span>
-        <input
-          type="text"
-          value={document.title}
-          onChange={(e) => edit({ title: e.target.value })}
-          disabled={busy}
-        />
-      </label>
+      <div className="panel">
+        <Stack gap="sm">
+          <TextInput
+            label={ru.testAdmin.titleField}
+            value={document.title}
+            disabled={busy}
+            onChange={(event) => edit({ title: event.currentTarget.value })}
+          />
 
-      <label>
-        <span>{ru.testAdmin.passThreshold}</span>
-        <input
-          type="number"
-          min={1}
-          max={100}
-          value={document.passThreshold}
-          // An empty field is a number nobody has finished typing, not a zero.
-          // It is carried as NaN and refused by the rules if it is still that at
-          // the moment of saving.
-          onChange={(e) => edit({ passThreshold: e.target.value === '' ? Number.NaN : Number(e.target.value) })}
-          disabled={busy}
-        />
-      </label>
-      <p className="muted">{ru.testAdmin.passThresholdHint}</p>
+          <NumberInput
+            label={ru.testAdmin.passThreshold}
+            description={ru.testAdmin.passThresholdHint}
+            min={1}
+            max={100}
+            value={document.passThreshold}
+            disabled={busy}
+            // An empty field is a number nobody has finished typing, not a zero.
+            // It is carried as NaN and refused by the rules if it is still that at
+            // the moment of saving.
+            onChange={(value) => edit({ passThreshold: value === '' ? Number.NaN : Number(value) })}
+          />
+        </Stack>
+      </div>
 
       <ExerciseList
         exercises={document.exercises}
@@ -153,13 +152,13 @@ export function TestEditor({ testId, initial, published, submissionCounts }: Pro
       />
 
       <p className="actions">
-        <button type="button" onClick={save} disabled={busy}>
+        <Button onClick={save} disabled={busy}>
           {phase === 'saving' ? ru.testAdmin.saving : ru.testAdmin.save}
-        </button>
+        </Button>
         {live ? null : (
-          <button type="button" className="secondary" onClick={publish} disabled={busy || unsaved}>
+          <Button variant="default" onClick={publish} disabled={busy || unsaved}>
             {phase === 'publishing' ? ru.testAdmin.publishing : ru.testAdmin.publish}
-          </button>
+          </Button>
         )}
       </p>
       {!live && unsaved ? <p className="muted">{ru.testAdmin.publishAfterSave}</p> : null}

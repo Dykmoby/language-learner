@@ -21,6 +21,7 @@
 // become something to click twice out of habit.
 
 import { useState } from 'react';
+import { Button, TextInput } from '@mantine/core';
 import { ru, faultMessage } from '../../../ru.ts';
 
 export type AccountRow = {
@@ -148,25 +149,22 @@ export function StudentsAdmin({ initialAccounts, actingStudentId }: Props) {
             ) : confirming === account.id ? (
               <span className="actions">
                 <span className="error">{ru.admin.deleteWarning(account.username)}</span>
-                <button type="button" onClick={() => remove(account.id)} disabled={busy}>
+                <Button color="red" onClick={() => remove(account.id)} disabled={busy}>
                   {busy ? ru.admin.deletingAccount : ru.admin.confirmDeleteAccount}
-                </button>
-                <button
-                  type="button" className="secondary"
-                  onClick={() => setConfirming(null)} disabled={busy}
-                >
+                </Button>
+                <Button variant="default" onClick={() => setConfirming(null)} disabled={busy}>
                   {ru.common.cancel}
-                </button>
+                </Button>
               </span>
             ) : (
               <span className="actions">
-                <button
-                  type="button" className="secondary"
+                <Button
+                  variant="default"
                   onClick={() => { clearMessages(); setConfirming(account.id); }}
                   disabled={busy}
                 >
                   {ru.admin.deleteAccount}
-                </button>
+                </Button>
               </span>
             )}
           </li>
@@ -175,20 +173,17 @@ export function StudentsAdmin({ initialAccounts, actingStudentId }: Props) {
 
       <h2>{ru.admin.newAccountTitle}</h2>
       <p className="muted">{ru.admin.newAccountHint}</p>
-      <label>
-        <span>{ru.admin.usernameField}</span>
-        <input
-          type="text"
-          value={username}
-          autoComplete="off"
-          onChange={(e) => { setUsername(e.target.value); clearMessages(); }}
-          disabled={busy}
-        />
-      </label>
+      <TextInput
+        label={ru.admin.usernameField}
+        value={username}
+        autoComplete="off"
+        disabled={busy}
+        onChange={(event) => { setUsername(event.currentTarget.value); clearMessages(); }}
+      />
       <p className="actions">
-        <button type="button" onClick={create} disabled={busy}>
+        <Button onClick={create} disabled={busy}>
           {busy ? ru.admin.creatingAccount : ru.admin.createAccount}
-        </button>
+        </Button>
       </p>
 
       {issued === null ? null : (

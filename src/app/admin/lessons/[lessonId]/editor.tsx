@@ -14,6 +14,7 @@
 // shape, and Refinement will exchange exactly this each turn.
 
 import { useRef, useState } from 'react';
+import { Button, TextInput, Textarea } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import { renderTheory } from '../../../../content/markdown.ts';
 import type { DocumentFault, LessonDocument } from '../../../../content/lesson-document.ts';
@@ -221,53 +222,111 @@ export function DraftEditor({
     }
   }
 
+  const standing = unsaved
+    ? { words: ru.draft.unsaved, state: 'state-partial' }
+    : ahead
+      ? { words: ru.draft.unpublishedChanges, state: 'state-partial' }
+      : { words: ru.draft.upToDate, state: 'state-correct' };
+
   return (
     <>
-      <p className="muted">
-        {unsaved ? ru.draft.unsaved : ahead ? ru.draft.unpublishedChanges : ru.draft.upToDate}
-      </p>
-      {neverPublished ? <p className="muted">{ru.draft.neverPublished}</p> : null}
-      {/* What made this Draft, said wherever a Draft is shown. Until now a Draft
-          an Admin wrote every word of and one Claude produced thirty seconds ago
-          were indistinguishable here. */}
-      {draftOrigin === null ? null : (
-        <p><span className="madeBy">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</span></p>
-      )}
+      {/* What the Draft's standing is and the two writes, in one bar above the
+          work rather than at the bottom of it. Publishing used to be a scroll
+          past every Exercise away from the thing being published. */}
+      <div className="workBar">
+        <span className={`tag ${standing.state}`}>{standing.words}</span>
+        {neverPublished ? <span className="tag">{ru.draft.neverPublished}</span> : null}
+        {/* What made this Draft, said wherever a Draft is shown. Until now a Draft
+            an Admin wrote every word of and one Claude produced thirty seconds ago
+            were indistinguishable here. */}
+        {draftOrigin === null ? null : (
+          <span className="madeBy">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</span>
+        )}
+        <span className="spacer" />
+        <Button onClick={save} disabled={busy}>
+          {phase === 'saving' ? ru.draft.saving : ru.draft.save}
+        </Button>
+        <Button variant="default" onClick={() => publish()} disabled={busy || !canPublish}>
+          {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
+        </Button>
+      </div>
 
-      <label>
-        <span>{ru.draft.lessonTitle}</span>
-        <input
-          type="text"
+      {problem === null ? null : <p className="error" role="alert">{problem}</p>}
+      <FaultList faults={faults} />
+      {notice === null ? null : <p className="ok" role="status">{notice}</p>}
+
+      {pending?.what === 'publish' ? (
+        <div className="notice">
+          {/* A count, and the specific thing it points at. "Вы уверены?" is a
+              click tax; naming how many Reference Answers nobody has read is
+              information — and a Reference Answer is what the Grader receives as
+              the model answer on every Submission made against that Exercise, so
+              a wrong one poisons grading silently and for good. */}
+          <p className="error" role="alert">{ru.draft.publishUnreviewed(pending.unreviewed)}</p>
+          <p className="actions">
+            <Button onClick={() => publish(true)} disabled={busy}>
+              {ru.draft.confirmPublish}
+            </Button>
+            <Button variant="default" onClick={() => setPending(null)} disabled={busy}>
+              {ru.draft.cancelPublish}
+            </Button>
+          </p>
+        </div>
+      ) : null}
+
+      <div className="editorLayout">
+      <div className="draft">
+      <div className="panel">
+        <TextInput
+          label={ru.draft.lessonTitle}
           value={draft.title}
-          onChange={(e) => edit({ title: e.target.value })}
           disabled={busy}
+          onChange={(event) => edit({ title: event.currentTarget.value })}
         />
-      </label>
 
-      <label>
-        <span>{ru.draft.grammarFocus}</span>
-        <input
-          type="text"
+        <TextInput
+          label={ru.draft.grammarFocus}
+          description={ru.draft.grammarFocusHint}
           value={draft.grammarFocus}
-          onChange={(e) => edit({ grammarFocus: e.target.value })}
           disabled={busy}
+          onChange={(event) => edit({ grammarFocus: event.currentTarget.value })}
         />
-      </label>
-      <p className="muted">{ru.draft.grammarFocusHint}</p>
 
-      <label>
-        <span>{ru.draft.theory}</span>
-        <textarea
+        <Textarea
+          label={ru.draft.theory}
           ref={theoryRef}
           rows={16}
           value={draft.theoryMarkdown}
-          onChange={(e) => edit({ theoryMarkdown: e.target.value })}
           disabled={busy}
+          onChange={(event) => edit({ theoryMarkdown: event.currentTarget.value })}
         />
-      </label>
 
-      <ImageUpload maxBytes={maxUploadBytes} disabled={busy} onInsert={insertAtCursor} />
+        <ImageUpload maxBytes={maxUploadBytes} disabled={busy} onInsert={insertAtCursor} />
+      </div>
 
+      <ExerciseList
+        exercises={draft.exercises}
+        submissionCounts={submissionCounts}
+        disabled={busy}
+        pending={pending}
+        setPending={setPending}
+        onChange={(exercises) => edit({ exercises })}
+      />
+
+      <h2>{ru.draft.preview}</h2>
+      <div
+        className="theory"
+        // Safe by construction: renderTheory escapes the whole source before it
+        // writes any tag, so the only angle brackets here are ones it wrote.
+        dangerouslySetInnerHTML={{ __html: renderTheory(draft.theoryMarkdown) }}
+      />
+      </div>
+
+      {/* Claude, beside the Draft rather than under it. Generation and
+          refinement change the document on the left, and until now reaching
+          either meant scrolling past every Exercise in the Lesson they were
+          about. */}
+      <div className="aside">
       {/* A generated Lesson lands here exactly as a save does: the Draft is
           already appended server-side, so the editor is catching up with a row
           rather than holding unsaved work. That is why `unsaved` goes false and
@@ -294,59 +353,8 @@ export function DraftEditor({
         onRefined={(document, id) => acceptAuthored(document, id, 'refinement')}
       />
 
-      <ExerciseList
-        exercises={draft.exercises}
-        submissionCounts={submissionCounts}
-        disabled={busy}
-        pending={pending}
-        setPending={setPending}
-        onChange={(exercises) => edit({ exercises })}
-      />
-
-      {problem === null ? null : <p className="error" role="alert">{problem}</p>}
-      <FaultList faults={faults} />
-      {notice === null ? null : <p className="ok" role="status">{notice}</p>}
-
-      {pending?.what === 'publish' ? (
-        <>
-          {/* A count, and the specific thing it points at. "Вы уверены?" is a
-              click tax; naming how many Reference Answers nobody has read is
-              information — and a Reference Answer is what the Grader receives as
-              the model answer on every Submission made against that Exercise, so
-              a wrong one poisons grading silently and for good. */}
-          <p className="error" role="alert">{ru.draft.publishUnreviewed(pending.unreviewed)}</p>
-          <p className="actions">
-            <button type="button" onClick={() => publish(true)} disabled={busy}>
-              {ru.draft.confirmPublish}
-            </button>
-            <button type="button" className="secondary" onClick={() => setPending(null)} disabled={busy}>
-              {ru.draft.cancelPublish}
-            </button>
-          </p>
-        </>
-      ) : (
-        <p className="actions">
-          <button type="button" onClick={save} disabled={busy}>
-            {phase === 'saving' ? ru.draft.saving : ru.draft.save}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => publish()}
-            disabled={busy || !canPublish}
-          >
-            {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
-          </button>
-        </p>
-      )}
-
-      <h2>{ru.draft.preview}</h2>
-      <div
-        className="theory"
-        // Safe by construction: renderTheory escapes the whole source before it
-        // writes any tag, so the only angle brackets here are ones it wrote.
-        dangerouslySetInnerHTML={{ __html: renderTheory(draft.theoryMarkdown) }}
-      />
+      </div>
+      </div>
     </>
   );
 }

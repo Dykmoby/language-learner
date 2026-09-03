@@ -35,19 +35,21 @@ export function AttemptList({ testId, attempts }: { testId: number; attempts: At
   if (attempts.length === 0) return <p className="muted">{ru.test.noAttempts}</p>;
 
   return (
-    <ul className="cards">
+    <ul className="attempts">
       {attempts.map((attempt) => (
         <li key={attempt.attemptId}>
-          <a href={`/tests/${testId}/attempts/${attempt.attemptId}`}>
-            {ru.test.attemptNumber(attempt.attempt)}
-          </a>
-          <span className="muted">
-            {' — '}{new Date(attempt.submittedAt).toLocaleString(ru.locale)}
-            {' · '}<AttemptScore attempt={attempt} />
+          <span className="body">
+            <a href={`/tests/${testId}/attempts/${attempt.attemptId}`}>
+              {ru.test.attemptNumber(attempt.attempt)}
+            </a>
+            <span className="muted">
+              {new Date(attempt.submittedAt).toLocaleString(ru.locale)}
+              {' · '}<AttemptScore attempt={attempt} />
+            </span>
           </span>
           {attempt.passed === null ? null : (
-            <span className={attempt.passed ? 'ok' : 'error'}>
-              {' '}{attempt.passed ? ru.test.passed : ru.test.failed}
+            <span className={`tag ${attempt.passed ? 'state-correct' : 'state-incorrect'}`}>
+              {attempt.passed ? ru.test.passed : ru.test.failed}
             </span>
           )}
         </li>

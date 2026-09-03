@@ -30,20 +30,29 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
 
   rememberCurrentCourse(db, student.id, opened.course.id);
 
+  const done = opened.progress.counts.completed + opened.progress.counts.completedWithHelp;
+
   return (
     <main>
-      {/* No Course breadcrumb: the header names the open Course and links back
-          to it on every screen, and a Student may only be here at all if they
-          are enrolled in it. */}
-      <h1>{opened.lesson.title}</h1>
-      <p className="muted">{ru.lesson.grammarFocus}: {opened.lesson.grammarFocus}</p>
+      {/* No Course breadcrumb and no back-link: the navigation column names the
+          open Course on every screen, lists the Lessons of it, and marks which
+          of the two halves of this Lesson is being read. */}
+      <div className="pageHead">
+        <div>
+          <p className="muted">{ru.lesson.theory}</p>
+          <h1>{opened.lesson.title}</h1>
+          <p className="muted">{ru.lesson.grammarFocus}: {opened.lesson.grammarFocus}</p>
+        </div>
+      </div>
 
       <article className="theory" dangerouslySetInnerHTML={{ __html: renderTheory(opened.lesson.theoryMarkdown) }} />
 
       <p className="actions">
         <a className="button" href={`/lessons/${opened.lesson.id}/practice`}>{ru.lesson.toPractice}</a>
+        <span className="muted">
+          {ru.practice.position(done + 1, opened.progress.counts.total)}
+        </span>
       </p>
-      <p><a href={`/courses/${opened.course.id}`}>{ru.lesson.backToCourse}</a></p>
     </main>
   );
 }

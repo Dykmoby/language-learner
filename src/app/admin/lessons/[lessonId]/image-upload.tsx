@@ -9,6 +9,7 @@
 // Draft, a restore, and a publish without anything knowing it is special.
 
 import { useRef, useState } from 'react';
+import { Button, FileButton } from '@mantine/core';
 import { ru, faultMessage } from '../../../../ru.ts';
 
 type Props = {
@@ -23,7 +24,8 @@ const MEGABYTE = 1024 * 1024;
 export function ImageUpload({ maxBytes, disabled, onInsert }: Props) {
   const [uploading, setUploading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const input = useRef<HTMLInputElement | null>(null);
+  // Cleared after every attempt so the same file can be chosen twice running.
+  const reset = useRef<() => void>(null);
 
   async function upload(file: File) {
     setUploading(true);
@@ -52,26 +54,26 @@ export function ImageUpload({ maxBytes, disabled, onInsert }: Props) {
       setUploading(false);
       // Cleared so the same file can be chosen twice running — a browser fires
       // no change event when the value is unchanged.
-      if (input.current) input.current.value = '';
+      reset.current?.();
     }
   }
 
   return (
     <>
-      <label>
-        <span>{uploading ? ru.draft.imageUploading : ru.draft.imageUpload}</span>
-        <input
-          ref={input}
-          type="file"
+      <p className="actions">
+        <FileButton
+          resetRef={reset}
           accept="image/png,image/jpeg,image/gif,image/webp"
-          disabled={disabled || uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void upload(file);
-          }}
-        />
-      </label>
-      <p className="muted">{ru.draft.imageUploadHint(Math.round(maxBytes / MEGABYTE))}</p>
+          onChange={(file) => { if (file) void upload(file); }}
+        >
+          {(props) => (
+            <Button {...props} variant="default" disabled={disabled || uploading}>
+              {uploading ? ru.draft.imageUploading : ru.draft.imageUpload}
+            </Button>
+          )}
+        </FileButton>
+        <span className="muted">{ru.draft.imageUploadHint(Math.round(maxBytes / MEGABYTE))}</span>
+      </p>
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
     </>
   );

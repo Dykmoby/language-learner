@@ -26,18 +26,25 @@ export default async function AdminCoursePage({ params }: { params: Promise<{ co
 
   return (
     <main>
-      <h1>{course.title}</h1>
-      <p className="muted">
-        {ru.languages[course.language] ?? course.language}
-        {' · '}{course.level}
-        {' · '}{ru.admin.graderModel(course.graderModel)}
-      </p>
-      {/* The settings screen is reached from the Course rather than from the
-          dashboard: what it changes is this Course, and an Admin who wants it is
-          already looking at one. */}
-      <p className="actions">
-        <a href={`/admin/courses/${course.id}/settings`}>{ru.admin.settingsLink}</a>
-      </p>
+      <div className="pageHead">
+        <div>
+          <h1>{course.title}</h1>
+          <p className="facts">
+            <span>{ru.languages[course.language] ?? course.language}</span>
+            <span>{course.level}</span>
+            <span>{ru.admin.graderModel(course.graderModel)}</span>
+          </p>
+        </div>
+        <p className="actions">
+          {/* Reached from the Course rather than from the dashboard: what it
+              changes is this Course, and an Admin who wants it is already
+              looking at one. */}
+          <a className="button" href={`/admin/courses/${course.id}/settings`}>{ru.admin.settingsLink}</a>
+          {/* Plain link rather than a control: the response is a file, and the
+              browser already knows what to do with one. */}
+          <a href={`/api/admin/courses/${course.id}/export`}>{ru.transfer.exportCourse}</a>
+        </p>
+      </div>
 
       <CourseAdmin
         courseId={course.id}
@@ -60,14 +67,7 @@ export default async function AdminCoursePage({ params }: { params: Promise<{ co
         }))}
       />
 
-      {/* Plain link rather than a control: the response is a file, and the
-          browser already knows what to do with one. */}
-      <p className="actions">
-        <a href={`/api/admin/courses/${course.id}/export`}>{ru.transfer.exportCourse}</a>
-      </p>
       <p className="muted">{ru.transfer.exportHint}</p>
-
-      <p><a href="/admin">{ru.admin.back}</a></p>
     </main>
   );
 }

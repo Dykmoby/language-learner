@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@mantine/core';
 import { ru } from '../../../ru.ts';
 import type { HealthResult } from '../../../grader/health-check.ts';
 
@@ -26,9 +27,9 @@ export function HealthPanel() {
 
   return (
     <>
-      <button type="button" onClick={run} disabled={running}>
+      <Button onClick={run} disabled={running}>
         {running ? ru.health.running : ru.health.run}
-      </button>
+      </Button>
 
       {failed ? <p className="error">{ru.errors.serverError}</p> : null}
 

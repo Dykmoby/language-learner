@@ -9,6 +9,7 @@
 // refuses halfway through.
 
 import { useState } from 'react';
+import { Button, TextInput } from '@mantine/core';
 import { ru, faultMessage } from '../../../../ru.ts';
 import type { LessonPublication } from '../../../../admin/catalogue.ts';
 import { movedWithin } from '../../../../content/ordering.ts';
@@ -177,7 +178,8 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
   }
 
   return (
-    <>
+    <div className="sideBySide">
+      <div className="main">
       <h2>{ru.admin.lessonsTitle}</h2>
       {lessons.length === 0 ? (
         <p className="muted">{ru.admin.noLessons}</p>
@@ -192,20 +194,20 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
                 {' · '}{ru.admin.exerciseCount(lesson.exerciseCount)}
               </span>
               <span className="actions">
-                <button
-                  type="button" className="secondary"
+                <Button
+                  variant="default" size="compact-sm"
                   onClick={() => move(index, -1)}
                   disabled={busy || index === 0}
                 >
                   {ru.common.moveUp}
-                </button>
-                <button
-                  type="button" className="secondary"
+                </Button>
+                <Button
+                  variant="default" size="compact-sm"
                   onClick={() => move(index, 1)}
                   disabled={busy || index === lessons.length - 1}
                 >
                   {ru.common.moveDown}
-                </button>
+                </Button>
               </span>
             </li>
           ))}
@@ -213,20 +215,17 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
       )}
 
       <h2>{ru.admin.newLessonTitle}</h2>
-      <label>
-        <span>{ru.admin.lessonTitleField}</span>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => { setTitle(e.target.value); clearMessages(); }}
-          disabled={busy}
-        />
-      </label>
-      <p className="muted">{ru.admin.lessonStartsAsDraft}</p>
+      <TextInput
+        label={ru.admin.lessonTitleField}
+        description={ru.admin.lessonStartsAsDraft}
+        value={title}
+        disabled={busy}
+        onChange={(event) => { setTitle(event.currentTarget.value); clearMessages(); }}
+      />
       <p className="actions">
-        <button type="button" onClick={addLesson} disabled={busy}>
+        <Button onClick={addLesson} disabled={busy}>
           {busy ? ru.admin.creatingLesson : ru.admin.createLesson}
-        </button>
+        </Button>
       </p>
 
       <h2>{ru.admin.testsTitle}</h2>
@@ -248,22 +247,23 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
       )}
 
       <h3>{ru.admin.newTestTitle}</h3>
-      <label>
-        <span>{ru.admin.testTitleField}</span>
-        <input
-          type="text"
-          value={testTitle}
-          onChange={(e) => { setTestTitle(e.target.value); clearMessages(); }}
-          disabled={busy}
-        />
-      </label>
-      <p className="muted">{ru.admin.testStartsAsDraft}</p>
+      <TextInput
+        label={ru.admin.testTitleField}
+        description={ru.admin.testStartsAsDraft}
+        value={testTitle}
+        disabled={busy}
+        onChange={(event) => { setTestTitle(event.currentTarget.value); clearMessages(); }}
+      />
       <p className="actions">
-        <button type="button" onClick={addTest} disabled={busy}>
+        <Button onClick={addTest} disabled={busy}>
           {busy ? ru.admin.creatingTest : ru.admin.createTest}
-        </button>
+        </Button>
       </p>
+      </div>
 
+      {/* Who can reach the Course at all, beside the Course rather than after
+          it: it is a fact about this Course, not the last item in its Lessons. */}
+      <div className="side panel">
       <h2>{ru.admin.rosterTitle}</h2>
       <p className="muted">{ru.admin.rosterHint}</p>
       {roster.length === 0 ? (
@@ -277,16 +277,16 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
                 <>
                   <span className="muted"> — {ru.admin.enrolledAlready}</span>
                   <span className="actions">
-                    <button type="button" className="secondary" onClick={() => withdraw(entry.id)} disabled={busy}>
+                    <Button variant="default" size="compact-sm" onClick={() => withdraw(entry.id)} disabled={busy}>
                       {busy ? ru.admin.withdrawing : ru.admin.withdraw}
-                    </button>
+                    </Button>
                   </span>
                 </>
               ) : (
                 <span className="actions">
-                  <button type="button" className="secondary" onClick={() => enroll(entry.id)} disabled={busy}>
+                  <Button size="compact-sm" onClick={() => enroll(entry.id)} disabled={busy}>
                     {busy ? ru.admin.enrolling : ru.admin.enroll}
-                  </button>
+                  </Button>
                 </span>
               )}
             </li>
@@ -301,6 +301,7 @@ export function CourseAdmin({ courseId, initialLessons, initialTests, initialRos
         </ul>
       )}
       {notice === null ? null : <p className="ok" role="status">{notice}</p>}
-    </>
+      </div>
+    </div>
   );
 }

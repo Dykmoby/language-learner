@@ -10,6 +10,7 @@
 // grader, so the option is absent rather than discouraged.
 
 import { useState } from 'react';
+import { Button, Group, NativeSelect, Stack, TextInput } from '@mantine/core';
 import { ru, faultMessage } from '../../ru.ts';
 import { CEFR_LEVELS, GRADER_MODELS, DEFAULT_GRADER_MODEL } from '../../content/course-options.ts';
 import { LANGUAGES, type Language } from '../../grader/contract.ts';
@@ -69,55 +70,52 @@ export function NewCourseForm() {
 
   return (
     <>
-      <label>
-        <span>{ru.admin.courseTitleField}</span>
-        <input
-          type="text"
+      <Stack gap="sm">
+        <TextInput
+          label={ru.admin.courseTitleField}
           value={title}
-          onChange={(e) => { setTitle(e.target.value); setFaults([]); }}
           disabled={busy}
+          onChange={(event) => { setTitle(event.currentTarget.value); setFaults([]); }}
         />
-      </label>
 
-      <label>
-        <span>{ru.admin.languageField}</span>
-        <select value={language} onChange={(e) => chooseLanguage(e.target.value as Language)} disabled={busy}>
-          {LANGUAGES.map((code) => (
-            <option key={code} value={code}>{ru.languages[code] ?? code}</option>
-          ))}
-        </select>
-      </label>
+        <Group grow align="flex-start">
+          <NativeSelect
+            label={ru.admin.languageField}
+            value={language}
+            disabled={busy}
+            onChange={(event) => chooseLanguage(event.currentTarget.value as Language)}
+            data={LANGUAGES.map((code) => ({ value: code, label: ru.languages[code] ?? code }))}
+          />
+          <NativeSelect
+            label={ru.admin.levelField}
+            description={ru.admin.levelHint}
+            value={level}
+            disabled={busy}
+            onChange={(event) => setLevel(event.currentTarget.value)}
+            data={CEFR_LEVELS.map((one) => ({ value: one, label: one }))}
+          />
+        </Group>
 
-      <label>
-        <span>{ru.admin.levelField}</span>
-        <select value={level} onChange={(e) => setLevel(e.target.value)} disabled={busy}>
-          {CEFR_LEVELS.map((one) => <option key={one} value={one}>{one}</option>)}
-        </select>
-      </label>
-      <p className="muted">{ru.admin.levelHint}</p>
-
-      <label>
-        <span>{ru.admin.graderModelField}</span>
-        <select
+        <NativeSelect
+          label={ru.admin.graderModelField}
+          description={ru.admin.graderModelHint}
           value={graderModel}
-          onChange={(e) => { setGraderModel(e.target.value); setModelChosen(true); }}
           disabled={busy}
-        >
-          {GRADER_MODELS.map((model) => <option key={model} value={model}>{model}</option>)}
-        </select>
-      </label>
-      <p className="muted">{ru.admin.graderModelHint}</p>
+          onChange={(event) => { setGraderModel(event.currentTarget.value); setModelChosen(true); }}
+          data={GRADER_MODELS.map((model) => ({ value: model, label: model }))}
+        />
 
       {/* The cost is a wait, and the person who waits is not the person
           choosing — so the hint names it. The Practice screen tells the Student
           the other half. */}
-      <EffortSelect
-        label={ru.admin.graderEffortField}
-        hint={ru.admin.graderEffortHint}
-        effort={graderEffort}
-        disabled={busy}
-        onEffort={setGraderEffort}
-      />
+        <EffortSelect
+          label={ru.admin.graderEffortField}
+          hint={ru.admin.graderEffortHint}
+          effort={graderEffort}
+          disabled={busy}
+          onEffort={setGraderEffort}
+        />
+      </Stack>
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (
@@ -127,9 +125,9 @@ export function NewCourseForm() {
       )}
 
       <p className="actions">
-        <button type="button" onClick={create} disabled={busy}>
+        <Button onClick={create} disabled={busy}>
           {busy ? ru.admin.creatingCourse : ru.admin.createCourse}
-        </button>
+        </Button>
       </p>
     </>
   );

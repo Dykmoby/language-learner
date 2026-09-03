@@ -13,6 +13,7 @@
 // nothing here is cleared on failure and why the panel does not close itself.
 
 import { useState } from 'react';
+import { Button, NativeSelect, NumberInput, Stack, Textarea } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import { EXERCISE_KINDS, type ExerciseKind } from '../../../../content/exercise-validity.ts';
 import type { LessonDocument } from '../../../../content/lesson-document.ts';
@@ -85,84 +86,96 @@ export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, onGen
 
   if (!open) {
     return (
-      <p className="actions">
-        <button type="button" className="secondary" onClick={() => setOpen(true)} disabled={disabled}>
+      <div className="panel">
+        <h3>{ru.generation.title}</h3>
+        <p className="muted">{ru.generation.explanation}</p>
+        <Button fullWidth variant="default" onClick={() => setOpen(true)} disabled={disabled}>
           {ru.generation.title}
-        </button>
-      </p>
+        </Button>
+      </div>
     );
   }
 
   return (
-    <section>
-      <h2>{ru.generation.title}</h2>
+    <section className="panel">
+      <h3>{ru.generation.title}</h3>
       <p className="muted">{ru.generation.explanation}</p>
 
-      <label>
-        <span>{ru.generation.topic}</span>
-        <textarea rows={2} value={topic} onChange={(e) => setTopic(e.target.value)} disabled={busy} />
-      </label>
-      <p className="muted">{ru.generation.topicHint}</p>
+      <Stack gap="sm">
+        <Textarea
+          label={ru.generation.topic}
+          description={ru.generation.topicHint}
+          rows={2}
+          value={topic}
+          disabled={busy}
+          onChange={(event) => setTopic(event.currentTarget.value)}
+        />
 
-      <label>
-        <span>{ru.generation.vocabulary}</span>
-        <textarea rows={4} value={vocabulary} onChange={(e) => setVocabulary(e.target.value)} disabled={busy} />
-      </label>
-      <p className="muted">{ru.generation.vocabularyHint}</p>
+        <Textarea
+          label={ru.generation.vocabulary}
+          description={ru.generation.vocabularyHint}
+          rows={4}
+          value={vocabulary}
+          disabled={busy}
+          onChange={(event) => setVocabulary(event.currentTarget.value)}
+        />
 
-      <label>
-        <span>{ru.generation.exerciseCount}</span>
-        <input
-          type="number"
+        <NumberInput
+          label={ru.generation.exerciseCount}
+          description={ru.generation.exerciseCountHint(MIN_EXERCISES, MAX_EXERCISES)}
           min={MIN_EXERCISES}
           max={MAX_EXERCISES}
           value={exerciseCount}
-          onChange={(e) => setExerciseCount(Number(e.target.value))}
           disabled={busy}
+          onChange={(value) => setExerciseCount(Number(value))}
         />
-      </label>
-      <p className="muted">{ru.generation.exerciseCountHint(MIN_EXERCISES, MAX_EXERCISES)}</p>
 
-      <p className="muted">{ru.generation.kindMix}</p>
-      <ul className="choiceRows">
-        {EXERCISE_KINDS.map((kind) => (
-          <li key={kind}>
-            <label className="inline">
-              <span>{ru.exerciseKinds[kind] ?? kind}</span>
-              <input
-                type="number"
-                min={0}
-                max={MAX_EXERCISES}
-                value={kindMix[kind] ?? 0}
-                onChange={(e) => setKindMix(withCount(kindMix, kind, Number(e.target.value)))}
-                disabled={busy}
-              />
-            </label>
-          </li>
-        ))}
-      </ul>
-      <p className="muted">{ru.generation.kindMixHint}</p>
+        {/* An explicit control because otherwise generation over-produces
+            multiple choice — the cheapest Kind to write and the least useful to
+            learn from. */}
+        <div>
+          <p className="muted">{ru.generation.kindMix}</p>
+          <ul className="choiceRows">
+            {EXERCISE_KINDS.map((kind) => (
+              <li key={kind}>
+                <NumberInput
+                  label={ru.exerciseKinds[kind] ?? kind}
+                  min={0}
+                  max={MAX_EXERCISES}
+                  value={kindMix[kind] ?? 0}
+                  disabled={busy}
+                  onChange={(value) => setKindMix(withCount(kindMix, kind, Number(value)))}
+                />
+              </li>
+            ))}
+          </ul>
+          <p className="muted">{ru.generation.kindMixHint}</p>
+        </div>
 
-      <label>
-        <span>{ru.generation.continueFrom}</span>
-        <select
-          value={continueFrom ?? ''}
-          onChange={(e) => setContinueFrom(e.target.value === '' ? null : Number(e.target.value))}
+        <NativeSelect
+          label={ru.generation.continueFrom}
+          description={ru.generation.continueFromHint}
+          value={continueFrom === null ? '' : String(continueFrom)}
           disabled={busy}
-        >
-          <option value="">{ru.generation.continueFromNone}</option>
-          {earlier.map((lesson) => (
-            <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
-          ))}
-        </select>
-      </label>
-      <p className="muted">{ru.generation.continueFromHint}</p>
+          onChange={(event) => {
+            const chosen = event.currentTarget.value;
+            setContinueFrom(chosen === '' ? null : Number(chosen));
+          }}
+          data={[
+            { value: '', label: ru.generation.continueFromNone },
+            ...earlier.map((lesson) => ({ value: String(lesson.id), label: lesson.title })),
+          ]}
+        />
 
-      <label>
-        <span>{ru.generation.wishes}</span>
-        <textarea rows={3} value={wishes} onChange={(e) => setWishes(e.target.value)} disabled={busy} />
-      </label>
-      <p className="muted">{ru.generation.wishesHint}</p>
+        <Textarea
+          label={ru.generation.wishes}
+          description={ru.generation.wishesHint}
+          rows={3}
+          value={wishes}
+          disabled={busy}
+          onChange={(event) => setWishes(event.currentTarget.value)}
+        />
+      </Stack>
 
       <ModelAndEffort
         model={model}
@@ -186,17 +199,17 @@ export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, onGen
       )}
 
       <p className="actions">
-        <button type="button" onClick={generate} disabled={busy}>
+        <Button onClick={generate} disabled={busy}>
           {stream.running ? ru.generation.generating : ru.generation.generate}
-        </button>
+        </Button>
         {stream.running ? (
-          <button type="button" className="secondary" onClick={stream.cancel}>
+          <Button variant="default" onClick={stream.cancel}>
             {ru.generation.cancel}
-          </button>
+          </Button>
         ) : (
-          <button type="button" className="secondary" onClick={() => setOpen(false)} disabled={disabled}>
+          <Button variant="default" onClick={() => setOpen(false)} disabled={disabled}>
             {ru.draft.backToDraft}
-          </button>
+          </Button>
         )}
       </p>
 

@@ -7,6 +7,7 @@
 // knows how hard this Lesson is. Both Generation and Refinement ask it, so it is
 // one control rather than two that could come to offer different things.
 
+import { NativeSelect, Stack } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import { AUTHOR_MODELS } from '../../../../content/course-options.ts';
 import type { Effort } from '../../../../claude/effort.ts';
@@ -23,13 +24,14 @@ type Props = {
 
 export function ModelAndEffort({ model, effort, disabled, onModel, onEffort }: Props) {
   return (
-    <>
-      <label>
-        <span>{ru.generation.model}</span>
-        <select value={model} onChange={(e) => onModel(e.target.value)} disabled={disabled}>
-          {AUTHOR_MODELS.map((name) => <option key={name} value={name}>{name}</option>)}
-        </select>
-      </label>
+    <Stack gap="sm">
+      <NativeSelect
+        label={ru.generation.model}
+        value={model}
+        disabled={disabled}
+        onChange={(event) => onModel(event.currentTarget.value)}
+        data={AUTHOR_MODELS.map((name) => ({ value: name, label: name }))}
+      />
 
       <EffortSelect
         label={ru.generation.effort}
@@ -38,6 +40,6 @@ export function ModelAndEffort({ model, effort, disabled, onModel, onEffort }: P
         disabled={disabled}
         onEffort={onEffort}
       />
-    </>
+    </Stack>
   );
 }

@@ -14,6 +14,7 @@
 // is `null` here because a `<select>` has to name every option it offers, and a
 // missing key by the time it reaches the SDK.
 
+import { NativeSelect } from '@mantine/core';
 import { ru } from '../../ru.ts';
 import { EFFORT_CHOICES } from '../../authoring/form.ts';
 import type { Effort } from '../../claude/effort.ts';
@@ -29,23 +30,24 @@ type Props = {
 };
 
 export function EffortSelect({ label, hint, effort, disabled, onEffort }: Props) {
+  // A native select rather than Mantine's listbox, and deliberately: this is a
+  // fixed list of six that an Admin picks from with the keyboard while writing a
+  // Lesson, and the one thing it must never do is float a panel over the form it
+  // sits in. Mantine draws the box, so it matches every other control here.
   return (
-    <>
-      <label>
-        <span>{label}</span>
-        <select
-          value={effort ?? ''}
-          onChange={(e) => onEffort(e.target.value === '' ? null : e.target.value as Effort)}
-          disabled={disabled}
-        >
-          {EFFORT_CHOICES.map((choice) => (
-            <option key={choice ?? 'default'} value={choice ?? ''}>
-              {choice === null ? ru.generation.effortDefault : ru.efforts[choice] ?? choice}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="muted">{hint}</p>
-    </>
+    <NativeSelect
+      label={label}
+      description={hint}
+      value={effort ?? ''}
+      disabled={disabled}
+      onChange={(event) => {
+        const chosen = event.currentTarget.value;
+        onEffort(chosen === '' ? null : chosen as Effort);
+      }}
+      data={EFFORT_CHOICES.map((choice) => ({
+        value: choice ?? '',
+        label: choice === null ? ru.generation.effortDefault : ru.efforts[choice] ?? choice,
+      }))}
+    />
   );
 }

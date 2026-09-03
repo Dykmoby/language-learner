@@ -19,10 +19,12 @@ export default async function GuidancePage() {
 
   return (
     <main>
-      <h1>{ru.guidance.title}</h1>
-      <p className="muted">{ru.guidance.explanation}</p>
-      <p className="muted">{ru.guidance.fixedExplanation}</p>
-      <p className="muted">{ru.guidance.healthNote}</p>
+      <div className="pageHead"><div><h1>{ru.guidance.title}</h1></div></div>
+      <div className="notice">
+        <p>{ru.guidance.explanation}</p>
+        <p className="muted">{ru.guidance.fixedExplanation}</p>
+        <p className="muted">{ru.guidance.healthNote}</p>
+      </div>
 
       <GuidanceEditor
         initial={standing.text}
@@ -32,7 +34,6 @@ export default async function GuidancePage() {
         maxLength={GUIDANCE_MAX_LENGTH}
       />
 
-      <p><a href="/admin">{ru.admin.back}</a></p>
     </main>
   );
 }

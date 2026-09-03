@@ -12,6 +12,7 @@
 // who scrolled past one deserves to be told before that becomes true.
 
 import { useState } from 'react';
+import { Button } from '@mantine/core';
 import { ru } from '../../../ru.ts';
 import { ExerciseQuestion } from '../../shared/exercise-question.tsx';
 import type { AttemptSummary, TestExerciseView } from '../../../tests/wire.ts';
@@ -38,7 +39,6 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
     return (
       <section>
         <p className="muted">{ru.test.empty}</p>
-        <p><a href={`/courses/${courseId}`}>{ru.test.backToCourse}</a></p>
       </section>
     );
   }
@@ -94,8 +94,9 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
     <section>
       <ol className="exercises">
         {exercises.map((exercise) => (
-          <li key={exercise.exerciseId}>
-            <p className="muted">{ru.test.position(exercise.position, exercises.length)}</p>
+          <li key={exercise.exerciseId} className="askCard">
+            <div className="askBody">
+            <p className="askKind">{ru.test.position(exercise.position, exercises.length)}</p>
             <ExerciseQuestion
               exercise={{
                 id: exercise.exerciseId,
@@ -114,6 +115,7 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
               disabled={busy}
               answered={false}
             />
+            </div>
           </li>
         ))}
       </ol>
@@ -124,24 +126,23 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
         <>
           <p className="error" role="alert">{ru.test.unanswered(unanswered.length)}</p>
           <p className="actions">
-            <button type="button" onClick={() => void send()}>{ru.test.submitAnyway}</button>
-            <button type="button" className="secondary" onClick={() => setPhase('answering')}>
+            <Button onClick={() => void send()}>{ru.test.submitAnyway}</Button>
+            <Button variant="default" onClick={() => setPhase('answering')}>
               {ru.test.keepAnswering}
-            </button>
+            </Button>
           </p>
         </>
       ) : (
         <p className="actions">
-          <button type="button" onClick={submit} disabled={busy}>
+          <Button onClick={submit} disabled={busy}>
             {busy ? ru.test.submitting : ru.test.submit}
-          </button>
+          </Button>
         </p>
       )}
 
       <h2>{ru.test.attemptsTitle}</h2>
       <AttemptList testId={testId} attempts={attempts} />
 
-      <p><a href={`/courses/${courseId}`}>{ru.test.backToCourse}</a></p>
     </section>
   );
 }

@@ -1,5 +1,3 @@
-'use client';
-
 // The Tests of a Course, beside its Lessons and deliberately not among them.
 //
 // A Lesson's place in the list is what unlocks the next one; a Test unlocks
@@ -26,14 +24,16 @@ export function CourseTests({ tests }: { tests: CourseTest[] }) {
         const latest = test.attempts.at(-1) ?? null;
         return (
           <li key={test.id}>
-            <a href={`/tests/${test.id}`}>{test.title}</a>
-            <span className="muted">
-              {' — '}{ru.test.exerciseCount(test.exerciseCount)}
-              {latest === null ? null : <>{' · '}{ru.test.attemptNumber(latest.attempt)}: <AttemptScore attempt={latest} /></>}
+            <span className="body">
+              <a href={`/tests/${test.id}`}>{test.title}</a>
+              <span className="muted">
+                {ru.test.exerciseCount(test.exerciseCount)}
+                {latest === null ? null : <>{' · '}{ru.test.attemptNumber(latest.attempt)}: <AttemptScore attempt={latest} /></>}
+              </span>
             </span>
             {latest === null || latest.passed === null ? null : (
-              <span className={latest.passed ? 'ok' : 'error'}>
-                {' '}{latest.passed ? ru.test.passed : ru.test.failed}
+              <span className={`tag ${latest.passed ? 'state-correct' : 'state-incorrect'}`}>
+                {latest.passed ? ru.test.passed : ru.test.failed}
               </span>
             )}
           </li>

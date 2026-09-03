@@ -14,15 +14,21 @@
 // here knows whether an Exercise is judged in code or by the Grader — both answer
 // on the same wire in the same shape, and finding out would only let the two
 // paths drift apart.
+//
+// The Verdict is drawn inside the card the answer is in rather than as a
+// paragraph below it. That is the redesign's one substantive change here: a
+// judgement is about the sentence above it, and a block that starts below a card
+// reads as being about the screen.
 
 import { useEffect, useState } from 'react';
+import { Button } from '@mantine/core';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import type { ExerciseKind } from '../../../../db/schema.ts';
 import { takeFrames, type ResultFrame, type RevealResult } from '../../../../practice/wire.ts';
 import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
 import { DisputeForm } from '../../../shared/dispute-form.tsx';
 import { ProgressBar, type Segment } from '../../../shared/progress-bar.tsx';
-import { stateOfVerdict, type JudgementState } from '../../../shared/verdict-state.ts';
+import { stateClass, stateOfVerdict, type JudgementState } from '../../../shared/verdict-state.ts';
 import { VerdictLine } from '../../../shared/verdict-line.tsx';
 
 export type CurrentExercise = {
@@ -188,144 +194,158 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     return (
       <section>
         {progress}
-        <p className="ok" role="status">{ru.practice.lessonComplete}</p>
-        {nextLessonId === null ? (
-          <p className="muted">{ru.practice.courseComplete}</p>
-        ) : (
-          <>
-            <p className="muted">{ru.practice.nextLessonUnlocked}</p>
-            <p className="actions">
-              <a className="button" href={`/lessons/${nextLessonId}`}>{ru.practice.nextLesson}</a>
-            </p>
-          </>
-        )}
-        <p><a href={`/courses/${courseId}`}>{ru.lesson.backToCourse}</a></p>
+        <div className="askCard">
+          <div className="askBody">
+            <p className="ok" role="status">{ru.practice.lessonComplete}</p>
+            {nextLessonId === null ? (
+              <p className="muted">{ru.practice.courseComplete}</p>
+            ) : (
+              <>
+                <p className="muted">{ru.practice.nextLessonUnlocked}</p>
+                <p className="actions">
+                  <a className="button" href={`/lessons/${nextLessonId}`}>{ru.practice.nextLesson}</a>
+                </p>
+              </>
+            )}
+            <p><a href={`/courses/${courseId}`}>{ru.lesson.backToCourse}</a></p>
+          </div>
+        </div>
       </section>
     );
   }
 
   const verdictState = result?.verdict == null ? null : stateOfVerdict(result.verdict);
   const advancing = result?.status === 'graded' && result.verdict === 'correct';
+  // Which state the judgement block is tinted with. A failed grading is one of
+  // the six and is not a Verdict, so it is decided before the Verdict is read.
+  const blockState = result === null
+    ? null
+    : result.status === 'grading_failed' ? 'failed' : verdictState ?? 'incorrect';
 
   return (
     <section>
       {progress}
-      <ExerciseQuestion
-        exercise={current}
-        answers={answers}
-        onAnswer={setAnswers}
-        disabled={phase === 'checking'}
-        answered={phase === 'result' || phase === 'revealed'}
-        // Which gaps held, once a Verdict is in. Empty while answering and on
-        // everything the Grader judges, where an Error is where the detail is.
-        gaps={phase === 'result' ? result?.gaps ?? [] : []}
-      />
 
-      {refusal ? <p className="error" role="alert">{refusal}</p> : null}
+      <div className="askCard">
+        <div className="askBody">
+          <ExerciseQuestion
+            exercise={current}
+            answers={answers}
+            onAnswer={setAnswers}
+            disabled={phase === 'checking'}
+            answered={phase === 'result' || phase === 'revealed'}
+            // Which gaps held, once a Verdict is in. Empty while answering and on
+            // everything the Grader judges, where an Error is where the detail is.
+            gaps={phase === 'result' ? result?.gaps ?? [] : []}
+          />
 
-      {phase === 'answering' ? (
-        <p className="actions">
-          <button type="button" onClick={submit}>{ru.practice.submit}</button>
-          {revealOffered ? (
-            <button type="button" className="secondary" onClick={reveal}>{ru.practice.reveal}</button>
+          {refusal ? <p className="error" role="alert">{refusal}</p> : null}
+
+          {phase === 'answering' ? (
+            <p className="actions">
+              <Button onClick={submit}>{ru.practice.submit}</Button>
+              {revealOffered ? (
+                <Button variant="default" onClick={reveal}>{ru.practice.reveal}</Button>
+              ) : null}
+            </p>
           ) : null}
-        </p>
-      ) : null}
 
-      {phase === 'checking' ? (
-        <div>
-          {/* Roughly three seconds pass before the first token arrives. This says
-              what is happening rather than spinning at the Student — and it sits
-              in the row the buttons were in, at the height the buttons were, so
-              submitting does not move the answer the Student is still reading. */}
-          <p className="actions" role="status">
-            <span className="muted">
-              {checkingLong ? ru.practice.stillChecking : ru.practice.checking}
-            </span>
-          </p>
-          {streamed ? <p className="feedback">{streamed}</p> : null}
+          {phase === 'checking' ? (
+            <div>
+              {/* Roughly three seconds pass before the first token arrives. This says
+                  what is happening rather than spinning at the Student — and it sits
+                  in the row the buttons were in, at the height the buttons were, so
+                  submitting does not move the answer the Student is still reading. */}
+              <p className="actions" role="status">
+                <span className="muted">
+                  {checkingLong ? ru.practice.stillChecking : ru.practice.checking}
+                </span>
+              </p>
+              {streamed ? <p className="feedback">{streamed}</p> : null}
+            </div>
+          ) : null}
         </div>
-      ) : null}
 
-      {phase === 'result' && result ? (
-        <div className="result">
-          {result.status === 'grading_failed' ? (
-            // Never a wrong answer, and — until now — one sentence of Russian
-            // away from looking exactly like one. It has its own hue, its own
-            // rail and its own words: the attempt is not counted, the Exercise
-            // stays open, and nothing about the Student's answer was judged.
-            //
-            // Two sentences behind the one state, because a busy API and a
-            // broken one ask for opposite things from the Student: one is worth
-            // waiting out, and the other is not going to change in ten seconds.
-            <VerdictLine
-              state="failed"
-              role="alert"
-              detail={result.failure === 'busy' ? ru.practice.gradingBusy : ru.practice.gradingFailed}
-            />
-          ) : (
-            <>
-              {/* The Practice congratulates a step where the canonical label
-                  merely records one, so the wording is its own. The hue and the
-                  rail are not, which is what stops them drifting from what the
-                  Test review and the progress bar mean by the same fact. */}
+        {phase === 'result' && result && blockState ? (
+          <div className={`result ${stateClass(blockState)}`}>
+            {result.status === 'grading_failed' ? (
+              // Never a wrong answer, and — until now — one sentence of Russian
+              // away from looking exactly like one. It has its own hue, its own
+              // rail and its own words: the attempt is not counted, the Exercise
+              // stays open, and nothing about the Student's answer was judged.
+              //
+              // Two sentences behind the one state, because a busy API and a
+              // broken one ask for opposite things from the Student: one is worth
+              // waiting out, and the other is not going to change in ten seconds.
               <VerdictLine
-                state={verdictState ?? 'incorrect'}
-                words={PRACTICE_WORDS[verdictState ?? 'incorrect']}
+                state="failed"
+                role="alert"
+                detail={result.failure === 'busy' ? ru.practice.gradingBusy : ru.practice.gradingFailed}
               />
-              {result.feedbackRu ? <p className="feedback">{result.feedbackRu}</p> : null}
-              {result.corrected ? (
-                <p className="corrected">{ru.practice.corrected}: <strong>{result.corrected}</strong></p>
-              ) : null}
-              {result.errors.length > 0 ? (
-                <div className="errors">
-                  <h2>{ru.practice.errorsTitle}</h2>
-                  <ul>
-                    {result.errors.map((error, index) => (
-                      <li key={index}>
-                        <span className="errorType">{errorTypeLabel(error.type)}</span>
-                        {error.span ? <> <span className="span">{error.span}</span></> : null}
-                        <div>{error.explanationRu}</div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </>
-          )}
+            ) : (
+              <>
+                {/* The Practice congratulates a step where the canonical label
+                    merely records one, so the wording is its own. The hue and the
+                    rail are not, which is what stops them drifting from what the
+                    Test review and the progress bar mean by the same fact. */}
+                <VerdictLine
+                  state={verdictState ?? 'incorrect'}
+                  words={PRACTICE_WORDS[verdictState ?? 'incorrect']}
+                />
+                {result.feedbackRu ? <p className="feedback">{result.feedbackRu}</p> : null}
+                {result.corrected ? (
+                  <p className="corrected">{ru.practice.corrected}: <strong>{result.corrected}</strong></p>
+                ) : null}
+                {result.errors.length > 0 ? (
+                  <div className="errors">
+                    <h2>{ru.practice.errorsTitle}</h2>
+                    <ul>
+                      {result.errors.map((error, index) => (
+                        <li key={index}>
+                          <span className="errorType">{errorTypeLabel(error.type)}</span>
+                          {error.span ? <> <span className="span">{error.span}</span></> : null}
+                          <div>{error.explanationRu}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            )}
 
-          {/* An objection is only offered against a judgement that went against
-              the Student: a failed grading was never judged, and a correct
-              Verdict is not something anybody objects to. */}
-          {!advancing && result.status === 'graded' && result.submissionId !== null ? (
-            <DisputeForm submissionId={result.submissionId} onDisputed={() => setDisputed(true)} />
-          ) : null}
-
-          <p className="actions">
-            {advancing || disputed
-              ? <button type="button" onClick={advance}>{ru.practice.next}</button>
-              : <button type="button" onClick={retry}>{ru.practice.submit}</button>}
-            {!advancing && !disputed && result.progression.revealOffered ? (
-              <button type="button" className="secondary" onClick={reveal}>{ru.practice.reveal}</button>
+            {/* An objection is only offered against a judgement that went against
+                the Student: a failed grading was never judged, and a correct
+                Verdict is not something anybody objects to. */}
+            {!advancing && result.status === 'graded' && result.submissionId !== null ? (
+              <DisputeForm submissionId={result.submissionId} onDisputed={() => setDisputed(true)} />
             ) : null}
-          </p>
-          {!advancing && !disputed && !result.progression.revealOffered && result.status === 'graded' ? (
-            <p className="muted">{ru.practice.revealHint}</p>
-          ) : null}
-        </div>
-      ) : null}
 
-      {phase === 'revealed' && revealed ? (
-        <div className="result">
-          {/* Completed With Help: complete, and neither passed nor failed. It
-              borrows the hue of neither. */}
-          <VerdictLine state="help" words={ru.practice.revealed} />
-          <p className="corrected">{ru.practice.corrected}: <strong>{revealed.referenceAnswer}</strong></p>
-          <p className="actions">
-            <button type="button" onClick={advance}>{ru.practice.next}</button>
-          </p>
-        </div>
-      ) : null}
+            <p className="actions">
+              {advancing || disputed
+                ? <Button onClick={advance}>{ru.practice.next}</Button>
+                : <Button onClick={retry}>{ru.practice.submit}</Button>}
+              {!advancing && !disputed && result.progression.revealOffered ? (
+                <Button variant="default" onClick={reveal}>{ru.practice.reveal}</Button>
+              ) : null}
+            </p>
+            {!advancing && !disputed && !result.progression.revealOffered && result.status === 'graded' ? (
+              <p className="muted">{ru.practice.revealHint}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {phase === 'revealed' && revealed ? (
+          <div className={`result ${stateClass('help')}`}>
+            {/* Completed With Help: complete, and neither passed nor failed. It
+                borrows the hue of neither. */}
+            <VerdictLine state="help" words={ru.practice.revealed} />
+            <p className="corrected">{ru.practice.corrected}: <strong>{revealed.referenceAnswer}</strong></p>
+            <p className="actions">
+              <Button onClick={advance}>{ru.practice.next}</Button>
+            </p>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
