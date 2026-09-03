@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; background: #f7f8fa; color: #16181d; -webkit-font-smoothing: antialiased; }
+    a { color: #3559c7; text-decoration: none; }
+    a:hover { color: #28459d; }
+  </style>
+</helmet>
+
+
+<div style="min-height: 760px; background: #f7f8fa; display: flex; align-items: center; justify-content: center; padding: 48px 40px">
+  <div style="display: flex; gap: 28px; align-items: flex-start">
+
+    <!-- Sign in -->
+    <div style="width: 400px; background: #ffffff; border: 1px solid #e6e8ee; border-radius: 16px; box-shadow: 0 1px 3px rgba(16,24,40,0.06); padding: 34px 32px; display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 19px; font-weight: 600; letter-spacing: -0.015em">Language Learner</span>
+        <span style="font-size: 14px; color: #5b6371">Войдите, чтобы продолжить курс</span>
+      </div>
+
+      <div style="background: rgba(179,38,30,0.06); border-left: 3px solid #b3261e; border-radius: 0 8px 8px 0; padding: 11px 14px; font-size: 13.5px; color: #96201a">
+        Неверный логин или пароль
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <label style="display: flex; flex-direction: column; gap: 7px">
+          <span style="font-size: 13px; font-weight: 500; color: #444b59">Логин</span>
+          <input type="text" value="dykmoby" style="font-family: inherit; font-size: 15px; height: 44px; padding: 0 13px; border: 1px solid #dfe3ea; border-radius: 10px; background: #ffffff; color: #16181d; outline: none">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 7px">
+          <span style="font-size: 13px; font-weight: 500; color: #444b59">Пароль</span>
+          <input type="password" value="passphrase" style="font-family: inherit; font-size: 15px; height: 44px; padding: 0 13px; border: 1px solid #3559c7; border-radius: 10px; background: #ffffff; color: #16181d; outline: none; box-shadow: 0 0 0 3px rgba(53,89,199,0.12)">
+        </label>
+      </div>
+
+      <button type="button" style="font-family: inherit; font-size: 15px; font-weight: 500; height: 46px; border: 0; border-radius: 10px; background: #3559c7; color: #ffffff; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,0.08)">Войти</button>
+    </div>
+
+    <!-- Temporary Password replaced -->
+    <div style="width: 400px; background: #ffffff; border: 1px solid #e6e8ee; border-radius: 16px; box-shadow: 0 1px 3px rgba(16,24,40,0.06); padding: 34px 32px; display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 19px; font-weight: 600; letter-spacing: -0.015em">Смена пароля</span>
+        <span style="font-size: 14px; color: #5b6371">Ваш пароль временный: его знает ещё один человек. Пока вы его не замените, другие экраны недоступны.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <label style="display: flex; flex-direction: column; gap: 7px">
+          <span style="font-size: 13px; font-weight: 500; color: #444b59">Временный пароль</span>
+          <input type="password" value="temporary" style="font-family: inherit; font-size: 15px; height: 44px; padding: 0 13px; border: 1px solid #dfe3ea; border-radius: 10px; background: #ffffff; outline: none">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 7px">
+          <span style="font-size: 13px; font-weight: 500; color: #444b59">Новый пароль</span>
+          <input type="password" value="newpassword" style="font-family: inherit; font-size: 15px; height: 44px; padding: 0 13px; border: 1px solid #dfe3ea; border-radius: 10px; background: #ffffff; outline: none">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 7px">
+          <span style="font-size: 13px; font-weight: 500; color: #444b59">Ещё раз</span>
+          <input type="password" value="newpassword" style="font-family: inherit; font-size: 15px; height: 44px; padding: 0 13px; border: 1px solid #dfe3ea; border-radius: 10px; background: #ffffff; outline: none">
+        </label>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <p style="margin: 0; font-size: 12.5px; color: #8b93a3">Не короче двенадцати символов.</p>
+        <p style="margin: 0; font-size: 12.5px; color: #8b93a3">Все остальные сессии этого аккаунта завершатся.</p>
+      </div>
+
+      <button type="button" style="font-family: inherit; font-size: 15px; font-weight: 500; height: 46px; border: 0; border-radius: 10px; background: #3559c7; color: #ffffff; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,0.08)">Сохранить пароль</button>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

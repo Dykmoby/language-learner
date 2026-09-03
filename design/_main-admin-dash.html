@@ -1,0 +1,104 @@
+
+  <main style="flex-grow: 1; padding: 28px 40px 56px; display: flex; flex-direction: column; align-items: center">
+    <div style="width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 26px">
+
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em">Курсы</h1>
+
+      <!-- Health, read from the last recorded run — never spends a Grader call to render -->
+      <div style="background: #ffffff; border: 1px solid #e6e8ee; border-left: 4px solid #10693c; border-radius: 0 12px 12px 0; box-shadow: 0 1px 2px rgba(16,24,40,0.04); padding: 16px 20px; display: flex; align-items: center; gap: 16px">
+        <span style="width: 32px; height: 32px; flex: none; border-radius: 999px; background: rgba(16,105,60,0.10); color: #10693c; display: flex; align-items: center; justify-content: center">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        </span>
+        <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+          <span style="font-size: 14.5px; font-weight: 600; color: #0d5231">Проверка работает</span>
+          <span style="font-size: 13px; color: #5b6371">Последний запуск сегодня в 09:14 · по расписанию · 4,8 с</span>
+        </div>
+        <a href="#" style="font-size: 13.5px; font-weight: 500">Открыть проверку →</a>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+        <a href="#" style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); padding: 20px; display: flex; flex-direction: column; gap: 12px; color: #16181d">
+          <span style="font-size: 16.5px; font-weight: 600; letter-spacing: -0.01em">Английский с нуля</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span style="font-size: 12px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">Английский</span>
+            <span style="font-size: 12px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">A2</span>
+            <span style="font-size: 12px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">5 уроков</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #8b93a3">claude-opus-5 · low</span>
+        </a>
+        <a href="#" style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); padding: 20px; display: flex; flex-direction: column; gap: 12px; color: #16181d">
+          <span style="font-size: 16.5px; font-weight: 600; letter-spacing: -0.01em">Тоҷикӣ. Аввалин қадам</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span style="font-size: 12px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">Таджикский</span>
+            <span style="font-size: 12px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">A1</span>
+            <span style="font-size: 12px; color: #5b6371; background: #f4f6f9; border-radius: 999px; padding: 4px 10px">4 урока</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #8b93a3">claude-sonnet-5 · medium</span>
+        </a>
+
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #fbfcfd">
+          <span style="font-size: 13px; font-weight: 600; color: #444b59">Новый курс</span>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <input type="text" placeholder="Название" style="font-family: inherit; font-size: 13.5px; height: 38px; padding: 0 11px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; outline: none">
+            <div style="display: flex; gap: 8px">
+              <select style="font-family: inherit; font-size: 13.5px; height: 38px; padding: 0 9px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; flex-grow: 1; outline: none"><option>Английский</option></select>
+              <select style="font-family: inherit; font-size: 13.5px; height: 38px; padding: 0 9px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; width: 76px; outline: none"><option>A2</option></select>
+            </div>
+            <button type="button" style="font-family: inherit; font-size: 13.5px; font-weight: 500; height: 38px; border: 0; border-radius: 8px; background: #3559c7; color: #ffffff; cursor: pointer">Создать</button>
+          </div>
+          <div style="border-top: 1px solid #eef0f4; padding-top: 10px; display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12.5px; color: #8b93a3">…или загрузить из файла</span>
+            <button type="button" style="font-family: inherit; font-size: 13px; height: 34px; border: 1px solid #dfe3ea; border-radius: 8px; background: #ffffff; color: #444b59; cursor: pointer">Выбрать JSON</button>
+            <span style="font-size: 11.5px; color: #a7adba">Импорт всегда создаёт новый курс</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coherence Guard, beside the Disputes it belongs with -->
+      <section style="display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8b93a3">Как часто Grader ошибается</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+          <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 24px; font-weight: 600; letter-spacing: -0.02em">7 из 412</span>
+            <span style="font-size: 13px; color: #5b6371">Coherence Guard поправил вердикт</span>
+          </div>
+          <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: #0d5231">5</span>
+            <span style="font-size: 13px; color: #5b6371">заставил признать верным</span>
+          </div>
+          <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: #96201a">2</span>
+            <span style="font-size: 13px; color: #5b6371">запретил признать верным</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- The queue, oldest first -->
+      <section style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8b93a3">Споры в очереди</h2>
+          <a href="#" style="font-size: 13px">Все споры →</a>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e6e8ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); padding: 4px 20px">
+          <div style="display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid #f2f4f7">
+            <span style="width: 3px; height: 30px; flex: none; border-radius: 999px; background: repeating-linear-gradient(180deg, #64409f 0 3px, transparent 3px 7px)"></span>
+            <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0">
+              <span style="font-size: 14px">I ___ to London twice, and I ___ there again next spring.</span>
+              <span style="font-size: 12.5px; color: #8b93a3">zarina · Английский с нуля · урок 4 · 3 дня назад</span>
+            </div>
+            <a href="#" style="font-size: 13.5px; font-weight: 500; white-space: nowrap">Разобрать →</a>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px; padding: 14px 0">
+            <span style="width: 3px; height: 30px; flex: none; border-radius: 999px; background: repeating-linear-gradient(180deg, #64409f 0 3px, transparent 3px 7px)"></span>
+            <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0">
+              <span style="font-size: 14px">Переведите: «Я живу здесь пять лет.»</span>
+              <span style="font-size: 12.5px; color: #8b93a3">dykmoby · Английский с нуля · тест 1 · вчера</span>
+            </div>
+            <a href="#" style="font-size: 13.5px; font-weight: 500; white-space: nowrap">Разобрать →</a>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
