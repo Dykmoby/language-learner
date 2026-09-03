@@ -4,11 +4,22 @@
    Consequences only. Every colour and every type size below names a token from
    `tokens.css`, and `tests/design-tokens.test.ts` refuses a rule that writes one
    of its own — which is what keeps the two halves from growing back together.
-   Spacing names the scale wherever the scale has the step, which is nearly
-   everywhere; what is left is one-off geometry that belongs to a single element
-   and would be a lie as a shared token — the width of a fill-gap field, the
-   height a streaming panel stops growing at, the width below which a chart
-   starts to scroll.
+   Spacing names the scale wherever the scale has the step; what is left is
+   one-off geometry that belongs to a single element and would be a lie as a
+   shared token.
+
+   What changed with Mantine: the library owns the controls, so the rules that
+   used to paint every `button`, `input` and `select` in the application are
+   scoped away from anything it renders. They stay for the two screens that are
+   deliberately dependency-free — sign-in and the password change, which must
+   work with no client bundle at all — and for the answer controls the Practice
+   builds by hand. Both sets read the same tokens Mantine's theme reads, so a
+   native control and a Mantine one are the same control.
+
+   What Mantine does not own, and this file still does: the six-state system, the
+   progress bar, the Theory prose, the vocabulary an answer and its judgement are
+   shown in, and the navigation column. Those are this application's, not a
+   library's.
 
    Read the token layer first — it is where the decisions are. */
 
@@ -21,199 +32,379 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- The shell ---------------------------------------------------------------
+   A navigation column and the work beside it.
+
+   The chrome used to be a bar across the top, and the bar had to carry every
+   way out of every screen in one row — which is why each screen had grown a
+   back-link at the bottom as well. A column has room for the way out *and* for
+   where you are in the Lesson, so the back-links are gone rather than
+   duplicated.
+
+   It does not scroll with the page: a Practice screen is worked for an hour, and
+   the list of Exercises behind it is the thing a Student checks without wanting
+   to lose their place in the one in front of them. */
+
+.appShell {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+.appWork {
+  flex: 1;
+  min-width: 0;
 }
 
 main {
   max-width: var(--measure);
   margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-7);
+  padding: var(--space-6) var(--space-5) var(--space-7);
 }
 
-/* --- The header --------------------------------------------------------------
-   Quiet on purpose. This is a private application for two people who will sit in
-   front of it for an hour at a time, so the chrome states where you are and how
-   to leave and then stops asking for attention: one hairline, one surface a shade
-   off the page, and no colour of its own.
-
-   It does not stick. A bar that follows a Student down a Lesson's Theory is a bar
-   that is in the way for the twenty minutes they are reading it, and everything
-   here is one scroll from the top. */
-
-.appHeader {
-  background: var(--surface);
-  border-bottom: var(--border-width) solid var(--line);
-}
-/* The Admin section is set wider than the Student's screens, so the header above
-   it widens too rather than stopping where the page does not. */
+/* The Admin section is denser than everything else here — a Lesson's worth of
+   Exercise forms rather than one Exercise — so it is set wider. */
 .adminSection main { max-width: var(--measure-wide); }
-.appHeader.wide > div { max-width: var(--measure-wide); }
 
-.appHeader > div {
-  max-width: var(--measure);
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-4);
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+/* No session: the sign-in and password screens render no navigation, so the
+   work column is the whole page and its content is centred in it rather than
+   sitting against a column edge that is not there. */
+.appWork.unframed main {
+  max-width: var(--measure-narrow);
+  padding-top: var(--space-7);
 }
-.appHeader .appName {
+
+/* --- The navigation column --------------------------------------------------
+   Everything that used to be a back-link at the bottom of a screen, in one place
+   that is always in the same place.
+
+   `.appNav` is the handle `tests/app-chrome-http.test.ts` holds it by: that test
+   is about two live defects — a Student who could not sign out, and a way back
+   that led where it was clicked — and it asserts the chrome is present on every
+   signed-in screen rather than asserting anything about how it looks. */
+
+.appNav {
+  position: sticky;
+  top: 0;
+  align-self: stretch;
+  width: var(--nav-width);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  height: 100vh;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-3);
+  background: var(--surface);
+  border-right: var(--border-width) solid var(--line);
+}
+.appNav.admin { width: var(--nav-width-admin); }
+
+.appNav .appName {
+  display: block;
+  padding: 0 var(--space-3);
   color: var(--fg);
+  font-size: var(--text-base);
   font-weight: var(--weight-semibold);
   text-decoration: none;
+  line-height: var(--leading-tight);
 }
-/* Which Course is open, set apart from the application's own name by weight and
-   by a separator rather than by a second colour. */
-.appHeader .openCourse {
+/* Which Course is open, under the name of the application. It is a link because
+   it is also the way back into that Course from a Lesson inside it. */
+.appNav .openCourse {
+  display: block;
+  padding: var(--space-1) var(--space-3) 0;
   color: var(--fg-muted);
+  font-size: var(--text-sm);
   text-decoration: none;
 }
-.appHeader .openCourse::before {
-  content: '·';
-  margin-right: var(--space-3);
-  color: var(--line-strong);
-}
-.appHeader nav {
-  margin-left: auto;
+.appNav .openCourse:hover { color: var(--accent); }
+
+.appNav nav { display: flex; flex-direction: column; gap: var(--space-1); }
+.appNav nav a {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-size: var(--text-sm);
+  text-decoration: none;
 }
-.appHeader nav a { font-size: var(--text-sm); }
-.appHeader form { margin: 0; }
-.appHeader button {
+.appNav nav a:hover { background: var(--surface-sunken); }
+.appNav nav a.here {
+  background: var(--accent-quiet);
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+}
+.appNav nav a svg { flex: none; }
+/* A count beside a link — Disputes waiting on a decision. It is the queue's
+   length and nothing else; nothing here is scored. */
+.appNav nav .count {
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--wash, var(--surface-sunken));
+  color: var(--ink, var(--fg-muted));
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.appNav .groupLabel {
+  padding: 0 var(--space-3);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The Lessons of the open Course, with the one being worked opened out. This is
+   what a column buys that a bar could not: where you are, beside what you are
+   doing, without a screen of its own. */
+.appNav .lessonRail { display: flex; flex-direction: column; gap: var(--space-1); }
+.appNav .lessonRail a,
+.appNav .lessonRail span.locked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+.appNav .lessonRail a:hover { background: var(--surface-sunken); color: var(--fg); }
+.appNav .lessonRail span.locked { color: var(--line-strong); }
+.appNav .lessonRail .open {
+  background: var(--accent-quiet);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) 0;
+}
+.appNav .lessonRail .open > a { color: var(--accent); font-weight: var(--weight-semibold); }
+.appNav .lessonRail .open nav { padding: var(--space-1) 0 0 calc(var(--space-6) + var(--space-1)); }
+.appNav .lessonRail .open nav a { padding: var(--space-1) var(--space-2); font-size: var(--text-sm); }
+
+/* A Lesson's standing as a mark rather than as a word: pass, finished with help,
+   where you are, and not yet open. The four are the progress bar's vocabulary at
+   one Lesson's scale, so they take their fill from the same rails. */
+.appNav .mark {
+  width: var(--space-5);
+  height: var(--space-5);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+.appNav .mark[class*='state-'] {
+  background: var(--wash, var(--surface-sunken));
+  color: var(--ink, var(--fg-muted));
+}
+.appNav .mark.here {
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+}
+
+.appNav .account {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--line);
+}
+.appNav .account .who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--text-sm);
 }
-
-h1 {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-tight);
-  margin: 0 0 var(--space-5);
+.appNav .account .avatar {
+  width: var(--space-6);
+  height: var(--space-6);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent-quiet);
+  color: var(--accent);
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }
+.appNav .account form { margin: 0; }
+/* Icon only, so it is a square rather than a button with an empty label in it. */
+.appNav .account button {
+  min-height: var(--space-6);
+  width: var(--space-6);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
-h2 {
-  font-size: var(--text-xl);
-  line-height: var(--leading-tight);
-  margin: var(--space-6) 0 var(--space-3);
+/* Narrow screens get the column back as a strip along the top. A phone has no
+   room for a sixteen-rem gutter, and a Lesson read on one is read in the same
+   measure the desktop sets. */
+@media (max-width: 60rem) {
+  .appShell { flex-direction: column; }
+  .appNav,
+  .appNav.admin {
+    position: static;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    border-right: 0;
+    border-bottom: var(--border-width) solid var(--line);
+  }
+  .appNav nav { flex-direction: row; flex-wrap: wrap; }
+  .appNav .lessonRail,
+  .appNav .groupLabel { display: none; }
+  .appNav .account { margin-top: 0; padding-top: 0; border-top: 0; }
+  .appWork { width: 100%; }
+}
+
+/* --- Headings ----------------------------------------------------------------
+   Mantine's Title reads the same scale from the theme; these are for the plain
+   screens that render no Mantine component at all. */
+
+h1 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+h2 {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.015em;
+}
+h3 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
 }
 
 a { color: var(--accent); }
 
-/* --- Form controls ----------------------------------------------------------
-   The authoring forms choose from fixed lists — a Language, a CEFR level, a
-   Grader model, an Exercise Kind — so a select is as much a form control here as
-   a text input, and has to look like one. */
+/* --- Native form controls ----------------------------------------------------
+   Scoped away from anything Mantine renders, which is what `:not([class*='mantine-'])`
+   is doing on every selector here. Two sets of controls exist on purpose: the
+   library's, wherever a screen is already a client component, and these, on the
+   two screens that must render without a bundle and on the answer controls the
+   Practice assembles inside a sentence. They read the same tokens, so the
+   difference is invisible — and it stays invisible only because neither set is
+   allowed to style the other. */
 
-label { display: block; margin-bottom: var(--space-4); }
-label span {
+label:not([class*='mantine-']) { display: block; margin-bottom: var(--space-4); }
+label:not([class*='mantine-']) > span:not([class*='mantine-']) {
   display: block;
   margin-bottom: var(--space-1);
   color: var(--fg-muted);
   font-size: var(--text-sm);
 }
 
-input[type='text'],
-input[type='password'],
-input[type='number'],
-select,
-textarea {
+input[type='text']:not([class*='mantine-']),
+input[type='password']:not([class*='mantine-']),
+input[type='number']:not([class*='mantine-']),
+select:not([class*='mantine-']),
+textarea:not([class*='mantine-']) {
   width: 100%;
   padding: var(--space-2) var(--space-3);
   font-family: inherit;
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--fg);
-  background: var(--bg);
+  background: var(--surface);
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius);
 }
-input[type='text'], input[type='password'], input[type='number'], select {
+input[type='text']:not([class*='mantine-']),
+input[type='password']:not([class*='mantine-']),
+input[type='number']:not([class*='mantine-']),
+select:not([class*='mantine-']) {
   min-height: var(--control-height);
 }
-/* An Exercise count and a pass threshold are the two places a number is typed —
-   both in the Admin section, and both narrow enough that a full-width field
-   would say the wrong thing about what is expected. */
-input[type='number'] { width: 8rem; }
+input[type='number']:not([class*='mantine-']) { width: 8rem; }
 /* Vertical only. A textarea that can be dragged wider than its column is a
    textarea that can be dragged out of the measure it was set in. */
-textarea { resize: vertical; }
+textarea:not([class*='mantine-']) { resize: vertical; }
 
 /* One visible focus ring for every control, and it is the accent rather than the
    browser's own — which differs per browser and, in one of them, is a colour
    this palette has no say over. */
-:where(input, select, textarea, button, a):focus-visible {
+:where(input, select, textarea, button, a, summary):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* A file input is a control like any other and had been left looking like text
-   beside the fields it sits with. The button inside it is the browser's, so what
-   is shared is the box around it. */
-input[type='file'] {
-  width: 100%;
-  font-family: inherit;
-  font-size: var(--text-sm);
-  color: var(--fg-muted);
-  padding: var(--space-2) var(--space-3);
-  min-height: var(--control-height);
-  background: var(--bg);
-  border: var(--border-width) dashed var(--line-strong);
-  border-radius: var(--radius);
-}
-input[type='file']::file-selector-button {
-  font-family: inherit;
-  font-size: var(--text-sm);
-  margin-right: var(--space-3);
-  padding: var(--space-1) var(--space-3);
-  color: var(--fg);
-  background: var(--surface);
-  border: var(--border-width) solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
 /* Big enough to hit, and drawn in the accent so a ticked box reads as ticked
    rather than as the operating system's grey. */
-input[type='checkbox'], input[type='radio'] {
+input[type='checkbox']:not([class*='mantine-']),
+input[type='radio']:not([class*='mantine-']) {
   width: 1.05em;
   height: 1.05em;
   accent-color: var(--accent);
 }
 
-button {
+button:not([class*='mantine-']) {
   font-family: inherit;
   font-size: var(--text-base);
-  min-height: var(--control-height);
-  padding: var(--space-2) var(--space-4);
+  font-weight: var(--weight-medium);
+  min-height: var(--control-height-lg);
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius);
   cursor: pointer;
   color: var(--accent-on);
   background: var(--accent);
   border: var(--border-width) solid transparent;
+  box-shadow: var(--shadow-sm);
 }
-button:disabled { opacity: 0.6; cursor: default; }
-button.secondary {
+button:not([class*='mantine-']):hover { background: var(--accent-hover); }
+button:not([class*='mantine-']):disabled { opacity: 0.6; cursor: default; }
+button.secondary:not([class*='mantine-']) {
   color: var(--fg);
-  background: transparent;
+  background: var(--surface);
   border-color: var(--line-strong);
+  box-shadow: none;
 }
+button.secondary:not([class*='mantine-']):hover { background: var(--surface-sunken); }
 
+/* A link that acts like a button — into the Practice, out of a finished
+   Lesson. Written as a link because it navigates. */
 a.button {
   display: inline-flex;
   align-items: center;
-  text-decoration: none;
-  font-family: inherit;
-  font-size: var(--text-base);
-  min-height: var(--control-height);
-  padding: var(--space-2) var(--space-4);
+  gap: var(--space-2);
+  min-height: var(--control-height-lg);
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
   color: var(--accent-on);
   background: var(--accent);
-  border: var(--border-width) solid transparent;
+  box-shadow: var(--shadow-sm);
 }
+a.button:hover { background: var(--accent-hover); color: var(--accent-on); }
 
 /* A row that holds controls, and holds its height whether or not it currently
    has any: the Practice replaces its buttons with a line of status while the
@@ -223,19 +414,16 @@ a.button {
   gap: var(--space-3);
   flex-wrap: wrap;
   align-items: center;
-  min-height: var(--control-height);
+  min-height: var(--control-height-lg);
 }
 
-/* The Exercise forms put several controls on one line — an option, whether it is
-   the Reference Answer, whether it is accepted, and a way to remove it — so the
-   label-on-its-own-line default has to be opted out of rather than fought. */
-label.inline {
+label.inline:not([class*='mantine-']) {
   display: inline-flex;
-  gap: var(--space-1);
-  align-items: baseline;
+  gap: var(--space-2);
+  align-items: center;
   margin-right: var(--space-4);
 }
-label.inline span {
+label.inline:not([class*='mantine-']) > span {
   display: inline;
   margin: 0;
   color: var(--fg);
@@ -249,110 +437,137 @@ label.inline span {
 .error { color: var(--state-incorrect-ink); margin: 0 0 var(--space-4); }
 .ok { color: var(--state-correct-ink); }
 .muted { color: var(--fg-muted); }
+.lead { color: var(--fg-muted); font-size: var(--text-lg); margin: 0 0 var(--space-5); }
 
-/* --- Sign in -----------------------------------------------------------------
-   The one screen with no header, no session and nothing else on it, so it is the
-   one screen that can afford to be mostly space. It is also the first thing
-   anybody sees of this application, which is the whole argument for the card:
-   everything after it is a working surface, and this is not one. */
+/* --- The dependency-free screens ---------------------------------------------
+   Sign-in and the password change. A card on the page, and everything inside it
+   native: the one thing that must never fail here is replacing a password
+   somebody else already knows, and a form that waits for a bundle is a form with
+   one more way to not be there. */
 
 main.signIn {
   max-width: var(--measure-narrow);
-  padding-top: var(--space-7);
+  margin: var(--space-7) auto;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
 }
-main.signIn h1 { margin-bottom: var(--space-2); }
-main.signIn .lead { color: var(--fg-muted); margin: 0 0 var(--space-6); }
-main.signIn form {
+main.signIn h1 { margin: 0 0 var(--space-2); }
+main.signIn .lead { margin-bottom: var(--space-5); font-size: var(--text-base); }
+main.signIn form { margin: 0; }
+main.signIn form label:last-of-type { margin-bottom: var(--space-5); }
+main.signIn button { width: 100%; }
+main.signIn > p:last-child { margin-bottom: 0; }
+
+/* --- Lists ------------------------------------------------------------------
+   A Course's Lessons, a queue of Disputes, a roster: the same card in every
+   place a list of things that can be opened is shown. */
+
+ul.cards, ol.cards, ol.lessons, ul.attempts, ol.progressLessons {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+ul.cards > li, ol.cards > li, ol.lessons > li, ul.attempts > li, ol.progressLessons > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   background: var(--surface);
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-5) var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
-main.signIn button { width: 100%; justify-content: center; }
-
-/* --- Lists ------------------------------------------------------------------ */
-
-/* Rows rather than bullets. A Course is a list of things to be picked from, and
-   a hairline between them is what makes it scannable at a glance; the Lessons
-   keep their numbers, because their order is what unlocks what. */
-ul.cards, ol.lessons { padding-left: var(--space-5); margin: 0 0 var(--space-5); }
-ul.cards { list-style: none; padding-left: 0; }
-ul.cards > li, ol.lessons > li {
-  padding: var(--space-3) 0;
-  border-bottom: var(--border-width) solid var(--line);
+ol.lessons > li.locked {
+  background: none;
+  border-style: dashed;
+  box-shadow: none;
 }
-ul.cards > li:last-child, ol.lessons > li:last-child { border-bottom: none; }
-ol.lessons li.locked { color: var(--fg-muted); }
-ol.lessons li.locked::marker { color: var(--fg-muted); }
+ol.lessons > li.locked > span:first-child { color: var(--fg-muted); }
+ul.cards > li a, ol.lessons > li a, ul.attempts > li a, ol.cards > li a {
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+ul.cards > li a:hover, ol.lessons > li a:hover, ul.attempts > li a:hover, ol.cards > li a:hover {
+  text-decoration: underline;
+}
+ul.variants { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+ul.variants > li {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+}
+
+ol.exercises { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); }
 
 /* --- Theory ------------------------------------------------------------------
-   Long-form reading, and set as such rather than as interface text that happens
-   to be long. A Student sits with a Lesson's Theory for a quarter of an hour, so
-   it gets the narrow measure typography asks for, the looser rhythm, and a
-   heading hierarchy that separates rather than decorates.
-
-   The hierarchy has to be legible with the colour taken away, so it is carried
-   by size, weight and space, and the two smallest levels change shape rather
-   than shrinking further — at the fourth level there is no smaller left to go. */
+   The one screen that is prose rather than interface. It is read for a quarter
+   of an hour at a time, so it is set on the narrow measure, on the reading
+   rhythm, and left alone. */
 
 .theory {
   max-width: var(--measure-prose);
+  font-size: var(--text-lg);
   line-height: var(--leading-prose);
 }
 .theory > * { margin: 0; }
 .theory > * + * { margin-top: var(--space-4); }
 
 .theory h1, .theory h2, .theory h3, .theory h4, .theory h5, .theory h6 {
-  line-height: var(--leading-tight);
   font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
 }
 .theory h1 { font-size: var(--text-xl); }
 .theory h2 { font-size: var(--text-lg); }
-/* Level three is the body size and is told from body text by its weight, which
-   is the last distinction the scale has to give. */
 .theory h3 { font-size: var(--text-base); }
-/* Below that there is no smaller left to go, so these change shape instead —
-   and they share one treatment on purpose. A Lesson nested six deep has a
-   structure problem that no stylesheet should be pretending to solve. */
 .theory h4, .theory h5, .theory h6 {
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: var(--text-base);
   color: var(--fg-muted);
 }
 .theory > h1, .theory > h2, .theory > h3 { margin-top: var(--space-6); }
 .theory > h4, .theory > h5, .theory > h6 { margin-top: var(--space-5); }
-/* A rule above a top-level section, and only where it separates something from
-   something — never under the Lesson's own title. */
-.theory > h1:not(:first-child), .theory > h2:not(:first-child) {
-  border-top: var(--border-width) solid var(--line);
-  padding-top: var(--space-5);
-}
+.theory > h1:not(:first-child), .theory > h2:not(:first-child) { margin-top: var(--space-7); }
 
 .theory ul, .theory ol { padding-left: var(--space-5); }
 .theory li + li { margin-top: var(--space-2); }
-.theory img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.theory img { max-width: 100%; height: auto; border-radius: var(--radius-lg); }
 .theory a { text-underline-offset: 0.15em; }
 
+.theory blockquote {
+  border-left: var(--rail-width) solid var(--accent);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  background: var(--accent-quiet);
+  padding: var(--space-4) var(--space-5);
+}
 .theory table { border-collapse: collapse; margin: var(--space-4) 0; }
 .theory th, .theory td {
   border: var(--border-width) solid var(--line);
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   text-align: left;
 }
 .theory code {
   font-family: var(--font-mono);
+  font-size: var(--text-sm);
   background: var(--surface-sunken);
-  padding: 0.1em 0.3em;
+  padding: 0.1em 0.35em;
   border-radius: var(--radius-sm);
 }
 .theory pre {
   font-family: var(--font-mono);
+  font-size: var(--text-sm);
   background: var(--surface-sunken);
-  padding: var(--space-3);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   overflow-x: auto;
 }
+.theory pre code { background: none; padding: 0; }
 
 /* --- The state system --------------------------------------------------------
    design.md § Interface, and the whole of what used to be four screens each
@@ -366,10 +581,13 @@ ol.lessons li.locked::marker { color: var(--fg-muted); }
    cannot separate two of the hues.
 
    A state class carries the first two. It sets three locals and nothing else, so
-   the same six classes serve a one-line Verdict, a tinted block, and a 8px
-   segment of the progress bar without any of them redefining what a state looks
-   like. `src/app/shared/verdict-state.ts` is the same vocabulary in code, and
-   `tests/verdict-states.test.ts` fails if the two fall out of step. */
+   the same six classes serve a one-line Verdict, a tinted block, and a segment
+   of the progress bar without any of them redefining what a state looks like.
+   `src/app/shared/verdict-state.ts` is the same vocabulary in code, and
+   `tests/verdict-states.test.ts` fails if the two fall out of step.
+
+   Untouched by the redesign, deliberately. Nothing about a new coat of paint
+   makes a settled question about legibility worth re-opening. */
 
 .state-correct   { --ink: var(--state-correct-ink);   --wash: var(--state-correct-wash);   --rail: var(--rail-correct); }
 .state-partial   { --ink: var(--state-partial-ink);   --wash: var(--state-partial-wash);   --rail: var(--rail-partial); }
@@ -445,12 +663,37 @@ ol.progress .segment[class*='state-'] { background: var(--rail, var(--line-stron
    neither borrows a state's hue. */
 ol.progress .segment.current { background: var(--accent); }
 
-/* --- The Exercise being asked ------------------------------------------------ */
+/* --- The Exercise being asked ------------------------------------------------
+   The card the Practice and the Test put a question in, and the controls the
+   answer is written with. These are built by hand rather than taken from the
+   library for one reason: a fill-gap's inputs sit *inside* a sentence, and a
+   component that owns its own label, its own wrapper and its own margins cannot
+   be put in the middle of a line of prose. */
+
+.askCard {
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  /* The judgement is drawn edge to edge inside the card, so the padding lives on
+     the body rather than on the card and the tint can reach the border. */
+  overflow: hidden;
+}
+.askCard > .askBody { padding: var(--space-6); }
+.askCard > .askBody > * + * { margin-top: var(--space-4); }
+.askKind {
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
 
 .prompt {
   font-size: var(--text-lg);
-  line-height: var(--leading-normal);
+  line-height: var(--leading-prose);
   margin: var(--space-5) 0;
+  text-wrap: pretty;
 }
 .given {
   padding: var(--space-2) var(--space-3);
@@ -470,12 +713,22 @@ ol.progress .segment.current { background: var(--accent); }
   color: var(--ink, var(--fg));
 }
 
-ul.choices { list-style: none; padding: 0; }
+ul.choices { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 ul.choices label {
   display: flex;
-  gap: var(--space-2);
-  align-items: baseline;
-  margin-bottom: var(--space-1);
+  gap: var(--space-3);
+  align-items: center;
+  min-height: var(--control-height-lg);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+ul.choices label:hover { background: var(--surface-sunken); }
+ul.choices label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
 }
 ul.choices label span { color: var(--fg); font-size: var(--text-base); margin: 0; }
 
@@ -483,54 +736,73 @@ ul.choices label span { color: var(--fg); font-size: var(--text-base); margin: 0
    fragments down the moment it wraps. */
 .wordOrder .built {
   min-height: calc(var(--leading-normal) * 2em);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius);
-  background: var(--bg);
+  background: var(--surface-sunken);
+  font-size: var(--text-lg);
 }
 .wordOrder .fragments { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+/* Chips rather than buttons: a dozen of them sit in one row, and each is one
+   word. They take the ordinary control height, not the larger one. */
+.wordOrder .fragments button { min-height: var(--control-height); padding: 0 var(--space-4); }
 /* A used fragment keeps its place and stops being visible. Taking it out of the
    row would reflow every fragment after it — and the whole screen below, once
    the row lost a line — while the Student is mid-answer. */
 .wordOrder .fragments .used { visibility: hidden; }
 
 /* A fill-gap Exercise is one sentence with a hole in it, so the input sits in
-   the hole rather than on a line of its own underneath. */
-input.gap {
+   the hole rather than on a line of its own underneath. Underlined rather than
+   boxed, because a box in the middle of a sentence stops the sentence. */
+/* Typed with the attribute as well as the class, and not for tidiness: the
+   generic text-input rule above carries an attribute selector and a `:not()`,
+   which outweighs a bare class — so `input.gap` alone lost its width to
+   `width: 100%` and broke the sentence over three lines. */
+input[type='text'].gap {
   width: 8rem;
   padding: var(--space-1) var(--space-2);
   font-family: inherit;
-  font-size: var(--text-base);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
   color: var(--fg);
-  background: var(--bg);
-  border: var(--border-width) solid var(--line-strong);
-  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  border: 0;
+  border-bottom: 2px solid var(--line-strong);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
+input[type='text'].gap:focus { border-bottom-color: var(--accent); }
 
-/* --- The judgement ----------------------------------------------------------- */
+/* --- The judgement -----------------------------------------------------------
+   Attached to the card the answer is in rather than following it down the page:
+   a Verdict is about the answer above it, and a paragraph that starts below a
+   card is about the screen. */
 
-.result { margin-top: var(--space-5); }
+.result {
+  margin-top: 0;
+  border-top: var(--border-width) solid var(--line);
+  background: var(--wash, var(--surface-sunken));
+  border-left: var(--rail-width) solid var(--ink, var(--line-strong));
+  padding: var(--space-5) var(--space-5) var(--space-5) var(--space-4);
+}
+.result > * + * { margin-top: var(--space-3); }
+.result .verdict { margin-top: 0; }
 .feedback { white-space: pre-wrap; }
 .corrected {
   border-left: var(--rail-width) solid var(--state-correct-ink);
   padding-left: var(--space-3);
 }
 /* An Error is a fault, so it is marked in the incorrect hue whatever the Verdict
-   around it was — the answer may be half right, the Error is not.
-   
-   It says so here rather than leaving each screen to add the class, because two
-   of the three screens that show Errors did not: the Test review inherited the
-   hue of whatever state the Exercise was in, and the Admin's Dispute review sat
-   inside no state at all, where the rail did not merely come out grey — the
-   declaration was invalid and drew nothing. */
+   around it was — the answer may be half right, the Error is not. */
 .errors { --ink: var(--state-incorrect-ink); --rail: var(--rail-incorrect); }
-.errors ul { list-style: none; padding: 0; }
+.errors ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .errors li {
-  border-left: var(--rail-width) solid var(--ink);
-  padding: var(--space-1) 0 var(--space-1) var(--space-3);
-  margin-bottom: var(--space-3);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-left: var(--rail-width) solid var(--ink, var(--line-strong));
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: var(--space-3) var(--space-4);
 }
-.errors .errorType { font-weight: var(--weight-semibold); }
+.errors .errorType { font-weight: var(--weight-semibold); color: var(--ink, var(--fg)); }
 .errors .span {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -539,296 +811,357 @@ input.gap {
   border-radius: var(--radius-sm);
 }
 
-/* --- Authoring --------------------------------------------------------------- */
+/* --- Authoring ---------------------------------------------------------------
+   The Admin's screens, which are denser than a Student's by nature: a Lesson's
+   worth of Exercise forms rather than one Exercise.
 
-/* --- The Exercise forms ------------------------------------------------------
-   A Lesson's worth of them on one screen, each with its Kind, its options, its
-   Reference Answer and the answers it has come to accept. The question this
-   layout has to answer is where one Exercise stops and the next begins, and it
-   answers it three times over: a surface a shade off the page, a gap wide enough
-   to read as a gap, and the position of the Exercise set on its own line above
-   the fields rather than inside them. */
+   The editor is two columns — the Draft on the left, Claude on the right —
+   because generation and refinement used to sit below the whole list of
+   Exercises, which is the far end of a scroll from the thing they change. */
 
-ol.exercises { list-style: none; padding: 0; margin: 0; }
-ol.exercises > li {
+.editorLayout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+.editorLayout > .draft { flex: 1; min-width: 0; }
+.editorLayout > .aside {
+  width: 23rem;
+  flex: none;
+  position: sticky;
+  top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+@media (max-width: 75rem) {
+  .editorLayout { flex-direction: column; }
+  .editorLayout > .aside { width: 100%; position: static; }
+}
+
+/* A panel in either column. */
+.panel {
   background: var(--surface);
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-4) var(--space-2);
-  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
 }
-/* The line that says which Exercise this is, and how it will be judged. It is
-   the boundary as much as it is a label, so it is drawn as one. */
-ol.exercises > li > p:first-child {
-  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-4)) var(--space-4);
-  padding: var(--space-1) var(--space-4) var(--space-3);
-  border-bottom: var(--border-width) solid var(--line);
-  font-size: var(--text-sm);
-}
-/* A field inside a card sits on the page colour, so it stays a field rather than
-   melting into the card around it. */
-ol.exercises input[type='text'], ol.exercises input[type='number'],
-ol.exercises select, ol.exercises textarea { background: var(--bg); }
+.panel > h2:first-child, .panel > h3:first-child { margin-top: 0; }
 
-/* An option, whether it is the Reference Answer, whether it is accepted, and a
-   way to remove it — one line, and the line has to hold together as one thing. */
-ul.choiceRows { list-style: none; padding: 0; margin: 0 0 var(--space-3); }
+/* What a Draft's standing is, and the two writes, in one bar above the work
+   rather than at the bottom of it. */
+.workBar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin: calc(var(--space-6) * -1) calc(var(--space-5) * -1) var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border-bottom: var(--border-width) solid var(--line);
+}
+.workBar .spacer { flex: 1; }
+
+/* A standing, said in one word: published, changed, draft, generated. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+.tag[class*='state-'] { background: var(--wash, var(--surface-sunken)); color: var(--ink, var(--fg-muted)); }
+
+/* Where a Draft came from — written by hand, generated, or refined. Deliberately
+   not a state hue: a Draft's origin is a fact about who wrote it, and dressing
+   it as a Verdict would make the state system mean one more thing. */
+.madeBy {
+  display: inline-flex;
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+}
+
+/* One Exercise's form. */
+.exerciseForm {
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+}
+.exerciseForm .head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.exerciseForm .head .spacer { flex: 1; }
+ul.choiceRows { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 ul.choiceRows > li {
   display: flex;
   gap: var(--space-3);
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: var(--space-2);
-  padding: var(--space-2);
-  background: var(--bg);
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--radius);
 }
-ul.choiceRows input[type='text'] { flex: 1 1 12rem; width: auto; min-width: 0; }
-ul.choiceRows button { min-height: auto; padding: var(--space-1) var(--space-3); }
-
-/* The mark on a Draft that came from Claude, wherever Drafts are shown. Drawn as
-   a tag rather than set in the same muted grey as everything beside it: design.md
-   § Authoring wants it noticed, and a generated Reference Answer nobody has read
-   is the one thing that would silently poison grading for that Exercise. */
-.madeBy {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  border: var(--border-width) solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  color: var(--fg-muted);
-  background: var(--surface);
-}
-
-/* The Theory arriving while Claude writes it. Deliberately unstyled as prose and
-   scrollable rather than growing without limit: it is a Lesson being written, not
-   a Lesson, and it must not be mistaken for the editor's own content.
-
-   The repaint made that harder rather than easier — everything around it got
-   better looking — so the distinction is drawn rather than left to happen: a
-   sunken well, a dashed edge, and the muted colour of something provisional.
-   Nothing else in the Admin section is dashed all the way round. */
-pre.streaming {
-  white-space: pre-wrap;
-  max-height: 24rem;
-  overflow-y: auto;
-  background: var(--surface-sunken);
-  border: var(--border-width) dashed var(--line-strong);
-  border-left-width: var(--rail-width);
-  padding: var(--space-3);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-  color: var(--fg-muted);
-}
+ul.choiceRows > li > input[type='text'] { flex: 1; min-width: 12rem; }
 
 /* --- The Test review ---------------------------------------------------------
-   Two shapes of wrong, because the judgement classes fail differently: a
-   Grader-judged Exercise is marked whole, a Deterministic one is marked on the
-   option that was chosen. Both are a tinted background plus a coloured edge
-   rather than colour alone. */
+   Every Exercise, with the correct ones collapsed. What a Student came to read
+   is what went wrong; everything else is one click away. */
+
+.reviewHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+.reviewHead .spacer { flex: 1; }
 
 .review .score {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
-  margin: var(--space-2) 0 var(--space-1);
+  letter-spacing: -0.02em;
+  margin: 0;
 }
-/* An Exercise in the review carries its state through the system like everything
-   else, so this says only how a box wears one. */
+.review ol.exercises > li {
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4) var(--space-5);
+}
 .review ol.exercises > li[class*='state-'] {
-  border-color: var(--ink, var(--line));
-  background: var(--wash, transparent);
+  border-left: var(--rail-width) solid var(--ink, var(--line-strong));
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
-/* The one thing here that is about the review rather than about the state: a
-   correct Exercise is collapsed, so its box is quieter than the rest. */
-.review ol.exercises > li.state-correct { border-style: dashed; background: none; }
-
-/* A Deterministic Kind fails at exactly one token, so the option carries the
-   state — the right one marked, and the chosen wrong one struck through. */
+/* A correct Exercise is collapsed, so its box is quieter than the ones that are
+   open. */
+.review ol.exercises > li.state-correct { box-shadow: none; }
 .review ul.choices li {
-  padding: var(--space-1) var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--line);
   border-radius: var(--radius);
-  border: var(--border-width) solid transparent;
 }
 .review ul.choices li[class*='state-'] {
   border-color: var(--ink, var(--line));
   background: var(--wash, transparent);
+  color: var(--ink, var(--fg));
 }
 .review ul.choices li.state-incorrect { text-decoration: line-through; }
-
-/* A fill-gap has no options to mark, so the review marks the words themselves,
-   sitting in the sentence they were written into — the same two states, from the
-   same system. */
 .review .given strong[class*='state-'] {
-  padding: 0 var(--space-1);
-  border-radius: var(--radius);
-  color: var(--ink, var(--fg));
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.35em;
   background: var(--wash, transparent);
+  color: var(--ink, var(--fg));
 }
 .review .given strong.state-incorrect { text-decoration: line-through; }
 
-/* The state's name, in the state's own colour, on a line that is otherwise
-   muted metadata. */
 .stateName { color: var(--ink, var(--fg)); font-weight: var(--weight-medium); }
 
 /* --- Disputes ----------------------------------------------------------------
-   An objection is a fact about a judgement rather than a judgement, and it is
-   marked out by the state system like every other state rather than by a private
-   dashed border that only this screen knew about. */
+   The Student's side is a form under a Verdict; the Admin's is a screen where
+   the material and the decision sit side by side, because a decision made from
+   any one part of it alone is not a review. */
 
-.disputeForm { margin: var(--space-3) 0; }
-.disputeForm textarea { max-width: var(--measure); }
-
-/* What an Exercise already accepts, on the review screen: a list an Admin is
-   about to add to, so it reads as data rather than as prose. */
-ul.variants { list-style: none; padding: 0; margin: 0 0 var(--space-4); }
-ul.variants li {
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
+.disputeForm {
+  margin: var(--space-3) 0;
+  padding: var(--space-4);
   background: var(--surface);
   border: var(--border-width) solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
-/* Where an Admin decides. Set apart from the record above it, because everything
-   above is what happened and everything here changes it. */
-.decision {
-  border-top: var(--border-width) solid var(--line);
-  margin-top: var(--space-6);
-  padding-top: var(--space-5);
+.disputeForm textarea { max-width: var(--measure); }
+
+/* Work on the left, the thing that acts on it on the right. Used by the Dispute
+   review, where the decision must sit beside the material rather than under it,
+   and by a Course, where who is enrolled is a fact about the Course rather than
+   an item at the end of its Lessons. */
+.sideBySide { display: flex; align-items: flex-start; gap: var(--space-5); }
+.sideBySide > .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.sideBySide > .side {
+  width: 20rem;
+  flex: none;
+  position: sticky;
+  top: var(--space-5);
+}
+@media (max-width: 70rem) {
+  .sideBySide { flex-direction: column; }
+  .sideBySide > .side { width: 100%; position: static; }
 }
 
-/* Which Gap an upheld answer is confirmed for — #85. Part of the decision rather
-   than a setting beside it, so it sits inside the same block and is read before
-   the buttons are reached. */
-.decision fieldset.gapChoice {
+.decision {
+  background: var(--surface);
   border: var(--border-width) solid var(--line);
-  border-radius: var(--radius);
-  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5);
+}
+.decision fieldset.gapChoice {
+  border: 0;
+  padding: 0;
   margin: 0 0 var(--space-4);
 }
-.decision fieldset.gapChoice legend { padding: 0 var(--space-2); font-weight: var(--weight-semibold); }
+.decision fieldset.gapChoice legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
 .decision fieldset.gapChoice label {
   display: flex;
-  gap: var(--space-2);
-  align-items: baseline;
-  margin-bottom: var(--space-1);
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+/* Choosing which Gap a confirmed answer belongs to is a form choice, not a
+   ruling, so it is marked in the accent like every other chosen option. */
+.decision fieldset.gapChoice label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
 }
 .decision fieldset.gapChoice p { margin: var(--space-2) 0 0; }
+/* The two rulings are not mirror images, so each carries its own sentence and
+   the sentence sits under the control it explains. */
+.decision > .muted { margin: var(--space-2) 0 var(--space-4); font-size: var(--text-sm); }
+.decision > .muted:last-child { margin-bottom: 0; }
 
 /* --- Progress and statistics -------------------------------------------------
-   design.md § Progress and statistics. */
+   Where a Student stands, Lesson by Lesson and over time. */
 
-ol.progressLessons { list-style: none; padding: 0; margin: 0 0 var(--space-5); }
-ol.progressLessons li { margin-bottom: var(--space-5); }
-ol.progressLessons p { margin: 0 0 var(--space-1); }
-
-/* Whose record this is, where it is not the viewer's own. Marked out rather than
-   set in the muted grey everything else uses: it is the one line on the screen
-   that must not be skimmed past. */
 .viewingStudent {
-  border-left: var(--rail-width) solid var(--accent);
-  padding: var(--space-1) 0 var(--space-1) var(--space-3);
-  font-weight: var(--weight-semibold);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--accent-quiet);
+  color: var(--accent);
+  font-weight: var(--weight-medium);
 }
 
-ul.attempts { list-style: none; padding: 0; }
-ul.attempts li { margin-bottom: var(--space-2); }
+ol.progressLessons > li { display: block; }
+ol.progressLessons > li > p:first-child { margin-top: 0; }
+ol.progressLessons > li > p:last-child { margin-bottom: 0; }
 
-/* The Error Type histogram. The bar is the shape of the answer and the number
-   beside it is the answer — a picture is not a report, and a screen reader reads
-   only one of the two. */
-table.histogram { border-collapse: collapse; width: 100%; max-width: var(--measure); }
-table.histogram th, table.histogram td { text-align: left; padding: var(--space-1) var(--space-2); }
+table.histogram {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.histogram th, table.histogram td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: var(--border-width) solid var(--line);
+  font-weight: var(--weight-normal);
+}
 table.histogram thead th {
   color: var(--fg-muted);
-  font-weight: var(--weight-medium);
   font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
-table.histogram tbody th {
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-  padding-right: var(--space-4);
-}
-table.histogram td { width: 100%; }
+table.histogram tbody th { width: 40%; }
 table.histogram .bar {
   display: inline-block;
-  height: 0.8em;
+  height: var(--space-3);
   min-width: 2px;
-  vertical-align: baseline;
-  margin-right: var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--accent-quiet);
-  border: var(--border-width) solid var(--accent);
+  background: var(--accent);
+  vertical-align: middle;
+  margin-right: var(--space-3);
 }
-table.histogram .value { color: var(--fg-muted); white-space: nowrap; }
+table.histogram .value { color: var(--fg-muted); font-size: var(--text-sm); }
 
 /* --- Change over time --------------------------------------------------------
-   Hand-rolled SVG, and no charting library: four screens on a single-tenant ARM
-   box do not justify a dependency, a bundle and an upgrade path.
+   Six series on one chart, told apart by hue, by dash pattern and by marker —
+   the same three-ways-over rule the states keep. */
 
-   Six series, each told apart three ways over — hue, dash pattern and marker
-   shape — the same rule the state system keeps, and for the same reason. */
-
-.chartFrame { overflow-x: auto; margin: 0 0 var(--space-4); }
-svg.chart {
-  display: block;
-  width: 100%;
-  min-width: 30rem;
-  max-width: var(--measure);
-  height: auto;
+.chartFrame {
+  overflow-x: auto;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
 }
-
-svg.chart .grid line { stroke: var(--line); stroke-width: 1; }
-svg.chart .grid text, svg.chart .axis { fill: var(--fg-muted); font-size: var(--text-xs); }
-
-svg.chart .series .line { stroke-width: 2; }
-/* The label reads as text rather than as part of the line it names. */
-svg.chart .series .seriesLabel {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  stroke: none;
+.chart .grid { stroke: var(--line); }
+.chart .axis { fill: var(--fg-muted); font-size: var(--text-xs); }
+.chart .seriesLabel { fill: var(--fg-muted); font-size: var(--text-xs); }
+.chart .line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chart .s1 .line, .chart .s1 .seriesLabel { stroke: var(--series-1); fill: var(--series-1); }
+.chart .s2 .line, .chart .s2 .seriesLabel { stroke: var(--series-2); fill: var(--series-2); }
+.chart .s3 .line, .chart .s3 .seriesLabel { stroke: var(--series-3); fill: var(--series-3); }
+.chart .s4 .line, .chart .s4 .seriesLabel { stroke: var(--series-4); fill: var(--series-4); }
+.chart .s5 .line, .chart .s5 .seriesLabel { stroke: var(--series-5); fill: var(--series-5); }
+.chart .s6 .line, .chart .s6 .seriesLabel { stroke: var(--series-6); fill: var(--series-6); }
+.chart .s1 .line { fill: none; }
+.chart .s2 .line { fill: none; stroke-dasharray: 6 4; }
+.chart .s3 .line { fill: none; stroke-dasharray: 2 3; }
+.chart .s4 .line { fill: none; stroke-dasharray: 9 3 2 3; }
+.chart .s5 .line { fill: none; stroke-dasharray: 1 4; }
+.chart .s6 .line { fill: none; stroke-dasharray: 12 4; }
+.chart .seriesLabel { stroke: none; }
+.spanPickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-end;
+  margin-bottom: var(--space-4);
 }
+.spanPickers > * { min-width: 12rem; }
+table.spanTable { margin-top: var(--space-4); }
 
-svg.chart .s1 { stroke: var(--series-1); fill: var(--series-1); }
-svg.chart .s2 { stroke: var(--series-2); fill: var(--series-2); }
-svg.chart .s3 { stroke: var(--series-3); fill: var(--series-3); }
-svg.chart .s4 { stroke: var(--series-4); fill: var(--series-4); }
-svg.chart .s5 { stroke: var(--series-5); fill: var(--series-5); }
-svg.chart .s6 { stroke: var(--series-6); fill: var(--series-6); }
-
-.spanPickers { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: baseline; }
-table.spanTable td { width: auto; text-align: right; }
-table.spanTable caption { text-align: left; padding-bottom: var(--space-1); }
+/* A sentence the screen says before it is asked — what a Test withholds, what
+   it does not gate. Quieter than a Verdict and louder than a caption. */
+.notice {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-left: var(--rail-width) solid var(--accent);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+.notice p { margin: 0; }
+.notice p + p { margin-top: var(--space-1); }
 
 /* --- The health banner -------------------------------------------------------
-   design.md § Operations: the dashboard says whether grading works, so that the
-   first person to discover expired credentials is not a student mid-Lesson. It
-   is set off from the page rather than coloured wholesale — the colour belongs
-   to the sentence that makes the claim, not to the box around it. */
+   Four states, and four ways of looking. `unhealthy` and `stale` were both plain
+   red and told apart by their wording alone, and they are not the same claim:
+   one says grading was tried and failed, the other says nobody has tried
+   recently enough for the answer to mean anything. `never` is muted and dotted
+   rather than red, because an absence of evidence is not a failure and a
+   dashboard that cried wolf on a fresh install would be trained away within a
+   week. `tests/screens.test.ts` fails if two of the four end up alike. */
 
 .healthBanner {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
   background: var(--surface);
   border: var(--border-width) solid var(--line);
   border-left: var(--rail-width) solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: var(--space-3) var(--space-4);
-  margin: 0 0 var(--space-5);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  box-shadow: var(--shadow-sm);
 }
 .healthBanner p { margin: 0 0 var(--space-1); }
 .healthBanner p:last-child { margin-bottom: 0; }
-
-/* Four states, and four ways of looking — which they did not have. `unhealthy`
-   and `stale` were both plain red, told apart by their Russian alone, and they
-   are not the same claim: one says grading was tried and failed, the other says
-   nobody has tried recently enough for the answer to mean anything.
-
-   Stale keeps its red, for its own reason — a check that passed a week ago is not
-   evidence that grading works this afternoon — and takes a broken edge, because
-   what has lapsed is the evidence rather than the Grader. `never` is muted and
-   dotted: an absence of evidence is not a failure, and a dashboard that cried
-   wolf on a fresh install would be trained away inside a week. */
 .healthBanner.healthy { border-left-color: var(--state-correct-ink); }
 .healthBanner.unhealthy { border-left-color: var(--state-incorrect-ink); }
 .healthBanner.stale {
@@ -836,73 +1169,158 @@ table.spanTable caption { text-align: left; padding-bottom: var(--space-1); }
   border-left-style: dashed;
 }
 .healthBanner.never { border-left-style: dotted; }
-
-/* The sentence that makes the claim, not the box around it. Unhealthy and stale
-   are the same red because both are a refusal to call grading proven; what tells
-   them apart is the edge, which is where the difference actually lies. */
 .healthBanner .bannerHealthy { color: var(--state-correct-ink); font-weight: var(--weight-semibold); }
 .healthBanner .bannerUnhealthy,
 .healthBanner .bannerStale { color: var(--state-incorrect-ink); font-weight: var(--weight-semibold); }
 .healthBanner .bannerNever { color: var(--fg-muted); }
 
 /* --- The Temporary Password panel --------------------------------------------
-   The one thing on any screen in this application that exists to be read out
-   loud and then lost. It is shown once, in the response to the request that
-   generated it, and nothing anywhere can produce it again — so the panel is
-   drawn to be noticed and the password itself is drawn to be transcribed
-   without a mistake.
-
-   Monospace, spaced, and a size up: the alphabet already drops the characters
-   that are read back as one another, and this is the other half of that — the
-   difference between `rn` and `m` is the font's job, not the reader's. */
+   Shown once and never again, so it says so — and it is set to be read out or
+   copied rather than skimmed. */
 
 .issuedPassword {
+  margin: var(--space-4) 0;
+  padding: var(--space-5);
   background: var(--surface);
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-  margin: 0 0 var(--space-5);
-  max-width: var(--measure);
+  box-shadow: var(--shadow-sm);
 }
 .issuedPassword h3 { margin-top: 0; }
 .issuedPassword p { margin-bottom: var(--space-3); }
-.issuedPassword p:last-child { margin-bottom: 0; }
-
-.temporaryPassword code {
+.temporaryPassword {
   font-family: var(--font-mono);
-  font-size: var(--text-xl);
-  letter-spacing: 0.08em;
+  font-size: var(--text-lg);
   background: var(--surface-sunken);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  display: inline-block;
-  /* Selecting it is how it gets copied, and a double-click should take the
-     whole thing rather than one hyphenated group. */
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  word-break: break-all;
   user-select: all;
 }
 
-/* --- Narrow viewports --------------------------------------------------------
-   One breakpoint, and it does three things: it gives the page its space back,
-   it lets the header's controls sit under the name they belong to rather than
-   squeezing beside it, and it lets a table scroll on its own instead of pushing
-   the whole document sideways.
+/* --- Streaming ---------------------------------------------------------------
+   Theory arriving from Claude as it is written. */
 
-   A Theory table is written by an Admin and can be any width, so it is the one
-   element here that cannot be made to fit — which is exactly why it is given a
-   scroll of its own rather than allowed to widen the body. */
-
-@media (max-width: 40rem) {
-  main { padding: var(--space-5) var(--space-4) var(--space-6); }
-  .appHeader > div { padding: var(--space-3) var(--space-4); row-gap: var(--space-2); }
-  .appHeader nav { margin-left: 0; width: 100%; }
-
-  .theory table, table.histogram {
-    display: block;
-    overflow-x: auto;
-    max-width: 100%;
-  }
-
-  /* The measure is the viewport now; the token was the smaller of the two. */
-  .theory { max-width: 100%; }
-  svg.chart { min-width: 22rem; }
+pre.streaming {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  white-space: pre-wrap;
+  max-height: 20rem;
+  overflow-y: auto;
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+  padding: var(--space-4);
 }
+
+/* --- Screens -----------------------------------------------------------------
+   The handful of arrangements the redesign introduced, named once here rather
+   than repeated inline on every screen that wants one. */
+
+/* A screen's opening line: what this is, and the one number that summarises it. */
+.pageHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+.pageHead > div { min-width: 0; }
+.pageHead h1 { margin: 0 0 var(--space-1); }
+.pageHead p { margin: 0; }
+
+/* A figure lifted out of the prose — a percentage, a score. */
+.figure {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.figure .big {
+  display: block;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+}
+.figure .under { display: block; color: var(--fg-muted); font-size: var(--text-sm); }
+
+/* Two across where there is room, one where there is not. */
+.cardGrid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--space-4);
+}
+.cardGrid > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.cardGrid .title { font-size: var(--text-lg); font-weight: var(--weight-semibold); text-decoration: none; }
+.cardGrid .title:hover { text-decoration: underline; }
+.cardGrid .facts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.cardGrid .foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* A Lesson in a Course's list: its standing on the left, its bar on the right. */
+ol.lessons > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+li > .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+li > .body > a,
+li > .body > span:first-child {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+}
+ol.lessons > li > ol.progress { width: 8rem; flex: none; margin: 0; }
+ol.lessons > li.here { border-color: var(--accent); box-shadow: var(--shadow-md); }
+
+/* The same mark the navigation column uses, at the size a list wants. */
+.mark {
+  width: var(--space-6);
+  height: var(--space-6);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.mark[class*='state-'] {
+  background: var(--wash, var(--surface-sunken));
+  color: var(--ink, var(--fg-muted));
+}
+.mark.here { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
+
+/* A row of small facts under a title. */
+.facts { color: var(--fg-muted); font-size: var(--text-sm); margin: 0; }
+/* The separator carries its own spacing rather than borrowing the whitespace
+   between two JSX elements, which renders as a double gap. */
+.facts > * + *::before { content: '·'; margin: 0 var(--space-2); }
+
+/* The two facts a Course carries that are shown and not offered. */
+.fixedFacts {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+.fixedFacts p { margin: 0; }
+.fixedFacts p + p { margin-top: var(--space-1); }

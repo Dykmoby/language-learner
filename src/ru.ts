@@ -116,6 +116,13 @@ export const ru = {
   chrome: {
     navLabel: 'Навигация',
     admin: 'Управление курсами',
+    // The Course overview, as a destination in the navigation column rather than
+    // as a heading on the screen it leads to — which is why it is one word here
+    // and the Course's own title there.
+    course: 'Курс',
+    // Out of the Admin section, back to the Student's own screens. The Admin is
+    // a Student too, and this is the sentence that says so.
+    backToCourses: 'К моим курсам',
   },
 
   home: {

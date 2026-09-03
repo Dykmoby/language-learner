@@ -1,55 +1,78 @@
 /* The token layer.
    =============================================================================
 
-   Everything below is a decision; everything in `globals.css` is a consequence.
-   No component rule anywhere in this application writes a colour, a font size or
-   a step of spacing — it names one of these instead, and `tests/design-tokens`
-   fails the build if one starts to.
+   Everything below is a decision; everything in `globals.css` and in
+   `theme.ts` is a consequence. No component rule anywhere in this application
+   writes a colour, a font size or a step of spacing — it names one of these
+   instead, and `tests/design-tokens` fails the build if one starts to.
 
-   The split is the prefactor the rest of design.md § Interface stands on. Before
-   it, the stylesheet grew a section per build step and each section declared its
-   own colours inline, so "what does an error look like" had four answers and no
-   way to notice they had drifted apart. Now it has one, in one place, and the
-   drift is a test failure.
+   Mantine reads this file rather than replacing it. Its theme (`src/app/theme.ts`)
+   is written in terms of these custom properties, so there is still one place
+   where a colour is decided and one test that measures every pairing. A design
+   system that shipped its own palette beside this one would be two sources of
+   truth for the same question.
 
-   Contrast is enforced rather than intended. The dark palette used to be a
-   hand-flipped copy of the light one that nobody had measured against its own
-   background; under a design that leans on colour to carry Verdict states, an
-   unmeasured ratio is a legibility bug waiting for the one Student reading on a
-   dim screen at midnight. Every pairing named in `tests/design-tokens.test.ts`
-   is computed, in both themes, against a floor stated there as a constant.
-   Changing a hex value here is therefore a thing the test has an opinion about. */
+   Contrast is enforced rather than intended. Every pairing named in
+   `tests/design-tokens.test.ts` is computed, in both themes, against a floor
+   stated there as a constant. Changing a hex value here is therefore a thing the
+   test has an opinion about — and it is what caught the control edge below,
+   which the mockup drew two shades too pale to clear 3:1. */
 
 :root {
   color-scheme: light dark;
 
   /* --- Surfaces and text ---------------------------------------------------
-     Three depths, not two. `--surface` is a panel lifted off the page — an
-     Exercise in a list, a banner; `--surface-sunken` is a well pressed into it —
-     a code block, the Theory arriving while Claude writes it. Two depths would
-     have forced one of those to borrow the other's meaning. */
-  --bg: #ffffff;
-  --surface: #f4f6f9;
-  --surface-sunken: #e9ecf1;
+     Three depths, and the redesign inverted the first two. The page is now the
+     tinted one and a panel lifted off it is white — which is what makes a card
+     read as a card without a shadow doing the work. `--surface-sunken` is a well
+     pressed into either: a code block, the track a progress bar fills. */
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-sunken: #f0f2f6;
   --fg: #16181d;
-  --fg-muted: #575e6c;
+  --fg-muted: #5b6371;
 
   /* Two weights of line, because they answer to different rules. `--line`
-     separates and may be faint; `--line-strong` is the edge of a control a
-     Student has to find before they can type in it, which WCAG treats as a user
-     interface component and holds to 3:1. */
-  --line: #d5d9e0;
-  --line-strong: #7b8290;
+     separates and may be faint — a hairline between two rows, the border of a
+     card, the unfilled part of a bar. `--line-strong` is the edge of a control a
+     Student has to find before they can type in it, which WCAG 1.4.11 treats as
+     a user interface component and holds to 3:1. The canvas drew both at the
+     same pale grey; the floor is why they are two values here. */
+  --line: #e6e8ee;
+  --line-strong: #767e8d;
 
-  --accent: #2a55bd;
-  --accent-quiet: #eaeffb;
-  /* Text painted on an accent fill. Was `--bg` by coincidence, which held only
-     while the page background stayed pure white. */
+  --accent: #3559c7;
+  --accent-quiet: #eef2fd;
+  /* Text painted on an accent fill. */
   --accent-on: #ffffff;
+  /* The same fill, under the pointer. Measured against `--accent-on` like the
+     resting one: a button label has to stay legible through a hover. */
+  --accent-hover: #2e4dab;
+
+  /* --- Mantine's ramp ------------------------------------------------------
+     Ten steps, because that is the shape Mantine wants a colour in. They exist
+     to feed `theme.colors.brand` and nothing else: every surface in this
+     application that actually carries text is painted from `--accent`,
+     `--accent-hover` or `--accent-quiet`, which `theme.ts` maps Mantine's
+     variant variables onto by hand and which the contrast test measures. */
+  --brand-0: #f1f3fb;
+  --brand-1: #e3e8f7;
+  --brand-2: #cad4f0;
+  --brand-3: #aab9e7;
+  --brand-4: #869bdd;
+  --brand-5: #5d7ad2;
+  --brand-6: #3559c7;
+  --brand-7: #2e4dab;
+  --brand-8: #26408f;
+  --brand-9: #203577;
 
   /* --- The six states ------------------------------------------------------
      One definition each, consumed by the Practice, the Test review, the progress
      bar and the Disputes screens — see the state system in `globals.css`.
+
+     Unchanged by the redesign, deliberately: these six were measured against
+     their own washes in both themes and are told apart three ways over. A new
+     coat of paint is not a reason to re-open a settled contrast question.
 
      `-ink` is the hue as text and as a rail; `-wash` is the tint the block sits
      on. A grading failure is deliberately the achromatic one: it is not a
@@ -78,29 +101,53 @@
      Six lines on one chart, told apart by hue, by dash pattern and by marker
      shape — the same three-ways-over rule the states keep, and for the same
      reason. These are line strokes on the page background rather than text, so
-     they answer to the non-text floor. */
-  --series-1: #2a55bd;
+     they answer to the non-text floor.
+
+     Series 6 was `#0b6180`, the Completed With Help ink borrowed as a line. It
+     clears 3:1 comfortably and still failed a different check: its chroma is low
+     enough that beside five saturated neighbours it reads as grey rather than as
+     a hue. Raised until it is a colour, and kept in the same family. */
+  --series-1: #3559c7;
   --series-2: #b3261e;
   --series-3: #10693c;
   --series-4: #64409f;
   --series-5: #8a5200;
-  --series-6: #0b6180;
+  --series-6: #0b6f9c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14161a;
-    --surface: #1c1f26;
+    /* The same inversion as light, read the other way up: the page is the deeper
+       one and a card is lifted towards the light. */
+    --bg: #101216;
+    --surface: #191c22;
     --surface-sunken: #23272f;
     --fg: #e8eaef;
     --fg-muted: #a2a9b7;
 
-    --line: #2f343e;
-    --line-strong: #737b8b;
+    --line: #2b303a;
+    --line-strong: #7b8492;
 
     --accent: #8fb2ff;
     --accent-quiet: #1b2231;
     --accent-on: #101420;
+    /* Lighter rather than darker on hover: on a dark page the accent is the
+       light thing, so leaning into it is what reads as pressed. */
+    --accent-hover: #a5c1ff;
+
+    /* The ramp runs the other way here — step 0 sits against the page and step 9
+       lifts off it — because a scale built by mixing towards white would put its
+       quiet end where nothing on this screen is quiet. */
+    --brand-0: #1f2532;
+    --brand-1: #2c3549;
+    --brand-2: #3e4c6a;
+    --brand-3: #52658f;
+    --brand-4: #667fb4;
+    --brand-5: #7b98da;
+    --brand-6: #8fb2ff;
+    --brand-7: #a1beff;
+    --brand-8: #b3cbff;
+    --brand-9: #c5d7ff;
 
     /* Not a hand-flip of the light values. On a dark ground a saturated hue
        loses contrast long before it loses colour, so each ink is lightened until
@@ -134,7 +181,7 @@
 }
 
 /* --- The rails ---------------------------------------------------------------
-   The shape half of the state system: a 4px bar down the left edge of anything
+   The shape half of the state system: a bar down the left edge of anything
    carrying a state, painted with the pattern belonging to that state.
 
    Six patterns, all readable with the hue removed — which is the point. A reader
@@ -188,6 +235,10 @@
    of `system-ui` fallbacks pairs those two scripts differently on every machine
    that opens it.
 
+   Kept through the redesign. The typeface was never the problem — it is drawn
+   for exactly the two scripts this application sets side by side, and Mantine
+   ships no face of its own to argue with.
+
    The scale is six steps and there is no seventh. A component that wants a size
    between two of these wants one of these. */
 :root {
@@ -218,10 +269,10 @@
      at the same width. */
   /* The sign-in form, which is a column of two fields and has no business being
      as wide as a Lesson. */
-  --measure-narrow: 24rem;
-  --measure-prose: 36rem;
-  --measure: 44rem;
-  --measure-wide: 64rem;
+  --measure-narrow: 25rem;
+  --measure-prose: 38.75rem;
+  --measure: 45rem;
+  --measure-wide: 62.5rem;
 
   /* --- Spacing -------------------------------------------------------------
      A modular scale. Every margin and padding in the application is one of
@@ -235,18 +286,38 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-lg: 10px;
+  /* Softer than before, and one step more of them: a card, a control and a
+     pill are three different radii in this design rather than two. */
+  --radius-sm: 6px;
+  --radius: 9px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
   --radius-pill: 999px;
 
   /* The rail that carries a state, and the hairline everything else is drawn
-     with. Named because three screens have to agree on them. */
+     with. Named because several screens have to agree on them. */
   --rail-width: 4px;
   --border-width: 1px;
 
   /* Every control is this tall, and so is every row that holds one. That is what
      lets the Practice swap a row of buttons for a line of status without the
-     answer the Student is still reading moving up the screen. */
-  --control-height: 2.6rem;
+     answer the Student is still reading moving up the screen. `--control-height`
+     is the ordinary one; the Practice and the Test answer on the larger one,
+     which is the pointer target size a touch screen asks for. */
+  --control-height: 2.5rem;
+  --control-height-lg: 2.75rem;
+
+  /* The width the navigation column holds. An Admin's is narrower because its
+     labels are shorter and the screen behind it is denser. */
+  --nav-width: 16.5rem;
+  --nav-width-admin: 15.625rem;
+
+  /* --- Elevation -----------------------------------------------------------
+     Two steps and no more. A card is lifted just enough to separate it from the
+     page it sits on; anything that floats over the page — a menu, a panel that
+     follows a scroll — takes the second. These are not colour pairings and are
+     exempt from the contrast floor by their prefix; what a reader has to make
+     out is the border, which is `--line`. */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 1px 3px rgba(16, 24, 40, 0.08), 0 4px 12px rgba(16, 24, 40, 0.04);
 }

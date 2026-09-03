@@ -38,8 +38,8 @@ async function signedIn(account = STUDENT): Promise<Client> {
 const courseId = () => courseIdFor(app.databasePath, ENGLISH_A1.title);
 const lessonId = () => lessonsOf(app.databasePath, ENGLISH_A1.title)[0]!.lesson.id;
 
-/** The header's own element, whether or not it is wearing the Admin section's width. */
-const HEADER = /class="appHeader[ "]/;
+/** The navigation column's own element, whether or not it is the Admin's. */
+const HEADER = /class="appNav[ "]/;
 
 /** Every href a screen offers, absolute paths only. */
 function linksOn(html: string): string[] {
@@ -48,7 +48,7 @@ function linksOn(html: string): string[] {
     .filter((href) => !href.startsWith('/_next') && !href.startsWith('/fonts'));
 }
 
-test('the header wraps every signed-in screen, Student and Admin alike', async () => {
+test('the navigation column wraps every signed-in screen, Student and Admin alike', async () => {
   const student = await signedIn();
   const admin = await signedIn(ADMIN);
 
@@ -66,13 +66,13 @@ test('the header wraps every signed-in screen, Student and Admin alike', async (
       const response = await client.fetch(path);
       assert.equal(response.status, 200, `${path} did not render`);
       const html = await response.text();
-      assert.match(html, HEADER, `${path} has no header`);
+      assert.match(html, HEADER, `${path} has no navigation column`);
       assert.ok(html.includes(ru.common.signOut), `${path} offers no way to sign out`);
     }
   }
 });
 
-test('the sign-in screen has no header — there is no session to show and nowhere to go', async () => {
+test('the sign-in screen has no navigation column — there is no session to show and nowhere to go', async () => {
   const html = await (await new Client(app.baseUrl).fetch('/login')).text();
   assert.doesNotMatch(html, HEADER);
   assert.ok(!html.includes(ru.common.signOut));
@@ -108,7 +108,7 @@ test('the Admin link appears for an Admin and for nobody else', async () => {
   }
 });
 
-test('the header names the open Course, on the Course and inside its Lessons', async () => {
+test('the column names the open Course, on the Course and inside its Lessons', async () => {
   const client = await signedIn();
 
   const course = await (await client.fetch(`/courses/${courseId()}`)).text();
@@ -124,7 +124,7 @@ test('the header names the open Course, on the Course and inside its Lessons', a
   );
 });
 
-test('the header names no Course it is not the Student\'s to see', async () => {
+test('the column names no Course it is not the Student\'s to see', async () => {
   // The path reaches the layout through a request header, so what it names is a
   // claim rather than a fact — and the layout renders even for a screen that is
   // about to answer 404, which is precisely where a header that trusted the path
