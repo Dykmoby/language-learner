@@ -18,9 +18,11 @@ export function Providers({ children }: { children: ReactNode }) {
     <MantineProvider
       theme={theme}
       cssVariablesResolver={cssVariablesResolver}
-      // `auto` and nothing else. The token layer answers the same question with
-      // a `prefers-color-scheme` block, and a manual switch would be a second
-      // opinion about which theme is on.
+      // The setting an account starts on, not the only one it can hold: the
+      // control beside the account in the navigation column stores light, dark
+      // or `auto`, and `auto` is what applies until one is stored. Mantine
+      // resolves whichever it is onto `data-mantine-color-scheme`, which is the
+      // single thing the token layer reads — see the Dark block in `tokens.css`.
       defaultColorScheme="auto"
     >
       {children}

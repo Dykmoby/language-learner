@@ -28,6 +28,7 @@ import { pendingDisputes } from '../admin/disputes.ts';
 import { openCourse } from './shared/open-course.ts';
 import { PATHNAME_HEADER } from './shared/request-path.ts';
 import { stateClass } from './shared/verdict-state.ts';
+import { ColorSchemeToggle } from './color-scheme-toggle.tsx';
 
 /* --- Icons -------------------------------------------------------------------
    Drawn rather than set as glyphs: an emoji is a different picture on every
@@ -102,12 +103,23 @@ function SignOut() {
   );
 }
 
+/**
+ * The foot of the column: who is signed in, the way out, and the theme.
+ *
+ * The theme control sits here rather than on a settings screen because this
+ * application has no settings screen, and because the two things a person wants
+ * from the chrome once they are done reading are the same two things: leave, or
+ * turn the lights down.
+ */
 function Account({ username }: { username: string }) {
   return (
-    <div className="account">
-      <span className="avatar" aria-hidden="true">{username.slice(0, 1).toUpperCase()}</span>
-      <span className="who">{username}</span>
-      <SignOut />
+    <div className="accountBlock">
+      <ColorSchemeToggle />
+      <div className="account">
+        <span className="avatar" aria-hidden="true">{username.slice(0, 1).toUpperCase()}</span>
+        <span className="who">{username}</span>
+        <SignOut />
+      </div>
     </div>
   );
 }

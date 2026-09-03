@@ -19,7 +19,11 @@
    which the mockup drew two shades too pale to clear 3:1. */
 
 :root {
-  color-scheme: light dark;
+  /* Stated rather than left as `light dark`, because the scheme is a choice now:
+     `light dark` would hand a scrollbar and a native control to the system
+     preference while every painted surface followed the Student's. The dark
+     block below states its own. */
+  color-scheme: light;
 
   /* --- Surfaces and text ---------------------------------------------------
      Three depths, and the redesign inverted the first two. The page is now the
@@ -115,69 +119,83 @@
   --series-6: #0b6f9c;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* The same inversion as light, read the other way up: the page is the deeper
-       one and a card is lifted towards the light. */
-    --bg: #101216;
-    --surface: #191c22;
-    --surface-sunken: #23272f;
-    --fg: #e8eaef;
-    --fg-muted: #a2a9b7;
+/* --- Dark --------------------------------------------------------------------
+   Keyed to the attribute rather than to a media query, because which theme is on
+   is now something a person can decide. `ColorSchemeScript` in the root layout
+   writes `data-mantine-color-scheme` onto <html> before the first paint — the
+   stored choice, or the system preference where the stored choice is "как в
+   системе" — and Mantine keeps it in step with the system for as long as that is
+   what is stored.
 
-    --line: #2b303a;
-    --line-strong: #7b8492;
+   There is therefore still one answer to which theme is on, and both halves of
+   the design read it in the same place: this block, and Mantine's own dark rules,
+   which are written against the same attribute. A `prefers-color-scheme` block
+   beside this one would be the second opinion — it cannot see the choice, so on a
+   dark machine it would paint the dark palette over the light one a Student had
+   just asked for. */
+:root[data-mantine-color-scheme='dark'] {
+  color-scheme: dark;
 
-    --accent: #8fb2ff;
-    --accent-quiet: #1b2231;
-    --accent-on: #101420;
-    /* Lighter rather than darker on hover: on a dark page the accent is the
-       light thing, so leaning into it is what reads as pressed. */
-    --accent-hover: #a5c1ff;
+  /* The same inversion as light, read the other way up: the page is the deeper
+     one and a card is lifted towards the light. */
+  --bg: #101216;
+  --surface: #191c22;
+  --surface-sunken: #23272f;
+  --fg: #e8eaef;
+  --fg-muted: #a2a9b7;
 
-    /* The ramp runs the other way here — step 0 sits against the page and step 9
-       lifts off it — because a scale built by mixing towards white would put its
-       quiet end where nothing on this screen is quiet. */
-    --brand-0: #1f2532;
-    --brand-1: #2c3549;
-    --brand-2: #3e4c6a;
-    --brand-3: #52658f;
-    --brand-4: #667fb4;
-    --brand-5: #7b98da;
-    --brand-6: #8fb2ff;
-    --brand-7: #a1beff;
-    --brand-8: #b3cbff;
-    --brand-9: #c5d7ff;
+  --line: #2b303a;
+  --line-strong: #7b8492;
 
-    /* Not a hand-flip of the light values. On a dark ground a saturated hue
-       loses contrast long before it loses colour, so each ink is lightened until
-       it clears the floor against `--bg` and against its own wash, and each wash
-       is mixed a little stronger to stay visible against a near-black page. */
-    --state-correct-ink: #63cf95;
-    --state-correct-wash: color-mix(in srgb, var(--state-correct-ink) 14%, transparent);
+  --accent: #8fb2ff;
+  --accent-quiet: #1b2231;
+  --accent-on: #101420;
+  /* Lighter rather than darker on hover: on a dark page the accent is the
+     light thing, so leaning into it is what reads as pressed. */
+  --accent-hover: #a5c1ff;
 
-    --state-partial-ink: #e0b25e;
-    --state-partial-wash: color-mix(in srgb, var(--state-partial-ink) 14%, transparent);
+  /* The ramp runs the other way here — step 0 sits against the page and step 9
+     lifts off it — because a scale built by mixing towards white would put its
+     quiet end where nothing on this screen is quiet. */
+  --brand-0: #1f2532;
+  --brand-1: #2c3549;
+  --brand-2: #3e4c6a;
+  --brand-3: #52658f;
+  --brand-4: #667fb4;
+  --brand-5: #7b98da;
+  --brand-6: #8fb2ff;
+  --brand-7: #a1beff;
+  --brand-8: #b3cbff;
+  --brand-9: #c5d7ff;
 
-    --state-incorrect-ink: #f49b96;
-    --state-incorrect-wash: color-mix(in srgb, var(--state-incorrect-ink) 13%, transparent);
+  /* Not a hand-flip of the light values. On a dark ground a saturated hue
+     loses contrast long before it loses colour, so each ink is lightened until
+     it clears the floor against `--bg` and against its own wash, and each wash
+     is mixed a little stronger to stay visible against a near-black page. */
+  --state-correct-ink: #63cf95;
+  --state-correct-wash: color-mix(in srgb, var(--state-correct-ink) 14%, transparent);
 
-    --state-help-ink: #5cc7d4;
-    --state-help-wash: color-mix(in srgb, var(--state-help-ink) 13%, transparent);
+  --state-partial-ink: #e0b25e;
+  --state-partial-wash: color-mix(in srgb, var(--state-partial-ink) 14%, transparent);
 
-    --state-disputed-ink: #bda6f5;
-    --state-disputed-wash: color-mix(in srgb, var(--state-disputed-ink) 14%, transparent);
+  --state-incorrect-ink: #f49b96;
+  --state-incorrect-wash: color-mix(in srgb, var(--state-incorrect-ink) 13%, transparent);
 
-    --state-failed-ink: #a7aebd;
-    --state-failed-wash: color-mix(in srgb, var(--state-failed-ink) 12%, transparent);
+  --state-help-ink: #5cc7d4;
+  --state-help-wash: color-mix(in srgb, var(--state-help-ink) 13%, transparent);
 
-    --series-1: #8fb2ff;
-    --series-2: #f49b96;
-    --series-3: #63cf95;
-    --series-4: #bda6f5;
-    --series-5: #e0b25e;
-    --series-6: #5cc7d4;
-  }
+  --state-disputed-ink: #bda6f5;
+  --state-disputed-wash: color-mix(in srgb, var(--state-disputed-ink) 14%, transparent);
+
+  --state-failed-ink: #a7aebd;
+  --state-failed-wash: color-mix(in srgb, var(--state-failed-ink) 12%, transparent);
+
+  --series-1: #8fb2ff;
+  --series-2: #f49b96;
+  --series-3: #63cf95;
+  --series-4: #bda6f5;
+  --series-5: #e0b25e;
+  --series-6: #5cc7d4;
 }
 
 /* --- The rails ---------------------------------------------------------------

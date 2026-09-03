@@ -62,11 +62,12 @@ export const theme: MantineThemeOverride = createTheme({
  * Mantine's variables, resolved onto ours.
  *
  * Everything sits in `variables` rather than in `light` and `dark`, because the
- * token layer already answers the colour-scheme question for itself: a
- * `prefers-color-scheme` block swaps what `--surface` means, and a Mantine
- * variable pointing at `var(--surface)` follows without being told twice. Two
- * places deciding which theme is on is how a dark palette drifts out of a light
- * one, which is the thing `tokens.css` was split to stop.
+ * token layer already answers the colour-scheme question for itself: its dark
+ * block swaps what `--surface` means off the same `data-mantine-color-scheme`
+ * attribute Mantine sets, and a Mantine variable pointing at `var(--surface)`
+ * follows without being told twice. Two places deciding which theme is on is how
+ * a dark palette drifts out of a light one, which is the thing `tokens.css` was
+ * split to stop.
  */
 /**
  * The colour half of the mapping, stated once and handed to both schemes.
