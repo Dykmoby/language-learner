@@ -41,7 +41,6 @@ export type LessonProgress = {
   lessonId: number;
   position: number;
   title: string;
-  unlocked: boolean;
   tally: Tally;
   /**
    * Completion as a percentage: everything the Student finished, unaided or with
@@ -86,7 +85,7 @@ function finished(tally: Tally): number {
 export function courseProgress(db: Db, studentId: number, courseId: number): CourseProgress {
   const outline = courseOutline(db, studentId, courseId);
 
-  const lessons: LessonProgress[] = outline.map(({ lesson, unlocked, progress }) => {
+  const lessons: LessonProgress[] = outline.map(({ lesson, progress }) => {
     const tally: Tally = {
       completed: progress.counts.completed,
       completedWithHelp: progress.counts.completedWithHelp,
@@ -97,7 +96,6 @@ export function courseProgress(db: Db, studentId: number, courseId: number): Cou
       lessonId: lesson.id,
       position: lesson.position,
       title: lesson.title,
-      unlocked,
       tally,
       percent: percentOf(finished(tally), tally.total),
       states: progress.exercises.map((exercise) => exercise.state),

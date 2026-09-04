@@ -58,18 +58,12 @@ const PulseIcon = <Icon><path d="M3 12h4l2.5-6 5 12L17 12h4" /></Icon>;
 const BackIcon = <Icon><path d="M10 6l-6 6 6 6" /><path d="M20 12H4" /></Icon>;
 const SignOutIcon = <Icon><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" /><path d="M10 8l-4 4 4 4" /><path d="M6 12h9" /></Icon>;
 
-/** The mark beside a Lesson: pass, finished with help, here, or not yet open. */
+/** The mark beside a Lesson: pass, finished with help, or here. */
 const TickIcon = (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 13l4 4L19 7" />
   </svg>
 );
-const LockIcon = (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-  </svg>
-);
-
 /* --- Pieces ------------------------------------------------------------------ */
 
 function NavLink({ href, icon, label, here, count }: {
@@ -242,17 +236,8 @@ async function LessonRail({ courseId, studentId, pathname }: {
     <div className="lessonRail">
       <span className="groupLabel">{ru.course.lessonsTitle}</span>
 
-      {outline.map(({ lesson, unlocked, complete, progress }, index) => {
+      {outline.map(({ lesson, complete, progress }, index) => {
         const here = lesson.id === openId;
-
-        if (!unlocked) {
-          return (
-            <span key={lesson.id} className="locked">
-              <span className="mark">{LockIcon}</span>
-              {lesson.title}
-            </span>
-          );
-        }
 
         // Which mark a finished Lesson gets. Completed With Help is its own
         // state everywhere else in this application, so it is its own state

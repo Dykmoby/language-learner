@@ -563,11 +563,8 @@ export const ru = {
 
   course: {
     lessonsTitle: 'Уроки',
-    locked: 'Откроется после предыдущего урока',
     complete: 'Пройден',
     inProgress: 'В работе',
-    lockedRefusal: 'Этот урок ещё закрыт. Сначала пройдите предыдущий.',
-    back: 'К курсам',
     // The whole card is the control now, so the card is what carries the name a
     // screen reader reads out — the title alone no longer says what pressing it
     // does, because the title is no longer the thing being pressed.
@@ -641,7 +638,9 @@ export const ru = {
     notCurrent: 'Упражнения проходятся по порядку. Обновите страницу.',
     lessonComplete: 'Урок пройден!',
     nextLesson: 'Следующий урок',
-    nextLessonUnlocked: 'Следующий урок открыт.',
+    // Issue #98 — finishing a Lesson opens nothing any more: every Lesson in
+    // the Course was already open. What is left to say is where to go next.
+    nextLessonAhead: 'Впереди ещё один урок.',
     courseComplete: 'Это был последний урок курса.',
     empty: 'В этом уроке пока нет упражнений.',
   },
@@ -785,7 +784,6 @@ export const ru = {
     percent: (n: number) => `${n}%`,
     breakdown: (completed: number, withHelp: number, total: number) =>
       `Пройдено самостоятельно: ${completed} · с подсказкой: ${withHelp} · всего: ${total}`,
-    locked: 'ещё не открыт',
     noLessons: 'В этом курсе пока нет опубликованных уроков.',
 
     attemptsTitle: 'Попытки в тестах',

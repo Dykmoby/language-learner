@@ -6,7 +6,7 @@
 // has not reached: Reveal is a request, not a field that was sitting in the page
 // all along.
 
-import { forbidden, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { ru } from '../../../../ru.ts';
 import { currentStudent } from '../../../../auth/current-student.ts';
 import { getDatabase } from '../../../../db/index.ts';
@@ -21,10 +21,7 @@ export default async function PracticePage({ params }: { params: Promise<{ lesso
 
   const { db } = getDatabase();
   const opened = openLesson(db, student.id, Number((await params).lessonId));
-  if (!opened.ok) {
-    if (opened.reason === 'locked') forbidden();
-    notFound();
-  }
+  if (!opened.ok) notFound();
 
   rememberCurrentCourse(db, student.id, opened.course.id);
 

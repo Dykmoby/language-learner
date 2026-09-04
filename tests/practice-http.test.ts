@@ -423,26 +423,27 @@ test('Reveal shows the Reference Answer, moves the Student on, and records Compl
   assert.ok(html.includes(ru.practice.withHelpCount(1)));
 });
 
-// --- #20: unlocking -----------------------------------------------------------
+// --- #98: every Lesson is open ------------------------------------------------
 
-test('the first Lesson is unlocked on enrollment and the next one is not', async () => {
+test('a Lesson is not gated by the one before it', async () => {
   const client = await signedIn();
   const [first, second] = course(DETERMINISTIC_COURSE.title);
 
   assert.equal((await client.fetch(`/lessons/${first!.lesson.id}`)).status, 200);
 
-  const locked = await client.fetch(`/lessons/${second!.lesson.id}`);
-  assert.equal(locked.status, 403, 'typing the URL is refused, not merely unlinked');
-  assert.ok((await locked.text()).includes(ru.course.lockedRefusal), 'and refused in Russian');
+  // Nothing has been answered in the first Lesson, and the second opens anyway —
+  // sequential unlocking left in issue #98. A Student stuck on one Exercise had
+  // the rest of the Course closed to them, which is the opposite of what a list
+  // of Lessons is for.
+  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200,
+    'typing the URL works, and so does the link that was never drawn before');
+  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}/practice`)).status, 200);
 
-  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}/practice`)).status, 403);
-  assert.equal(
-    (await answer(client, second!.exercises[0]!.id, 'works')).status, 403,
-    'nor can its Exercises be answered around the front door',
-  );
+  const answered = await answer(client, second!.exercises[0]!.id, 'works');
+  assert.equal(answered.status, 200, 'and its Exercises are answerable');
 });
 
-test('completing every Exercise completes the Lesson and unlocks the next', async () => {
+test('completing every Exercise completes the Lesson', async () => {
   const client = await signedIn();
   const [first, second] = course(DETERMINISTIC_COURSE.title);
 
@@ -459,8 +460,6 @@ test('completing every Exercise completes the Lesson and unlocks the next', asyn
   const practice = await (await client.fetch(`/lessons/${first!.lesson.id}/practice`)).text();
   assert.ok(practice.includes(ru.practice.lessonComplete));
   assert.ok(practice.includes(ru.practice.nextLesson), 'and the next Lesson is offered');
-
-  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200, 'which is now open');
 
   const overview = await (await client.fetch(`/courses/${first!.lesson.courseId}`)).text();
   assert.ok(overview.includes(ru.course.complete), 'the Course screen agrees');
@@ -488,8 +487,9 @@ test('completion is derived from Submissions, not from a flag that can disagree 
     }
   });
 
-  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200,
-    'the next Lesson unlocked with no other write anywhere');
+  const overview = await (await client.fetch(`/courses/${first!.lesson.courseId}`)).text();
+  assert.ok(overview.includes(ru.course.complete),
+    'the Lesson reads as finished with no other write anywhere');
 });
 
 // --- #83: a fill-gap Exercise with several gaps -------------------------------

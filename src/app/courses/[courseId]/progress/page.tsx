@@ -153,7 +153,6 @@ export default async function ProgressPage({
                       way the navigation column already reads it. */}
                   <span className="mark">{lesson.position}</span>
                   <strong>{lesson.title}</strong>
-                  {lesson.unlocked ? null : <span className="muted">{' — '}{ru.progress.locked}</span>}
                 </p>
                 <ProgressBar
                   segments={lesson.states.map((state, index) => ({ position: index + 1, state }))}

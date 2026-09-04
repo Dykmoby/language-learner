@@ -5,7 +5,7 @@
 // before it writes a single tag, which is why setting it as HTML here is safe
 // (see src/content/markdown.ts).
 
-import { forbidden, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { ru } from '../../../ru.ts';
 import { currentStudent } from '../../../auth/current-student.ts';
 import { getDatabase } from '../../../db/index.ts';
@@ -24,7 +24,6 @@ export default async function LessonPage({ params }: { params: Promise<{ lessonI
   // Typing the URL of a locked Lesson gets the same refusal as clicking a link
   // that is not there — a guard that only hides a link is not a guard.
   if (!opened.ok) {
-    if (opened.reason === 'locked') forbidden();
     notFound();
   }
 

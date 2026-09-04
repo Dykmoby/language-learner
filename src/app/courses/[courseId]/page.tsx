@@ -1,6 +1,7 @@
-// The Course: its Lessons in order, each showing whether it is open, in
-// progress or finished. Working here records the Course as the Current Course,
-// which is what makes the next sign-in land straight back in it.
+// The Course: its Lessons in order, each showing whether it is untouched, in
+// progress or finished. Every one of them is open — sequential unlocking left in
+// issue #98. Working here records the Course as the Current Course, which is
+// what makes the next sign-in land straight back in it.
 
 import { notFound } from 'next/navigation';
 import { ru } from '../../../ru.ts';
@@ -21,11 +22,6 @@ const TICK = (
     <path d="M5 13l4 4L19 7" />
   </svg>
 );
-const LOCK = (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-  </svg>
-);
 
 export default async function CoursePage({ params }: { params: Promise<{ courseId: string }> }) {
   const student = await currentStudent();
@@ -42,8 +38,9 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
   rememberCurrentCourse(db, student.id, course.id);
   const outline = courseOutline(db, student.id, course.id);
   const report = courseProgress(db, student.id, course.id);
-  // Published Tests only, and listed apart from the Lessons: a Test gates
-  // nothing, so it does not belong in a list whose order is what unlocks what.
+  // Published Tests only, and listed apart from the Lessons: a Test is owned by
+  // the Course rather than by any Lesson, and a list of Lessons is not where a
+  // Student goes looking for one.
   const tests = courseTests(db, student.id, course.id);
 
   return (
@@ -78,13 +75,11 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
       <section className="panel">
       <h2>{ru.course.lessonsTitle}</h2>
       <ol className="lessons">
-        {outline.map(({ lesson, unlocked, complete, progress }, index) => {
+        {outline.map(({ lesson, complete, progress }, index) => {
           const withHelp = progress.counts.completedWithHelp > 0;
-          const mark = !unlocked
-            ? <span className="mark">{LOCK}</span>
-            : complete
-              ? <span className={`mark ${stateClass(withHelp ? 'help' : 'correct')}`}>{TICK}</span>
-              : <span className="mark">{index + 1}</span>;
+          const mark = complete
+            ? <span className={`mark ${stateClass(withHelp ? 'help' : 'correct')}`}>{TICK}</span>
+            : <span className="mark">{index + 1}</span>;
 
           const inside = (
             <>
@@ -92,11 +87,9 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
               <span className="body">
                 <span className="title">{lesson.title}</span>
                 <span className="muted">
-                  {!unlocked
-                    ? ru.course.locked
-                    : complete
-                      ? ru.course.complete
-                      : `${ru.course.inProgress}: ${progress.counts.completed + progress.counts.completedWithHelp}/${progress.counts.total}`}
+                  {complete
+                    ? ru.course.complete
+                    : `${ru.course.inProgress}: ${progress.counts.completed + progress.counts.completedWithHelp}/${progress.counts.total}`}
                   {/* A disputed Exercise stops holding the Student without having
                       been finished, so a Lesson can read as done while an objection
                       in it is still open. Saying so is the difference between a
@@ -106,7 +99,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                     : ''}
                 </span>
               </span>
-              {unlocked ? <ProgressMeter standing={progress.counts} /> : null}
+              <ProgressMeter standing={progress.counts} />
             </>
           );
 
@@ -114,17 +107,13 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
           // looks like one thing and can only be opened by hitting the four
           // words at its top is a card with an invisible target in it — and the
           // rest of it, the mark and the bar, is exactly what a person aims at
-          // when they mean "this Lesson". A locked row is a row and not a link,
-          // because there is nowhere for it to go.
+          // when they mean "this Lesson". Every row is a link now (issue #98):
+          // there is no longer a Lesson with nowhere to go.
           return (
-            <li key={lesson.id} className={unlocked ? undefined : 'locked'}>
-              {unlocked
-                ? (
-                  <a className="row" href={`/lessons/${lesson.id}`} aria-label={ru.course.openLesson(lesson.title)}>
-                    {inside}
-                  </a>
-                )
-                : <span className="row">{inside}</span>}
+            <li key={lesson.id}>
+              <a className="row" href={`/lessons/${lesson.id}`} aria-label={ru.course.openLesson(lesson.title)}>
+                {inside}
+              </a>
             </li>
           );
         })}

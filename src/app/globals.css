@@ -171,8 +171,7 @@ main {
    what a column buys that a bar could not: where you are, beside what you are
    doing, without a screen of its own. */
 .appNav .lessonRail { display: flex; flex-direction: column; gap: var(--space-1); }
-.appNav .lessonRail a,
-.appNav .lessonRail span.locked {
+.appNav .lessonRail a {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -183,7 +182,6 @@ main {
   text-decoration: none;
 }
 .appNav .lessonRail a:hover { background: var(--surface-sunken); color: var(--fg); }
-.appNav .lessonRail span.locked { color: var(--line-strong); }
 .appNav .lessonRail .open {
   background: var(--accent-quiet);
   border-radius: var(--radius-lg);
@@ -684,12 +682,6 @@ ul.cards > li > .actions, ol.cards > li > .actions, ul.attempts > li > .actions 
    be a frame around the target rather than part of it — a band a few millimetres
    wide, all the way round, that looks pressable and is not. */
 ol.lessons > li { padding: 0; overflow: hidden; }
-ol.lessons > li.locked {
-  background: none;
-  border-style: dashed;
-  box-shadow: none;
-  color: var(--fg-muted);
-}
 ul.cards > li a, ol.lessons > li a, ul.attempts > li a, ol.cards > li a {
   font-weight: var(--weight-medium);
   text-decoration: none;
@@ -1241,7 +1233,7 @@ input[type='text'].gap:focus { border-bottom-color: var(--accent); }
 .panel ol.cards > li,
 .panel ul.attempts > li,
 .panel ol.progressLessons > li,
-.panel ol.lessons > li:not(.locked) {
+.panel ol.lessons > li {
   background: var(--surface-sunken);
   box-shadow: none;
 }

@@ -201,7 +201,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
               <p className="muted">{ru.practice.courseComplete}</p>
             ) : (
               <>
-                <p className="muted">{ru.practice.nextLessonUnlocked}</p>
+                <p className="muted">{ru.practice.nextLessonAhead}</p>
                 <p className="actions">
                   <a className="button" href={`/lessons/${nextLessonId}`}>{ru.practice.nextLesson}</a>
                 </p>
