@@ -585,6 +585,24 @@ export const ru = {
     grammarFocus: 'Тема урока',
   },
 
+  // Issue #94 — what Claude writes about a wrong answer on a Kind judged in
+  // code, when the Student asks for it. Never the right answer: the whole offer
+  // is «I will tell you what went wrong, you work out what goes there».
+  explain: {
+    ask: 'Получить объяснение',
+    title: 'Объяснение',
+    writing: 'Клод пишет объяснение…',
+    // The same two failures a Verdict has, in the same two words, because they
+    // ask for the same two things from the Student.
+    busy: 'Клод сейчас перегружен. Подождите немного и попробуйте ещё раз.',
+    failed: 'Не удалось получить объяснение. Это сбой, а не что-то в вашем ответе.',
+    // Seen only by a stale tab or a hand-made request: the three states in which
+    // there is nothing to explain.
+    notJudged: 'Этот ответ не был проверен, поэтому объяснять нечего.',
+    notWrong: 'Этот ответ верный.',
+    alreadyExplained: 'Проверяющий уже объяснил этот ответ.',
+  },
+
   practice: {
     title: 'Упражнения',
     position: (n: number, total: number) => `Упражнение ${n} из ${total}`,

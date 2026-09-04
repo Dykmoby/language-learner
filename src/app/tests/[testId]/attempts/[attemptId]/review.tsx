@@ -22,6 +22,7 @@ import type { AttemptExerciseView, AttemptView } from '../../../../../tests/wire
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
 import { AnsweredSentence } from '../../../../shared/answered-sentence.tsx';
 import { DisputeForm } from '../../../../shared/dispute-form.tsx';
+import { Explanation } from '../../../../shared/explanation.tsx';
 import { stateClass, stateOfVerdict, stateWords, type VerdictState } from '../../../../shared/verdict-state.ts';
 import { VerdictLine } from '../../../../shared/verdict-line.tsx';
 
@@ -255,6 +256,15 @@ function ReviewedExercise({ exercise, total }: { exercise: AttemptExerciseView; 
           <p className="corrected">
             {ru.test.referenceAnswer}: <strong>{exercise.referenceAnswer}</strong>
           </p>
+
+          {/* Issue #94 — the Reference Answer is above, because the attempt is
+              closed and that is what a review is for. What is still missing on a
+              Kind judged in code is why the answer that was given is wrong, which
+              is a different question from what the right one was: two options can
+              differ by a rule the Student has not met yet. */}
+          {wrong && isDeterministic(exercise.kind) ? (
+            <Explanation submissionId={exercise.submissionId} />
+          ) : null}
 
           {/* A Test is where a Student writes at greatest length with no
               Progressive Hint to lean on, which is where a wrong Verdict is most

@@ -111,8 +111,12 @@ A Course's own instruction for the Grader, edited from its settings screen. Reac
 _Avoid_: course prompt, course guidance, override
 
 **Progressive Hint**:
-The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions. The corrected answer is withheld until the third failed attempt — the Student sees the Verdict, the explanation and the Errors before then, and the correction arrives in the same view where Reveal is first offered.
+The sharpening of Grader feedback across repeated attempts at the same Exercise, driven by giving the Grader the Student's earlier Submissions. What the Student is shown grows with what they have already tried: the first failure carries the Verdict and the Grader's explanation alone, the Errors arrive on the second, and the corrected answer on the third — in the same view where Reveal is first offered.
 _Avoid_: tip, clue
+
+**Explanation**:
+What Claude writes about one wrong Submission when a Student asks for it: why the answer they gave is wrong, never which answer is right. Offered only on the Exercise Kinds a Deterministic Check judges, which come back with a Verdict and nothing else. Stored nowhere — it is streamed to the screen it was asked from and is gone on reload.
+_Avoid_: hint, feedback, correction, tip
 
 **Reveal**:
 The action offered after three failed attempts that shows the Reference Answer and moves the Student on.

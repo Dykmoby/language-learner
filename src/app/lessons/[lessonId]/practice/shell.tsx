@@ -24,8 +24,10 @@ import { useEffect, useState } from 'react';
 import { Button } from '@mantine/core';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
 import type { ExerciseKind } from '../../../../db/schema.ts';
+import { isDeterministic } from '../../../../content/exercise-validity.ts';
 import { takeFrames, type ResultFrame, type RevealResult } from '../../../../practice/wire.ts';
 import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
+import { Explanation } from '../../../shared/explanation.tsx';
 import { DisputeForm } from '../../../shared/dispute-form.tsx';
 import { ProgressBar, type Segment } from '../../../shared/progress-bar.tsx';
 import { stateClass, stateOfVerdict, type JudgementState } from '../../../shared/verdict-state.ts';
@@ -312,6 +314,19 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
                 ) : null}
               </>
             )}
+
+            {/* Issue #94 — a wrong multiple choice, fill-gap or word order comes
+                back with one word, because nothing judged it but a comparison.
+                This is the offer to be told what is wrong with the answer that
+                was given, and it never says which answer was right: the Student
+                works that out, which is the exercise.
+
+                Not offered on what the Grader judges — «Почти верно» arrived
+                with the Grader's own explanation under it. */}
+            {!advancing && !disputed && result.status === 'graded'
+              && result.submissionId !== null && isDeterministic(current.kind) ? (
+                <Explanation submissionId={result.submissionId} />
+              ) : null}
 
             {/* An objection is only offered against a judgement that went against
                 the Student: a failed grading was never judged, and a correct
