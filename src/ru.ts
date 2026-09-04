@@ -563,6 +563,13 @@ export const ru = {
 
   course: {
     lessonsTitle: 'Уроки',
+    // A Course with nothing published in it yet. Said out loud rather than left
+    // as an empty frame, which reads as something having gone wrong.
+    noLessons: 'В этом курсе пока нет уроков.',
+    // Issue #99 — the toggle in the Lessons frame. «Пройденные» is the tick's
+    // own word: what it hides is exactly what the tick marks.
+    hideFinished: 'Скрыть пройденные',
+    allFinishedHidden: 'Все уроки пройдены и скрыты этим переключателем.',
     complete: 'Пройден',
     inProgress: 'В работе',
     // The whole card is the control now, so the card is what carries the name a
@@ -862,6 +869,11 @@ export const ru = {
   test: {
     sectionTitle: 'Проверочные работы',
     none: 'В этом курсе пока нет проверочных работ.',
+    // Issue #99 — the Tests frame's own toggle. A Test is «сдана» once there is
+    // an attempt, whatever it scored: it can be retaken without limit, so when a
+    // Student is done with one is theirs to say.
+    hideFinished: 'Скрыть сданные',
+    allFinishedHidden: 'Все работы сданы и скрыты этим переключателем.',
     exerciseCount: (n: number) => `${n} ${plural(n, 'задание', 'задания', 'заданий')}`,
     threshold: (n: number) => `Порог прохождения: ${n}%`,
     start: 'Пройти работу',

@@ -2,6 +2,10 @@
 // progress or finished. Every one of them is open — sequential unlocking left in
 // issue #98. Working here records the Course as the Current Course, which is
 // what makes the next sign-in land straight back in it.
+//
+// Both lists are drawn by client components rather than here, because both carry
+// a toggle whose state lives in the browser (issue #99). What stays on the
+// server is the reading: what a Student may see is decided where the query is.
 
 import { notFound } from 'next/navigation';
 import { ru } from '../../../ru.ts';
@@ -10,18 +14,10 @@ import { getDatabase } from '../../../db/index.ts';
 import { courseOutline, enrolledCourses, rememberCurrentCourse } from '../../../practice/lessons.ts';
 import { courseTests } from '../../../tests/taking.ts';
 import { courseProgress } from '../../../progress/report.ts';
-import { ProgressMeter } from '../../shared/progress-meter.tsx';
-import { stateClass } from '../../shared/verdict-state.ts';
+import { CourseLessons } from './lessons.tsx';
 import { CourseTests } from './tests.tsx';
 
 export const dynamic = 'force-dynamic';
-
-/** The tick a finished Lesson wears, at the size a list row wants. */
-const TICK = (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M5 13l4 4L19 7" />
-  </svg>
-);
 
 export default async function CoursePage({ params }: { params: Promise<{ courseId: string }> }) {
   const student = await currentStudent();
@@ -73,64 +69,26 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
           saying where one stopped. */}
       <div className="sections">
       <section className="panel">
-      <h2>{ru.course.lessonsTitle}</h2>
-      <ol className="lessons">
-        {outline.map(({ lesson, complete, progress }, index) => {
-          const withHelp = progress.counts.completedWithHelp > 0;
-          const mark = complete
-            ? <span className={`mark ${stateClass(withHelp ? 'help' : 'correct')}`}>{TICK}</span>
-            : <span className="mark">{index + 1}</span>;
-
-          const inside = (
-            <>
-              {mark}
-              <span className="body">
-                <span className="title">{lesson.title}</span>
-                <span className="muted">
-                  {complete
-                    ? ru.course.complete
-                    : `${ru.course.inProgress}: ${progress.counts.completed + progress.counts.completedWithHelp}/${progress.counts.total}`}
-                  {/* A disputed Exercise stops holding the Student without having
-                      been finished, so a Lesson can read as done while an objection
-                      in it is still open. Saying so is the difference between a
-                      complete Lesson and one nobody has ruled on yet. */}
-                  {progress.counts.disputed > 0
-                    ? ` · ${ru.practice.disputedCount(progress.counts.disputed)}`
-                    : ''}
-                </span>
-              </span>
-              <ProgressMeter standing={progress.counts} />
-            </>
-          );
-
-          // The whole row is the way in, not the title inside it. A card that
-          // looks like one thing and can only be opened by hitting the four
-          // words at its top is a card with an invisible target in it — and the
-          // rest of it, the mark and the bar, is exactly what a person aims at
-          // when they mean "this Lesson". Every row is a link now (issue #98):
-          // there is no longer a Lesson with nowhere to go.
-          return (
-            <li key={lesson.id}>
-              <a className="row" href={`/lessons/${lesson.id}`} aria-label={ru.course.openLesson(lesson.title)}>
-                {inside}
-              </a>
-            </li>
-          );
-        })}
-      </ol>
-
+        <CourseLessons
+          lessons={outline.map(({ lesson, complete, progress }, index) => ({
+            id: lesson.id,
+            number: index + 1,
+            title: lesson.title,
+            complete,
+            counts: progress.counts,
+          }))}
+        />
       </section>
 
       <section className="panel">
-      <h2 id="tests">{ru.test.sectionTitle}</h2>
-      <CourseTests
-        tests={tests.map(({ test, exerciseCount, attempts }) => ({
-          id: test.id,
-          title: test.title,
-          exerciseCount,
-          attempts,
-        }))}
-      />
+        <CourseTests
+          tests={tests.map(({ test, exerciseCount, attempts }) => ({
+            id: test.id,
+            title: test.title,
+            exerciseCount,
+            attempts,
+          }))}
+        />
       </section>
       </div>
       {/* No back-link. The navigation column carries the way out, and this one
