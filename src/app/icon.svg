@@ -1,0 +1,32 @@
+<!-- The tab icon.
+
+     A Я, drawn rather than set: a favicon renders in its own context with no
+     access to the page's fonts, so IBM Plex could not be asked for one and a
+     glyph named in a font-family would have come out as whatever the browser
+     had. Squared off and built from straight edges, which is how the letter
+     looks in the face the rest of the application is set in.
+
+     Why that letter. Everything about this application is two scripts at once —
+     Russian chrome around English or Tajik content, on every screen — and the one
+     of them that belongs to the reader rather than to the subject is the
+     Cyrillic. Я is unmistakably that at sixteen pixels, in a strip of tabs where
+     the icon beside it is a rounded square with a Latin letter in it. It is also
+     the word for the person doing the studying.
+
+     One path and not five rectangles. Rectangles that merely touch are seamed by
+     antialiasing: at the size this is actually looked at the joins showed as
+     hairlines through the letter. The counter is the second subpath, punched out
+     with `evenodd` so the winding of either does not have to be reasoned about.
+
+     The hexes are written out here rather than named from the token layer, which
+     is the one place in this project that happens: a favicon is fetched on its
+     own, with no stylesheet behind it, so there is nothing for a var() to
+     resolve against. They are `--accent` and `--accent-on` of the light theme,
+     copied. The tile is solid so it holds against a dark browser chrome as well
+     as a light one. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Я">
+  <rect width="100" height="100" rx="22" fill="#3559c7"/>
+  <path fill="#ffffff" fill-rule="evenodd"
+        d="M24 20 H76 V80 H60 V58 L40 80 H24 L44 58 H24 Z
+           M37 33 V45 H60 V33 Z"/>
+</svg>

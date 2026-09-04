@@ -13,9 +13,12 @@ import { tempDatabasePath } from './helpers/temp-db.ts';
 import { openDatabase } from '../src/db/client.ts';
 import { runMigrations } from '../src/db/migrate.ts';
 import { seedStudents } from '../src/db/seed.ts';
-import { lessons, students, lessonDrafts, submissions, type CourseRow } from '../src/db/schema.ts';
 import {
-  createCourse, createLesson, reorderLessons, enrollStudent,
+  lessons, students, lessonDrafts, submissions, submissionErrors, exercises,
+  type CourseRow,
+} from '../src/db/schema.ts';
+import {
+  createCourse, createLesson, reorderLessons, enrollStudent, deleteLesson, lessonSubmissionCount,
   type CourseInput,
 } from '../src/admin/authoring.ts';
 import { GRADER_MODELS, CEFR_LEVELS, DEFAULT_GRADER_MODEL } from '../src/content/course-options.ts';
@@ -456,4 +459,131 @@ test('every Draft origin has a Russian name, and the dictionary invents none', (
     Object.keys(ru.draftOrigins).sort(),
     [...DRAFT_ORIGINS].sort(),
   );
+});
+
+// --- Removing a Lesson -------------------------------------------------------
+
+/** One published Lesson with one Exercise, and one graded answer against it. */
+function lessonWithAnAnswer(db: Db, courseId: number, title: string) {
+  const lesson = newLesson(db, courseId, title);
+  const saved = saveDraft(db, {
+    lessonId: lesson.id,
+    studentId: admin(db).id,
+    document: {
+      title,
+      grammarFocus: 'Indefinite article a/an.',
+      theoryMarkdown: 'Теория.',
+      exercises: [{
+        kind: 'fill_gap',
+        prompt: 'Вставьте артикль: I have ___ cat.',
+        referenceAnswer: 'a',
+        acceptedAnswers: [['a']],
+        caseSensitive: false,
+        choices: [],
+      }],
+    },
+  });
+  if (!saved.ok) throw new Error('the Draft was refused');
+  assert.equal(publishDraft(db, saved.draft.id).ok, true);
+
+  const exerciseId = db.select().from(exercises).all().at(-1)!.id;
+  const submission = db.insert(submissions).values({
+    studentId: learner(db).id, exerciseId, attempt: 1, answer: 'an',
+    status: 'graded', proposedVerdict: 'incorrect', guardedVerdict: 'incorrect',
+    feedbackRu: 'Неверно', corrected: 'a', failureReason: null, createdAt: new Date(),
+  }).returning().get();
+
+  db.insert(submissionErrors).values({
+    submissionId: submission.id, position: 1, type: 'article', span: 'an',
+    explanationRu: 'Перед согласным — a.',
+  }).run();
+
+  return lesson;
+}
+
+test('a Lesson is deleted only when its own name is typed back', () => {
+  const handle = freshDatabase();
+  try {
+    const db = handle.db;
+    const course = newCourse(db);
+    const lesson = newLesson(db, course.id, 'Артикли');
+
+    const wrong = deleteLesson(db, { lessonId: lesson.id, confirmTitle: 'Артикль' });
+    assert.equal(wrong.ok, false);
+    assert.deepEqual(wrong.ok === false ? wrong.faults : [], ['lesson_title_mismatch']);
+    assert.equal(db.select().from(lessons).all().length, 1, 'and the Lesson is still there');
+
+    // A copied name arrives with the whitespace around it. That is the same
+    // Lesson, and refusing over it would read as the confirmation being broken.
+    const padded = deleteLesson(db, { lessonId: lesson.id, confirmTitle: '  Артикли  ' });
+    assert.equal(padded.ok, true);
+    assert.equal(db.select().from(lessons).all().length, 0);
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('deleting a Lesson takes its Exercises, the answers to them and their Errors', () => {
+  const handle = freshDatabase();
+  try {
+    const db = handle.db;
+    const course = newCourse(db);
+    const doomed = lessonWithAnAnswer(db, course.id, 'Артикли');
+    const kept = lessonWithAnAnswer(db, course.id, 'Времена');
+
+    assert.equal(lessonSubmissionCount(db, doomed.id), 1, 'counted before the act, not after');
+
+    const removed = deleteLesson(db, { lessonId: doomed.id, confirmTitle: 'Артикли' });
+    assert.equal(removed.ok, true);
+    assert.equal(removed.ok === true ? removed.submissionsRemoved : -1, 1);
+
+    // Everything that hung off the Lesson, and nothing that hung off the other.
+    assert.deepEqual(db.select().from(lessons).all().map((l) => l.title), ['Времена']);
+    assert.equal(db.select().from(exercises).all().length, 1, 'one Exercise left, and it is the kept one');
+    assert.equal(db.select().from(submissions).all().length, 1);
+    assert.equal(db.select().from(submissionErrors).all().length, 1);
+    // Two per Lesson — one written by `createLesson`, one by the save that gave
+    // it an Exercise — so what is left is exactly the kept Lesson's own history.
+    assert.deepEqual(
+      db.select().from(lessonDrafts).all().map((d) => d.lessonId),
+      [kept.id, kept.id],
+      'the deleted Lesson took its whole draft history with it',
+    );
+
+    // The gap in the positions is deliberate: they order by comparison, never by
+    // arithmetic, so closing it up would be a write nobody could see the effect of.
+    assert.deepEqual(db.select().from(lessons).all().map((l) => l.position), [2]);
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('a Lesson that is not there is reported as absent rather than as a refusal to delete', () => {
+  const handle = freshDatabase();
+  try {
+    const gone = deleteLesson(handle.db, { lessonId: 9999, confirmTitle: 'что угодно' });
+    assert.equal(gone.ok, false);
+    assert.deepEqual(gone.ok === false ? gone.faults : [], ['lesson_not_found']);
+  } finally {
+    handle.cleanup();
+  }
+});
+
+test('the Lesson list carries what deleting each one would destroy', () => {
+  const handle = freshDatabase();
+  try {
+    const db = handle.db;
+    const course = newCourse(db);
+    lessonWithAnAnswer(db, course.id, 'Артикли');
+    newLesson(db, course.id, 'Пустой');
+
+    // The screen offers to delete, so it has to be able to name the cost in the
+    // same breath as offering — after the act there is nothing left to count.
+    assert.deepEqual(
+      adminCourse(db, course.id)!.lessons.map((l) => [l.lesson.title, l.submissionCount]),
+      [['Артикли', 1], ['Пустой', 0]],
+    );
+  } finally {
+    handle.cleanup();
+  }
 });

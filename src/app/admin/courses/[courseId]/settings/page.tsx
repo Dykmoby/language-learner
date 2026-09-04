@@ -17,6 +17,7 @@ import { requireAdmin } from '../../../../../admin/guard.ts';
 import { getDatabase } from '../../../../../db/index.ts';
 import { adminCourse } from '../../../../../admin/catalogue.ts';
 import { CourseSettingsForm } from './settings-form.tsx';
+import { Crumb } from '../../../../shared/crumb.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,9 +35,7 @@ export default async function CourseSettingsPage({ params }: { params: Promise<{
     <main>
       <div className="pageHead">
         <div>
-          <p className="muted">
-            <a href={`/admin/courses/${course.id}`}>{course.title}</a>
-          </p>
+          <Crumb href={`/admin/courses/${course.id}`}>{course.title}</Crumb>
           <h1>{ru.admin.settingsTitle}</h1>
         </div>
       </div>

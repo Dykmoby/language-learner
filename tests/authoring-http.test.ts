@@ -42,6 +42,14 @@ async function signedIn(who: { username: string; password: string }): Promise<Cl
   return client;
 }
 
+function deleteJson(client: Client, path: string, body: unknown): Promise<Response> {
+  return client.fetch(path, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 function postJson(client: Client, path: string, body: unknown): Promise<Response> {
   return client.fetch(path, {
     method: 'POST',
@@ -193,4 +201,42 @@ test('a Course whose id names nothing is a 404 on every write, even for an Admin
   for (const path of ['/api/admin/courses/9999/lessons', '/api/admin/courses/not-a-number/lessons']) {
     assert.equal((await postJson(admin, path, { title: 'Урок' })).status, 404, path);
   }
+});
+
+test('deleting a Lesson is closed to everyone but an Admin, and refuses the wrong name', async () => {
+  const admin = await signedIn(ADMIN);
+
+  const course = await postJson(admin, '/api/admin/courses', {
+    language: 'en', level: 'A1', graderModel: DEFAULT_GRADER_MODEL.en, title: 'Английский на снос',
+  });
+  const courseId = (await json(course)).courseId as number;
+  const made = await postJson(admin, `/api/admin/courses/${courseId}/lessons`, { title: 'Артикли' });
+  const lessonId = (await json(made)).lessonId as number;
+
+  // The same guard as every write beside it: a Student is not told the endpoint
+  // exists, and a visitor with no session never reaches it at all.
+  const student = await signedIn(STUDENT);
+  assert.equal((await deleteJson(student, `/api/admin/lessons/${lessonId}`, { title: 'Артикли' })).status, 404);
+  const stranger = new Client(app.baseUrl);
+  assert.equal((await deleteJson(stranger, `/api/admin/lessons/${lessonId}`, { title: 'Артикли' })).status, 307);
+
+  // The typed name is a rule on the server, not a disabled button in a dialog:
+  // a request that skips the dialog is refused exactly the same way.
+  const wrong = await deleteJson(admin, `/api/admin/lessons/${lessonId}`, { title: 'Артикль' });
+  assert.equal(wrong.status, 422);
+  assert.deepEqual((await json(wrong)).faults, ['lesson_title_mismatch']);
+  assert.ok('lesson_title_mismatch' in ru.authoringFaults, 'and there is Russian to say so');
+
+  const page = await admin.fetch(`/admin/courses/${courseId}`);
+  assert.match(await page.text(), /Артикли/, 'the Lesson survived the wrong name');
+
+  const removed = await deleteJson(admin, `/api/admin/lessons/${lessonId}`, { title: 'Артикли' });
+  assert.equal(removed.status, 200);
+  assert.equal((await json(removed)).submissionsRemoved, 0);
+
+  const after = await admin.fetch(`/admin/courses/${courseId}`);
+  assert.doesNotMatch(await after.text(), /Артикли/);
+
+  // Gone twice is a 404 rather than a refusal: there is no field to correct.
+  assert.equal((await deleteJson(admin, `/api/admin/lessons/${lessonId}`, { title: 'Артикли' })).status, 404);
 });

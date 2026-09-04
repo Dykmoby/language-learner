@@ -32,11 +32,19 @@ type Props = {
   earlier: EarlierLessonChoice[];
   defaultModel: string;
   disabled: boolean;
+  /**
+   * Rendered without a frame and without a heading, for the Claude drawer: there
+   * the drawer is the frame and the tab above is the name, so a panel drawn
+   * inside one is two of everything. It also skips the collapsed state — the
+   * drawer *is* the disclosure, and asking to open a form inside a panel that
+   * was opened to reach that form is one press too many.
+   */
+  bare?: boolean;
   /** A Draft that came back whole and passed every rule. Nothing else reaches it. */
   onGenerated: (document: LessonDocument, draftId: number) => void;
 };
 
-export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, onGenerated }: Props) {
+export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, bare, onGenerated }: Props) {
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [vocabulary, setVocabulary] = useState('');
@@ -84,7 +92,7 @@ export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, onGen
     );
   }
 
-  if (!open) {
+  if (!open && !bare) {
     return (
       <div className="panel">
         <h3>{ru.generation.title}</h3>
@@ -97,8 +105,8 @@ export function GeneratePanel({ lessonId, earlier, defaultModel, disabled, onGen
   }
 
   return (
-    <section className="panel">
-      <h3>{ru.generation.title}</h3>
+    <section className={bare ? 'claudePane' : 'panel'}>
+      {bare ? null : <h3>{ru.generation.title}</h3>}
       <p className="muted">{ru.generation.explanation}</p>
 
       <Stack gap="sm">

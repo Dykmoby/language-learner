@@ -39,13 +39,18 @@ export default async function DisputePage(
     <main>
       <div className="pageHead">
         <div>
-          <p className="muted"><a href="/admin/disputes">{ru.disputeReview.back}</a></p>
+          <p className="actions"><a className="button secondary" href="/admin/disputes">{ru.disputeReview.back}</a></p>
           <h1>{ru.disputeReview.title}</h1>
         </div>
       </div>
 
       <div className="sideBySide">
-      <div className="main">
+      {/* Five sections, five frames. This screen is a case file — the Exercise,
+          what is already accepted, what the Student wrote, what the Grader
+          found, and the objection itself — and a ruling taken from one of them
+          alone is not a review. Framed, each is plainly its own piece of
+          evidence rather than one more paragraph in a column. */}
+      <div className="main sections">
       <p className="muted">
         {ru.disputeReview.from(opened.studentUsername, opened.course.title)}
         {opened.origin === null ? null : (
@@ -59,12 +64,16 @@ export default async function DisputePage(
         {' · '}{ru.disputeReview.submittedAt}: {new Date(dispute.createdAt).toLocaleString(ru.locale)}
       </p>
 
+      <section className="panel">
       <h2>{ru.disputeReview.exerciseTitle}</h2>
       <p className="prompt">{exercise.prompt}</p>
       <p className="corrected">
         {ru.disputeReview.referenceAnswer}: <strong>{exercise.referenceAnswer}</strong>
       </p>
 
+      </section>
+
+      <section className="panel">
       <h2>{ru.disputeReview.acceptedTitle}</h2>
       {/* Gap by Gap where there is more than one — #85. «a, an, I» in one list
           is a list an Admin cannot act on, because which Gap takes which is the
@@ -88,6 +97,9 @@ export default async function DisputePage(
         </ul>
       )}
 
+      </section>
+
+      <section className="panel">
       <h2>{ru.disputeReview.studentAnswer}</h2>
       <p className="given"><strong>{submission.answer}</strong></p>
       {verdictLabel === null ? null : (
@@ -103,6 +115,9 @@ export default async function DisputePage(
         </p>
       ) : null}
 
+      </section>
+
+      <section className="panel">
       <h2>{ru.disputeReview.graderErrors}</h2>
       {opened.errors.length === 0 ? (
         <p className="muted">{ru.disputeReview.graderNoErrors}</p>
@@ -120,8 +135,12 @@ export default async function DisputePage(
         </div>
       )}
 
+      </section>
+
+      <section className="panel">
       <h2>{ru.disputeReview.comment}</h2>
       <VerdictLine state="disputed" words={dispute.comment} />
+      </section>
       </div>
 
       {/* The decision sits beside the material rather than under it. All of it

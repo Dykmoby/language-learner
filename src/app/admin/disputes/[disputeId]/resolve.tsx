@@ -107,7 +107,7 @@ export function ResolveDispute({ disputeId, ruling, candidates }: Props) {
             ) : null}
           </p>
         ) : null}
-        <p><a href="/admin/disputes">{ru.disputeReview.back}</a></p>
+        <p className="actions"><a className="button secondary" href="/admin/disputes">{ru.disputeReview.back}</a></p>
       </div>
     );
   }

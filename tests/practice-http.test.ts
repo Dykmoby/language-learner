@@ -113,6 +113,39 @@ test('working in a Course records it as the Current Course, and the next visit l
   assert.equal(new URL(home.headers.get('location')!, app.baseUrl).pathname, `/courses/${courseId}`);
 });
 
+test('a Lesson in the Course listing is opened by the whole card, not by its title', async () => {
+  // The title used to be the only link, which put a target four words wide
+  // inside a card the width of the column: the number, the line saying how far
+  // the Student got and the bar all did nothing. The anchor is the row now, so
+  // what is asserted is that the row is one and that the title inside it is not
+  // a second one — nested links are not a thing a browser can render.
+  const client = await signedIn();
+  const [first] = course(ENGLISH_A1.title);
+  const courseId = first!.lesson.courseId;
+
+  const html = await (await client.fetch(`/courses/${courseId}`)).text();
+  const list = html.slice(html.indexOf('<ol class="lessons"'));
+
+  const row = new RegExp(`<a class="row" href="/lessons/${first!.lesson.id}"[^>]*>`);
+  assert.match(list, row, 'the row itself is the way in');
+  assert.ok(
+    !new RegExp(`<a href="/lessons/${first!.lesson.id}"`).test(list),
+    'and the title is not a link of its own inside it',
+  );
+});
+
+test('a locked Lesson\'s card is not a link at all', async () => {
+  const client = await signedIn();
+  const [, second] = course(ENGLISH_A1.title);
+  const courseId = second!.lesson.courseId;
+
+  const html = await (await client.fetch(`/courses/${courseId}`)).text();
+  assert.ok(
+    !html.includes(`href="/lessons/${second!.lesson.id}"`),
+    'there is nowhere for a locked row to go, so it does not offer to go there',
+  );
+});
+
 test('a Lesson\'s Theory renders as formatted HTML, not as raw markdown', async () => {
   const client = await signedIn();
   const [first] = course(ENGLISH_A1.title);

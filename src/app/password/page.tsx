@@ -58,7 +58,7 @@ export default async function PasswordPage({
       {changed ? (
         <>
           <p className="ok" role="status">{ru.password.changed}</p>
-          <p className="actions"><a href="/">{ru.password.onward}</a></p>
+          <p className="actions"><a className="button" href="/">{ru.password.onward}</a></p>
         </>
       ) : null}
 

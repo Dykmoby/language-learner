@@ -10,6 +10,7 @@ import { requireAdmin } from '../../../../admin/guard.ts';
 import { getDatabase } from '../../../../db/index.ts';
 import { adminTest } from '../../../../admin/tests.ts';
 import { TestEditor } from './test-editor.tsx';
+import { Crumb } from '../../../shared/crumb.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,9 +26,7 @@ export default async function AdminTestPage({ params }: { params: Promise<{ test
     <main>
       <div className="pageHead">
         <div>
-          <p className="muted">
-            <a href={`/admin/courses/${open.course.id}`}>{open.course.title}</a>
-          </p>
+          <Crumb href={`/admin/courses/${open.course.id}`}>{open.course.title}</Crumb>
           <h1>{open.document.title}</h1>
           <p className="facts">
             <span>{ru.testAdmin.title}</span>

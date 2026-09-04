@@ -30,6 +30,10 @@ export default async function AdminPage() {
         <div><h1>{ru.admin.coursesTitle}</h1></div>
       </div>
 
+      {/* One section, one frame — and the air between them is the stack's, not
+          the grid's. The catalogue used to sit flush against the form below it,
+          so the last row of Courses read as the top of «Новый курс». */}
+      <div className="sections">
       <HealthBanner standing={health} />
 
       {catalogue.length === 0 ? (
@@ -62,6 +66,7 @@ export default async function AdminPage() {
           <h2>{ru.transfer.importTitle}</h2>
           <ImportCourseForm />
         </div>
+      </div>
       </div>
     </main>
   );

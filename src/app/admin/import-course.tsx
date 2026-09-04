@@ -89,7 +89,7 @@ export function ImportCourseForm() {
             ? <p className="muted">{ru.transfer.importedMissingImages(done.missingImages)}</p>
             : null}
           <p className="muted">{ru.transfer.importedNobodyEnrolled}</p>
-          <p><a href={`/admin/courses/${done.courseId}`}>{ru.transfer.openImported}</a></p>
+          <p className="actions"><a className="button" href={`/admin/courses/${done.courseId}`}>{ru.transfer.openImported}</a></p>
         </div>
       )}
     </>

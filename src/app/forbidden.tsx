@@ -11,7 +11,7 @@ export default function Forbidden() {
       {/* `/courses` rather than `/`: the home screen redirects into the Current
           Course, which for a Student who has just been refused a locked Lesson
           is the Course they were refused it in. */}
-      <p><a href="/courses">{ru.course.back}</a></p>
+      <p className="actions"><a className="button" href="/courses">{ru.course.back}</a></p>
     </main>
   );
 }

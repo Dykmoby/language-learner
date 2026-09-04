@@ -37,17 +37,22 @@ export default async function DisputesPage() {
     <main>
       <div className="pageHead"><div><h1>{ru.disputeReview.title}</h1></div></div>
 
+      {/* Three sections, three frames. They were one column with two headings
+          in it, so where the queue ended and the decided list began was
+          something to work out from the weight of a word. */}
+      <div className="sections">
+      <section className="panel">
+      <h2>{ru.disputeReview.pendingTitle}</h2>
       {waiting.length === 0 ? (
         <p className="muted">{ru.disputeReview.queueEmpty}</p>
       ) : (
-        <>
-          <p className="muted">{ru.disputeReview.waiting(waiting.length)}</p>
-          <ul className="cards">
-            {waiting.map((entry) => <QueueRow key={entry.dispute.id} entry={entry} />)}
-          </ul>
-        </>
+        <ul className="cards">
+          {waiting.map((entry) => <QueueRow key={entry.dispute.id} entry={entry} />)}
+        </ul>
       )}
+      </section>
 
+      <section className="panel">
       <h2>{ru.disputeReview.resolvedTitle}</h2>
       {decided.length === 0 ? (
         <p className="muted">{ru.disputeReview.resolvedEmpty}</p>
@@ -56,7 +61,9 @@ export default async function DisputesPage() {
           {decided.map((entry) => <QueueRow key={entry.dispute.id} entry={entry} />)}
         </ul>
       )}
+      </section>
 
+      <section className="panel">
       <h2>{ru.coherenceGuard.title}</h2>
       <p className="muted">{ru.coherenceGuard.explanation}</p>
       {firings.judged === 0 ? (
@@ -74,7 +81,8 @@ export default async function DisputesPage() {
           <p className="muted">{ru.coherenceGuard.forbadeCorrect(firings.forbadeCorrect)}</p>
         </>
       )}
-
+      </section>
+      </div>
     </main>
   );
 }
@@ -83,21 +91,24 @@ function QueueRow({ entry }: { entry: QueuedDispute }) {
   const { dispute } = entry;
   return (
     <li>
-      <a href={`/admin/disputes/${dispute.id}`}>{ru.disputeReview.open}</a>
-      <span className="muted">
-        {' — '}{ru.disputeReview.from(entry.studentUsername, entry.courseTitle)}
-        {' · '}{new Date(dispute.createdAt).toLocaleString(ru.locale)}
-      </span>
-      <br />
-      <span className="prompt">{entry.exercisePrompt}</span>
-      {dispute.ruling === null ? null : (
-        <>
-          <br />
+      {/* The facts on the left, the way in on the right — the shape every other
+          list of things-that-can-be-opened here already has. It used to lead
+          with «Рассмотреть» as a run of underlined text, which put the only
+          control on the row in the position a title goes and left the row
+          reading as a sentence with a link in the middle of it. */}
+      <span className="body">
+        <span className="muted">
+          {ru.disputeReview.from(entry.studentUsername, entry.courseTitle)}
+          {' · '}{new Date(dispute.createdAt).toLocaleString(ru.locale)}
+        </span>
+        <span className="prompt">{entry.exercisePrompt}</span>
+        {dispute.ruling === null ? null : (
           <span className={`stateName ${stateClass('disputed')}`}>
             {dispute.ruling === 'upheld' ? ru.dispute.upheld : ru.dispute.rejected}
           </span>
-        </>
-      )}
+        )}
+      </span>
+      <a className="button secondary" href={`/admin/disputes/${dispute.id}`}>{ru.disputeReview.open}</a>
     </li>
   );
 }

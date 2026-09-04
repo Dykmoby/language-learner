@@ -140,6 +140,11 @@ main {
   color: var(--accent);
   font-weight: var(--weight-medium);
 }
+/* A tint is answered by more of the same tint. The grey above is right for a
+   link sitting on the column's own white; laid over the accent wash of the
+   current item it is a different hue arriving on top of one, which reads as a
+   smudge rather than as a highlight. */
+.appNav nav a.here:hover { background: var(--accent-quiet-strong); }
 .appNav nav a svg { flex: none; }
 /* A count beside a link — Disputes waiting on a decision. It is the queue's
    length and nothing else; nothing here is scored. */
@@ -147,7 +152,7 @@ main {
   margin-left: auto;
   padding: 0 var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--wash, var(--surface-sunken));
+  background: var(--wash, var(--surface-well));
   color: var(--ink, var(--fg-muted));
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
@@ -185,8 +190,39 @@ main {
   padding: var(--space-2) 0;
 }
 .appNav .lessonRail .open > a { color: var(--accent); font-weight: var(--weight-semibold); }
-.appNav .lessonRail .open nav { padding: var(--space-1) 0 0 calc(var(--space-6) + var(--space-1)); }
-.appNav .lessonRail .open nav a { padding: var(--space-1) var(--space-2); font-size: var(--text-sm); }
+/* Everything inside the opened Lesson sits on the accent wash, so everything
+   inside it hovers in the accent wash too — the grey the rail uses out on the
+   white column would be a neutral dropped onto a blue panel. */
+.appNav .lessonRail .open a:hover { background: var(--accent-quiet-strong); color: var(--accent); }
+.appNav .lessonRail .open nav { padding: var(--space-1) 0 0 var(--space-5); }
+.appNav .lessonRail .open nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+/* Which half of the Lesson is open — the Theory or the Practice.
+
+   It needs a mark of its own because the thing that used to say so cannot: the
+   current item is drawn with the accent wash, and these two sit *inside* a
+   panel already painted with it, so the highlight was invisible against its own
+   background. A dot is the smallest thing that still reads at this size, and it
+   is the same accent the rest of the column marks "here" with.
+
+   Drawn on every row and only filled on the current one, so the two labels stay
+   on the same left edge — a marker that appears and disappears would shift the
+   text it marks. */
+.appNav .lessonRail .open nav a::before {
+  content: '';
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+.appNav .lessonRail .open nav a.here::before { background: var(--accent); }
+.appNav .lessonRail .open nav a.here { color: var(--accent); font-weight: var(--weight-semibold); }
 
 /* A Lesson's standing as a mark rather than as a word: pass, finished with help,
    where you are, and not yet open. The four are the progress bar's vocabulary at
@@ -199,13 +235,13 @@ main {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
+  background: var(--surface-well);
   color: var(--fg-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }
 .appNav .mark[class*='state-'] {
-  background: var(--wash, var(--surface-sunken));
+  background: var(--wash, var(--surface-well));
   color: var(--ink, var(--fg-muted));
 }
 .appNav .mark.here {
@@ -384,7 +420,13 @@ textarea:not([class*='mantine-']) {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--fg);
-  background: var(--surface);
+  /* A field is a well pressed into the card it sits on, not another card laid on
+     top of one. `--surface-sunken` is what the token layer calls that, and the
+     answer controls the Practice builds by hand — the sentence a word order is
+     assembled in, the inputs standing in a fill-gap sentence — have always been
+     drawn on it. A field on `--surface` inside a panel that is also `--surface`
+     is a control with nothing but its border to say where it begins. */
+  background: var(--surface-sunken);
   border: var(--border-width) solid var(--line-strong);
   border-radius: var(--radius);
 }
@@ -413,7 +455,52 @@ input[type='checkbox']:not([class*='mantine-']),
 input[type='radio']:not([class*='mantine-']) {
   width: 1.05em;
   height: 1.05em;
+  /* The user agent ships these with `margin: 3px 3px 0 5px` — asymmetric, and
+     therefore a box whose middle is not where it looks. Centred beside a line of
+     text it sat 1.5px low for a reason nothing in this stylesheet said out loud.
+     Spacing beside a box is the row's `gap`, not the box's own margin. */
+  margin: 0;
   accent-color: var(--accent);
+}
+
+/* --- Mantine's controls, on the same surfaces --------------------------------
+   The one place these rules reach *into* the library rather than around it, and
+   for the reason `theme.ts` gives about `--button-color`: Mantine decides a
+   control's fill inside its own `[data-mantine-color-scheme] .m_…[data-variant]`
+   rule, which the `:root` variable mapping cannot reach. So every field in the
+   dark theme was painted `#2e2e2e` — a grey off Mantine's ramp, on an
+   application whose surfaces are decided in `tokens.css` — while the answer
+   controls the Practice builds by hand sat on `--surface-sunken` beside them.
+   Two controls, two greys, one form.
+
+   Specificity is matched to Mantine's own rule rather than raised above it, and
+   the tie is broken by import order: the root layout loads its stylesheet first
+   and this one after. A rule that had to out-specify the library would be a rule
+   the library's next release could quietly win back. */
+[data-mantine-color-scheme] .mantine-Input-wrapper[data-variant='default'] {
+  --input-bg: var(--surface-sunken);
+  --input-bd: var(--line-strong);
+}
+
+/* A menu floating over the page is the opposite of a field: lifted towards the
+   reader rather than pressed into what it covers, so it takes `--surface` and
+   the faint edge, not the well and the strong one. Mantine paints it out of the
+   same `dark-6` the fields were coming from — which is how a drop-down and the
+   field that opened it came to be one colour, and everything else another. */
+[data-mantine-color-scheme] .mantine-Popover-dropdown {
+  --popover-border-color: var(--line);
+  background: var(--surface);
+}
+[data-mantine-color-scheme] .mantine-Combobox-option:hover {
+  background: var(--surface-sunken);
+}
+/* Mantine hardcodes white on the accent here, exactly as it does on a filled
+   Button. In the dark theme the accent *is* the light colour, so the chosen row
+   of a drop-down was white text on pale blue. `--accent-on` is the answer to
+   what is legible on `--accent`, and it is measured in both themes. */
+[data-mantine-color-scheme] .mantine-Combobox-option[data-combobox-selected] {
+  background: var(--accent);
+  color: var(--accent-on);
 }
 
 button:not([class*='mantine-']) {
@@ -455,7 +542,30 @@ a.button {
   background: var(--accent);
   box-shadow: var(--shadow-sm);
 }
-a.button:hover { background: var(--accent-hover); color: var(--accent-on); }
+a.button:hover { background: var(--accent-hover); color: var(--accent-on); text-decoration: none; }
+
+/* The one that sits inside a line of text rather than on a row of its own — a
+   per-row action in a dense Admin list. Still a control and still a target; a
+   step down in height and in type, because a full-size button per row in a list
+   of twenty drafts is a column of buttons with a list hidden behind it. */
+a.button.small, button.small:not([class*='mantine-']) {
+  min-height: var(--control-height);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* The quiet one. Same size, same target, no fill — for a control that is the
+   only thing on its card but is not the point of it: the way to the progress
+   screen sitting beside the number that screen is about. It matches
+   `button.secondary` exactly, because a link that acts like a button and a
+   button should not be two different quiet controls. */
+a.button.secondary {
+  color: var(--fg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line-strong);
+  box-shadow: none;
+}
+a.button.secondary:hover { background: var(--surface-sunken); color: var(--fg); text-decoration: none; }
 
 /* A row that holds controls, and holds its height whether or not it currently
    has any: the Practice replaces its buttons with a line of status while the
@@ -534,24 +644,69 @@ ul.cards > li, ol.cards > li, ol.lessons > li, ul.attempts > li, ol.progressLess
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
+/* Every row is as tall as a row holding a control, whether or not it holds one.
+   `.actions` already keeps that floor for the controls themselves — it is what
+   stops the Practice's buttons from moving the answer above them when they are
+   replaced by a line of status — but a row *without* an action was free to
+   shrink to its text. On the accounts screen that made the Admin's own row, the
+   one row with nothing to press, visibly shorter than every row beside it: a
+   list of three people drawn as two different things.
+
+   The floor is the same one the controls keep, plus the row's own padding and
+   edges, because these boxes are `border-box`. */
+ul.cards > li, ol.cards > li, ul.attempts > li {
+  min-height: calc(var(--control-height-lg) + var(--space-4) * 2 + var(--border-width) * 2);
+}
+/* The controls on a row keep their line, and the text is what gives way.
+   
+   Without this the row was a plain flex line: a long Lesson title pushed the
+   reorder buttons until they wrapped, so «Выше» and «Ниже» sat one above the
+   other in one row and side by side in the next — and in the roster column,
+   twenty rem wide, «Убрать с курса» was pushed clean through the frame. What a
+   row can afford to reflow is its words; the buttons are a fixed thing at the
+   end of it. */
+ul.cards > li > .body, ol.cards > li > .body {
+  flex: 1;
+  min-width: 0;
+  /* A username has no spaces in it. `min-width: 0` lets the column shrink, but a
+     single unbreakable word still draws at its full length and runs straight
+     under the button beside it — «debug_student» sat on top of «Убрать с
+     курса». What has to give is the word. */
+  overflow-wrap: anywhere;
+}
+ul.cards > li > .actions, ol.cards > li > .actions, ul.attempts > li > .actions {
+  flex: none;
+  flex-wrap: nowrap;
+  margin-left: auto;
+}
+/* A Lesson's card is the control, so the card holds no padding of its own: the
+   row inside it does, and the row is the anchor. Padding on the list item would
+   be a frame around the target rather than part of it — a band a few millimetres
+   wide, all the way round, that looks pressable and is not. */
+ol.lessons > li { padding: 0; overflow: hidden; }
 ol.lessons > li.locked {
   background: none;
   border-style: dashed;
   box-shadow: none;
+  color: var(--fg-muted);
 }
-ol.lessons > li.locked > span:first-child { color: var(--fg-muted); }
 ul.cards > li a, ol.lessons > li a, ul.attempts > li a, ol.cards > li a {
   font-weight: var(--weight-medium);
   text-decoration: none;
 }
-ul.cards > li a:hover, ol.lessons > li a:hover, ul.attempts > li a:hover, ol.cards > li a:hover {
+/* `ol.lessons` is deliberately not here any more. Its anchor is the whole row,
+   so an underline on hover underlined the title, the standing and everything
+   else the row contains — a card with four words of link in it became a card
+   that was entirely underlined. The row answers the pointer with its border and
+   its title's colour instead; see the rule further down. */
+ul.cards > li a:hover, ul.attempts > li a:hover, ol.cards > li a:hover {
   text-decoration: underline;
 }
 ul.variants { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 ul.variants > li {
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
+  background: var(--surface-well);
   font-size: var(--text-sm);
 }
 
@@ -597,12 +752,48 @@ ol.exercises { list-style: none; padding: 0; display: flex; flex-direction: colu
   background: var(--accent-quiet);
   padding: var(--space-4) var(--space-5);
 }
-.theory table { border-collapse: collapse; margin: var(--space-4) 0; }
-.theory th, .theory td {
+/* A table in the Theory is drawn as one object with four rounded corners, not as
+   a grid of square cells that happens to be rectangular.
+
+   `separate` rather than `collapse`, which is the whole trick: a collapsed table
+   has no border of its own to round — the outer edge is the outer cells' borders
+   sitting next to each other, and a radius on the table clips nothing. So the
+   frame goes on the table, the cells draw only their inner lines, and `overflow`
+   is what actually cuts the corners. The horizontal scroll is on the same
+   element for the same reason: a wide table in a narrow Lesson has to be
+   scrollable, and a table that scrolls its own overflow keeps its corners while
+   it does. */
+.theory table {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: var(--space-4) 0;
   border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.theory th, .theory td {
+  /* Right and bottom only. The table's own frame draws the top and the left, so
+     every line is drawn once and the outer ones are not doubled. */
+  border-right: var(--border-width) solid var(--line);
+  border-bottom: var(--border-width) solid var(--line);
   padding: var(--space-2) var(--space-3);
   text-align: left;
 }
+.theory tr > :last-child { border-right: none; }
+.theory tr:last-child > * { border-bottom: none; }
+/* The four corner cells are rounded themselves rather than clipped by the table.
+   `overflow: hidden` on a table is not reliably the table's own box, and a
+   header band that ran square into a rounded frame would put a corner of tinted
+   grey outside the curve — which is the exact defect this replaces, one radius
+   further in. A pixel less than the frame's radius, because a cell sits inside
+   the border rather than under it. */
+.theory table > :first-child > tr:first-child > :first-child { border-top-left-radius: calc(var(--radius-lg) - var(--border-width)); }
+.theory table > :first-child > tr:first-child > :last-child { border-top-right-radius: calc(var(--radius-lg) - var(--border-width)); }
+.theory table > :last-child > tr:last-child > :first-child { border-bottom-left-radius: calc(var(--radius-lg) - var(--border-width)); }
+.theory table > :last-child > tr:last-child > :last-child { border-bottom-right-radius: calc(var(--radius-lg) - var(--border-width)); }
+/* A header row reads as the table's own band rather than as a row that happens
+   to be bold, which is what the rounded frame asks for: an object with a top to
+   it. */
+.theory thead th { background: var(--surface-sunken); }
 .theory code {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -692,9 +883,20 @@ ol.exercises { list-style: none; padding: 0; display: flex; flex-direction: colu
 
 /* --- The progress bar --------------------------------------------------------
    The Practice's bar over one Lesson and the progress screen's bar over all of
-   them are the same component, drawing on the same six classes. A segment is too
-   small for a wash, so it is painted with the rail — which is exactly why the
-   rails are patterns rather than plain fills. */
+   them are the same component, drawing on the same six classes.
+
+   A segment is painted with the state's ink and not with its rail. The rail is a
+   pattern — a hatch, a dotted run, a broken bar — and a pattern needs a few
+   millimetres of run before it is a pattern at all. On a Lesson of two dozen
+   Exercises a segment is a few pixels wide, and at that size the hatch does not
+   read as a hatch: it reads as a segment that has been dimmed, or half painted,
+   or drawn wrong. Every one of the six looked like a rendering fault.
+
+   The shape distinction is not lost with it — it moves. A segment carries its
+   state's wording as its accessible name, and the same six states are drawn with
+   their rails wherever there is room for one: the Verdict block, the Test
+   review, the Dispute. What a segment keeps is the hue and the words, which are
+   the two that survive being four pixels wide. */
 
 ol.progress {
   display: flex;
@@ -703,16 +905,46 @@ ol.progress {
   padding: 0;
   margin: 0 0 var(--space-3);
 }
+/* The empty part of the bar is `--surface-well` and not `--line`: it is a track,
+   which is a recess, and a recess has to be visible on whatever it is cut into.
+   `--line` is a hairline, tuned to disappear against a card — which is exactly
+   what it did once a row inside a framed section became a card of its own. */
 ol.progress .segment {
   height: var(--space-2);
   flex: 1;
   border-radius: var(--radius-pill);
-  background: var(--line);
+  background: var(--surface-well);
 }
-ol.progress .segment[class*='state-'] { background: var(--rail, var(--line-strong)); }
+ol.progress .segment[class*='state-'] { background: var(--ink, var(--line-strong)); }
 /* Where the Student is, and where they have not been. Neither is a judgement, so
-   neither borrows a state's hue. */
-ol.progress .segment.current { background: var(--accent); }
+   neither borrows a state's hue — and `--accent` was borrowing one anyway. It
+   sits 49 apart from Disputed and 70 from Completed With Help in the dark
+   palette, against the 60 the six states are held to between themselves, so the
+   segment saying "you are here" and the segment saying "you did this with help"
+   were the same blue at a glance. `--fg` is the honest answer: it is the one
+   emphatic value in the palette that is not a hue at all, which is what this
+   segment actually means. `tests/design-tokens` now holds it to the same floor. */
+ol.progress .segment.current { background: var(--fg); }
+
+/* --- The meter ---------------------------------------------------------------
+   The same three facts as the bar above, drawn as proportions of one track
+   rather than as one mark per Exercise — see `shared/progress-meter.tsx` for why
+   a Course listing wants the second picture and the Practice wants the first.
+
+   One track, no gaps, solid fills. The parts meet edge to edge on purpose: what
+   is being read is where one hue gives way to the next, and a gutter between
+   them would put a third colour at every boundary. */
+/* The track is `--surface-well` — a step below the row it sits in rather than
+   the same grey as it. See the token for what broke. */
+.meter {
+  display: flex;
+  width: 100%;
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-well);
+  overflow: hidden;
+}
+.meter .fill { background: var(--ink, var(--line-strong)); }
 
 /* --- The Exercise being asked ------------------------------------------------
    The card the Practice and the Test put a question in, and the controls the
@@ -746,6 +978,10 @@ ol.progress .segment.current { background: var(--accent); }
   margin: var(--space-5) 0;
   text-wrap: pretty;
 }
+/* The same sentence, quoted in a queue row rather than asked. Its own margins
+   are the air an Exercise gets when it is the thing on the screen; here it is
+   one line of three inside a card, and the column's gap is the spacing. */
+.cards .body > .prompt { margin: 0; font-size: var(--text-base); }
 .given {
   padding: var(--space-2) var(--space-3);
   border: var(--border-width) dashed var(--line-strong);
@@ -781,7 +1017,18 @@ ul.choices label:has(input:checked) {
   border-color: var(--accent);
   background: var(--accent-quiet);
 }
-ul.choices label span { color: var(--fg); font-size: var(--text-base); margin: 0; }
+/* Written with the same `:not()` the generic label rule carries, and not for
+   tidiness. That rule stacks a caption *over* its control — `display: block` and
+   a bottom margin — which is what a form field is; a choice is a control with
+   its label *beside* it. An attribute selector counts as a class, so
+   `ul.choices label span` lost the margin fight to it, and every option's words
+   were centred as a box 4px taller than the words: text sitting above the circle
+   it belongs to, in a row that had asked for `align-items: center` and meant it. */
+ul.choices label > span:not([class*='mantine-']) {
+  margin: 0;
+  color: var(--fg);
+  font-size: var(--text-base);
+}
 
 /* Two lines' worth from the start, so the sentence being built does not push the
    fragments down the moment it wraps. */
@@ -866,29 +1113,69 @@ input[type='text'].gap:focus { border-bottom-color: var(--accent); }
    The Admin's screens, which are denser than a Student's by nature: a Lesson's
    worth of Exercise forms rather than one Exercise.
 
-   The editor is two columns — the Draft on the left, Claude on the right —
-   because generation and refinement used to sit below the whole list of
-   Exercises, which is the far end of a scroll from the thing they change. */
+   The editor is one column now. It was two — the Draft on the left, Claude
+   standing permanently on the right — which fixed the problem the two-column
+   layout was introduced for (generation and refinement used to sit below every
+   Exercise in the Lesson, a whole scroll from the thing they change) and created
+   another: the two Claude panels together are taller than a screen, so on a
+   1080-tall display the bottom of «Доработка» was reached by scrolling the whole
+   Lesson past it. A column that is always there costs its width whether or not
+   anyone is using it, and most of the time nobody is — a Lesson is written by
+   hand far more often than it is generated.
 
-.editorLayout {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-5);
+   So Claude moved into a panel that slides in over the Draft when it is asked
+   for, and the width it used to hold went back to the Exercise forms. */
+
+/* Claude, over the Draft rather than beside it.
+   
+   Deliberately without an overlay: what the panel does is rewrite the document
+   on the left, and a dimmed page would hide the thing being changed at the
+   moment of changing it. It is a panel in front of the page, not a mode the page
+   is in — which is also why the page keeps scrolling behind it. */
+.claudeDrawer .mantine-Drawer-content { background: var(--surface); }
+.claudeDrawer .mantine-Drawer-header {
+  background: var(--surface);
+  border-bottom: var(--border-width) solid var(--line);
 }
-.editorLayout > .draft { flex: 1; min-width: 0; }
-.editorLayout > .aside {
-  width: 23rem;
-  flex: none;
-  position: sticky;
-  top: var(--space-5);
+.claudeDrawer .mantine-Drawer-title { font-weight: var(--weight-semibold); }
+/* Inside the drawer the two halves have stopped being panels: the drawer is the
+   frame, and the tab above each is its name. A frame drawn inside a frame, with
+   a heading repeating the tab that was just pressed, is two of everything. */
+.claudePane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+.claudePane > :first-child { margin-top: 0; }
+.claudePane > :last-child { margin-bottom: 0; }
+/* With no overlay behind it, the panel's own edge is the only thing saying it is
+   in front of the page rather than part of it. */
+.claudeDrawer .mantine-Drawer-content {
+  border-left: var(--border-width) solid var(--line);
+  box-shadow: var(--shadow-md);
+}
+.claudeDrawer .mantine-Tabs-tab[data-active] { color: var(--accent); }
+
+/* A destructive control among ordinary ones: the same square button, in the hue
+   the state system already uses for what went wrong. Only the glyph is coloured
+   — a filled red is a background this palette has no measured text colour for,
+   and inventing one for a single button is how a two-weight button system
+   becomes a three-weight one. */
+.mantine-ActionIcon-root.danger:hover,
+.mantine-ActionIcon-root.danger:focus-visible {
+  color: var(--state-incorrect-ink);
+  border-color: var(--state-incorrect-ink);
+}
+
+/* What a confirmation holds: the sentence saying what goes, the count, the field
+   that asks for the name, and the two answers. */
+.confirmPane {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
-@media (max-width: 75rem) {
-  .editorLayout { flex-direction: column; }
-  .editorLayout > .aside { width: 100%; position: static; }
-}
+.confirmPane > p { margin: 0; }
 
 /* A panel in either column. */
 .panel {
@@ -898,24 +1185,112 @@ input[type='text'].gap:focus { border-bottom-color: var(--accent); }
   box-shadow: var(--shadow-sm);
   padding: var(--space-5);
 }
-.panel > h2:first-child, .panel > h3:first-child { margin-top: 0; }
+/* A panel's edge is its padding, so the first thing in it does not also bring
+   the space a heading normally keeps above itself, and the last thing does not
+   push a gap against the bottom edge. Written for whatever is first rather than
+   for a heading in particular: several of these panels open with a paragraph. */
+.panel > :first-child { margin-top: 0; }
+.panel > :last-child { margin-bottom: 0; }
 
-/* What a Draft's standing is, and the two writes, in one bar above the work
-   rather than at the bottom of it. */
+/* --- One section, one frame --------------------------------------------------
+   A screen is a stack of sections, and each is drawn as one panel — so where a
+   section ends is something a reader sees rather than infers from the weight of
+   a word. The Admin's screens used to run every heading and its contents
+   together down a single unbroken column: «Все аккаунты» and «Новый студент»
+   were one surface with two headings in it, and the roster ran into the form
+   that adds to it.
+
+   The air between sections belongs to the stack rather than to either section,
+   which is why it is a `gap` here and not a margin on `.panel`. A panel is also
+   a flex item inside `.sideBySide` and `.editorLayout`, and a margin would have
+   to be taken back off it in both. */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+/* A heading that opens a panel has already been given its air by the panel, and
+   the stack has given the panel its own. Anything inside keeps the ordinary
+   rhythm. */
+.sections > .panel > h2 { margin-top: 0; }
+
+/* A section's name, and the one act that adds to it, on the same line.
+   
+   The act used to be a section of its own: «Новый урок» stood underneath the
+   Lessons it added to with a field and a button, and «Новая проверочная работа»
+   under the Tests, so half of an authoring screen was forms for things that did
+   not exist yet. Naming a Lesson before writing it was a question asked at the
+   wrong moment anyway — the title is the first field in the editor, and it is
+   the first thing an author changes. */
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.panelHead > h2, .panelHead > h3 { margin: 0; }
+.panelHead .actions { min-height: 0; }
+
+/* A row inside a framed section is a card on a card, and two surfaces of the
+   same colour are one surface with borders drawn on it. So inside a frame the
+   rows become wells pressed into it — the same inversion the token layer makes
+   between the page and a panel, read one level further in. The shadow goes with
+   the lift: nothing that is pressed in casts one. */
+.panel ul.cards > li,
+.panel ol.cards > li,
+.panel ul.attempts > li,
+.panel ol.progressLessons > li,
+.panel ol.lessons > li:not(.locked) {
+  background: var(--surface-sunken);
+  box-shadow: none;
+}
+
+/* What a Draft's standing is, and the writes, in one bar above the work rather
+   than at the bottom of it.
+
+   It is a panel that happens to stay put, not a strip bolted to the top of the
+   window. It used to be the second thing: negative margins pulled it out to the
+   edges of the page and it stuck to `top: 0`, so it arrived at the top of the
+   screen as a square-cornered band that met nothing on either side and belonged
+   to no part of the layout. Now it keeps the page's own margin, the frame every
+   other section has, and a gap above it when it is stuck — so what a reader sees
+   is this screen's own bar holding still, which is what it is. */
 .workBar {
   position: sticky;
-  top: 0;
-  z-index: 1;
+  top: var(--space-4);
+  /* Above the panels it slides over, and above a sticky column beside it. */
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-  margin: calc(var(--space-6) * -1) calc(var(--space-5) * -1) var(--space-5);
+  margin: 0 0 var(--space-6);
   padding: var(--space-4) var(--space-5);
   background: var(--surface);
-  border-bottom: var(--border-width) solid var(--line);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  /* The heavier of the two steps, and the only place a resting element takes it:
+     a bar that scrolls over the page has to read as being in front of it. */
+  box-shadow: var(--shadow-md);
 }
-.workBar .spacer { flex: 1; }
+/* What the bar says, and what it offers. The first wraps inside itself and
+   shrinks; the second never does either — three controls that reflow one at a
+   time are three controls in three different places. */
+.workBar .standing {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.workBar .writes {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
 
 /* A standing, said in one word: published, changed, draft, generated. */
 .tag {
@@ -923,13 +1298,13 @@ input[type='text'].gap:focus { border-bottom-color: var(--accent); }
   align-items: center;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
+  background: var(--surface-well);
   color: var(--fg-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   white-space: nowrap;
 }
-.tag[class*='state-'] { background: var(--wash, var(--surface-sunken)); color: var(--ink, var(--fg-muted)); }
+.tag[class*='state-'] { background: var(--wash, var(--surface-well)); color: var(--ink, var(--fg-muted)); }
 
 /* Where a Draft came from — written by hand, generated, or refined. Deliberately
    not a state hue: a Draft's origin is a fact about who wrote it, and dressing
@@ -1044,8 +1419,18 @@ ul.choiceRows > li > input[type='text'] { flex: 1; min-width: 12rem; }
    an item at the end of its Lessons. */
 .sideBySide { display: flex; align-items: flex-start; gap: var(--space-5); }
 .sideBySide > .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+/* A column of framed sections is spaced as a stack of sections, not as the loose
+   run of blocks this column holds when it is not framed. Stated here rather than
+   left to `.sections` alone, which this selector would otherwise outweigh. */
+.sideBySide > .main.sections { gap: var(--space-6); }
 .sideBySide > .side {
-  width: 20rem;
+  /* Wide enough for a name and the control that acts on it side by side. At
+     twenty rem «debug_student» and «Убрать с курса» could not both fit on the
+     line, so the name broke across two — and a username broken mid-word is an
+     identifier a person has to reassemble before they can be sure whose row they
+     are about to change. Two more rem is what that costs. A name longer than the
+     line still breaks; what changes is that the ordinary case no longer does. */
+  width: 22rem;
   flex: none;
   position: sticky;
   top: var(--space-5);
@@ -1113,6 +1498,64 @@ ul.choiceRows > li > input[type='text'] { flex: 1; min-width: 12rem; }
 ol.progressLessons > li { display: block; }
 ol.progressLessons > li > p:first-child { margin-top: 0; }
 ol.progressLessons > li > p:last-child { margin-bottom: 0; }
+/* The circled number, here as everywhere else. This screen names a Lesson four
+   times — in this list, on the chart's axis, in the chart's table and in the two
+   span pickers — and three of the four used the number. This list was the one
+   that made the reader match on the title. */
+ol.progressLessons .lessonName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+ol.progressLessons .lessonName strong { min-width: 0; }
+
+/* --- A section that folds ----------------------------------------------------
+   Two lists on the progress screen can run to a hundred rows, and both sit above
+   the statistics the screen is for. `<details>` rather than a toggle in script:
+   the screen is rendered on the server, and a list that cannot be opened until a
+   bundle arrives is a list that is sometimes not there.
+
+   The marker is drawn here rather than taken from the browser, which draws a
+   different triangle in each of them and puts it on the text baseline of a
+   heading. */
+details.section > summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-width) solid var(--line);
+  margin-bottom: var(--space-4);
+}
+details.section > summary::-webkit-details-marker { display: none; }
+details.section > summary h2 { margin: 0; }
+details.section > summary::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--fg-muted);
+  border-bottom: 2px solid var(--fg-muted);
+  transform: rotate(-45deg);
+}
+details.section[open] > summary::before { transform: rotate(45deg); }
+details.section > summary:hover::before { border-color: var(--accent); }
+details.section > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The count is the reason the fold is safe: a closed list still says how much is
+   inside it, so closing one never hides the fact that there is anything there. */
+details.section > summary .muted { margin-left: auto; font-size: var(--text-sm); }
+details.section + details.section { margin-top: var(--space-6); }
+details.section { margin-top: var(--space-6); }
+/* Inside a stack of framed sections the air between them is the stack's, and a
+   folding section is one of them rather than a special case that brings its own.
+   Its summary keeps the rule under it — that is the fold's own affordance, not a
+   section divider — but pulls up to the frame's padding, so an open list and a
+   closed one begin at the same place. */
+.sections > details.section,
+.sections > details.section + details.section { margin-top: 0; }
+.sections > details.section > summary { padding-top: 0; }
 
 table.histogram {
   width: 100%;
@@ -1130,16 +1573,36 @@ table.histogram thead th {
   font-weight: var(--weight-semibold);
 }
 table.histogram tbody th { width: 40%; }
-table.histogram .bar {
-  display: inline-block;
+/* The bar's cell takes whatever the other two columns leave, and the count's
+   takes exactly its own text — `width: 1%` with `white-space: nowrap` is how a
+   table is asked for a shrink-to-fit column. That is what makes every track the
+   same length: the column is one width for the whole table, so «1 ошибка» and
+   «12 ошибок» cannot pull their own rows' bars to different scales. */
+table.histogram .barCell { width: auto; }
+table.histogram .track {
+  display: block;
+  width: 100%;
   height: var(--space-3);
-  min-width: 2px;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  vertical-align: middle;
-  margin-right: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-well);
+  overflow: hidden;
 }
-table.histogram .value { color: var(--fg-muted); font-size: var(--text-sm); }
+table.histogram .bar {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+/* Never wrapped and never squeezed: the number is the answer, and the bar is
+   only the shape of it. */
+table.histogram td.value {
+  width: 1%;
+  white-space: nowrap;
+  padding-left: var(--space-4);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
 
 /* --- Change over time --------------------------------------------------------
    Six series on one chart, told apart by hue, by dash pattern and by marker —
@@ -1153,23 +1616,50 @@ table.histogram .value { color: var(--fg-muted); font-size: var(--text-sm); }
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius-lg);
 }
-.chart .grid { stroke: var(--line); }
+/* The grid's rules and the counts up its side, separately. They were one rule
+   setting `stroke`, which the counts inherited — so each number was painted with
+   a hairline outline and left to take SVG's default fill, which is black. In the
+   light theme that read as a slightly furry number; in the dark one it was black
+   text on a near-black card, and the scale the chart is drawn against was
+   effectively not there. A number is text: it takes a fill and no stroke. */
+.chart .grid line { stroke: var(--line); }
+.chart .grid text { fill: var(--fg-muted); stroke: none; font-size: var(--text-xs); }
 .chart .axis { fill: var(--fg-muted); font-size: var(--text-xs); }
-.chart .seriesLabel { fill: var(--fg-muted); font-size: var(--text-xs); }
-.chart .line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.chart .s1 .line, .chart .s1 .seriesLabel { stroke: var(--series-1); fill: var(--series-1); }
-.chart .s2 .line, .chart .s2 .seriesLabel { stroke: var(--series-2); fill: var(--series-2); }
-.chart .s3 .line, .chart .s3 .seriesLabel { stroke: var(--series-3); fill: var(--series-3); }
-.chart .s4 .line, .chart .s4 .seriesLabel { stroke: var(--series-4); fill: var(--series-4); }
-.chart .s5 .line, .chart .s5 .seriesLabel { stroke: var(--series-5); fill: var(--series-5); }
-.chart .s6 .line, .chart .s6 .seriesLabel { stroke: var(--series-6); fill: var(--series-6); }
-.chart .s1 .line { fill: none; }
-.chart .s2 .line { fill: none; stroke-dasharray: 6 4; }
-.chart .s3 .line { fill: none; stroke-dasharray: 2 3; }
-.chart .s4 .line { fill: none; stroke-dasharray: 9 3 2 3; }
-.chart .s5 .line { fill: none; stroke-dasharray: 1 4; }
-.chart .s6 .line { fill: none; stroke-dasharray: 12 4; }
-.chart .seriesLabel { stroke: none; }
+.chart .seriesLabel { font-size: var(--text-xs); }
+/* The hue is set on the whole series rather than on its line and its label,
+   which is what left the markers black: a `<rect>` at a data point is not the
+   line and not the label, so it matched neither rule and fell through to SVG's
+   default fill. The same colour now reaches the line, the shape at each point
+   and the name at the end — which is the point of drawing them as one series. */
+.chart .series { stroke-linecap: round; stroke-linejoin: round; }
+.chart .s1 { stroke: var(--series-1); fill: var(--series-1); }
+.chart .s2 { stroke: var(--series-2); fill: var(--series-2); }
+.chart .s3 { stroke: var(--series-3); fill: var(--series-3); }
+.chart .s4 { stroke: var(--series-4); fill: var(--series-4); }
+.chart .s5 { stroke: var(--series-5); fill: var(--series-5); }
+.chart .s6 { stroke: var(--series-6); fill: var(--series-6); }
+.chart .line { fill: none; stroke-width: 2; }
+.chart .s2 .line { stroke-dasharray: 6 4; }
+.chart .s3 .line { stroke-dasharray: 2 3; }
+.chart .s4 .line { stroke-dasharray: 9 3 2 3; }
+.chart .s5 .line { stroke-dasharray: 1 4; }
+.chart .s6 .line { stroke-dasharray: 12 4; }
+/* The name at the end of a line, set over whatever the chart has drawn there.
+   The stroke is the card's own background rather than the series hue, and
+   `paint-order` puts it *behind* the glyphs — so it is a halo punched through
+   the lines it crosses, not an outline making the text bolder. Without it a
+   label whose neighbour's line passes under it is read through that line.
+   `--surface` because that is what `.chartFrame` is painted with; a halo in any
+   other colour would be a shape rather than a gap. */
+.chart .seriesLabel {
+  stroke: var(--surface);
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+}
+/* The hairline from a nudged label back to the point it belongs to. Thin and in
+   the series' own hue, so it reads as part of that line rather than as data. */
+.chart .leader { stroke-width: 1; }
 .spanPickers {
   display: flex;
   flex-wrap: wrap;
@@ -1177,8 +1667,204 @@ table.histogram .value { color: var(--fg-muted); font-size: var(--text-sm); }
   align-items: flex-end;
   margin-bottom: var(--space-4);
 }
-.spanPickers > * { min-width: 12rem; }
+.spanPickers > * { min-width: 15rem; }
 table.spanTable { margin-top: var(--space-4); }
+
+/* --- Choosing an end of the span ---------------------------------------------
+   The two ends of the charted span. A drop-down over a hundred Lessons is a
+   hundred truncated titles, so each end is a control that opens a panel with a
+   search box, a calendar and the list in it — see `lesson-picker.tsx`.
+
+   The trigger is shaped like the field it replaced: a label above, a control
+   below, the same height and the same edge as every input on the screen. What is
+   different is what it holds — the Lesson's circled number beside its title,
+   which is how a Lesson is named everywhere else here. */
+.pickerField { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; }
+.pickerLabel { color: var(--fg); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+button.pickerTrigger:not([class*='mantine-']) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+button.pickerTrigger:not([class*='mantine-']):hover { background: var(--surface-sunken); }
+.pickerTrigger svg { flex: none; margin-left: auto; color: var(--fg-muted); }
+.pickerValue { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pickerPanel { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* The list of Lessons. Scrolls inside the panel rather than growing it, so the
+   search box above stays where it was typed into. */
+ul.pickerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 20rem;
+  overflow-y: auto;
+}
+button.pickerRow:not([class*='mantine-']) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+button.pickerRow:not([class*='mantine-']):hover { background: var(--surface-sunken); }
+button.pickerRow.here:not([class*='mantine-']) { border-color: var(--accent); background: var(--accent-quiet); }
+/* Name over date, in a column. `.body` is the same two-line block the card
+   lists use; it needs saying again here because there it is a child of the list
+   item and here it is a child of the control. */
+.pickerRow > .body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.pickerRow .title { font-weight: var(--weight-medium); }
+.pickerRow .muted { font-size: var(--text-xs); }
+
+/* The calendar, folded away behind its own name. Most spans are chosen by number
+   in the list below it, and a month grid open by default is a month grid in the
+   way of the thing that is usually wanted. */
+.dateFilter { display: flex; flex-direction: column; gap: var(--space-3); }
+button.dateToggle:not([class*='mantine-']) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  min-height: auto;
+  padding: var(--space-1) 0;
+  border: none;
+  background: none;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.dateToggle svg { color: var(--fg-muted); }
+.dateToggle:not(.open) svg { transform: rotate(-90deg); }
+.dateToggle .chosenRange { color: var(--accent); font-weight: var(--weight-normal); }
+
+.calendar {
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.calHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.calHeader button:not([class*='mantine-']) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  min-height: auto;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  box-shadow: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.calHeader button:not([class*='mantine-']):hover { background: var(--surface-sunken); color: var(--fg); }
+
+/* Seven columns with nothing between them, which is what lets a chosen span be
+   one continuous band rather than a row of separate tinted squares — the cell
+   carries the band and the day sits inside it. */
+.calGrid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.calHead {
+  padding: var(--space-1) 0;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+}
+.calCell { padding: 1px 0; }
+.calCell.in { background: var(--accent-quiet); }
+.calCell.start { border-top-left-radius: var(--radius-pill); border-bottom-left-radius: var(--radius-pill); }
+.calCell.end { border-top-right-radius: var(--radius-pill); border-bottom-right-radius: var(--radius-pill); }
+button.calDay:not([class*='mantine-']) {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: var(--space-6);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  box-shadow: none;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  cursor: pointer;
+}
+button.calDay:not([class*='mantine-']):hover { background: var(--surface-sunken); }
+/* The two ends of the band are the two days that were actually chosen, so they
+   are the two that are filled. Everything between them is the tint. */
+.calCell.start button.calDay:not([class*='mantine-']),
+.calCell.end button.calDay:not([class*='mantine-']) {
+  background: var(--accent);
+  color: var(--accent-on);
+  font-weight: var(--weight-semibold);
+}
+.calCell.start button.calDay:not([class*='mantine-']):hover,
+.calCell.end button.calDay:not([class*='mantine-']):hover { background: var(--accent-hover); }
+/* A day something was answered on. This is what makes the grid worth reading
+   rather than only worth clicking: an undotted month is a month to skip. */
+.calDay.studied::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.22rem;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.calCell.start .calDay.studied::after,
+.calCell.end .calDay.studied::after { background: var(--accent-on); }
+.calFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.calFoot button:not([class*='mantine-']) { min-height: var(--control-height); font-size: var(--text-sm); }
 
 /* A sentence the screen says before it is asked — what a Test withholds, what
    it does not gate. Quieter than a Verdict and louder than a caption. */
@@ -1281,6 +1967,9 @@ pre.streaming {
 .pageHead > div { min-width: 0; }
 .pageHead h1 { margin: 0 0 var(--space-1); }
 .pageHead p { margin: 0; }
+/* The way back up, above the title it is above. It needs its own air because it
+   is a control now rather than a line of text — see `shared/crumb.tsx`. */
+.pageHead .crumb { margin-bottom: var(--space-3); }
 
 /* A figure lifted out of the prose — a percentage, a score. */
 .figure {
@@ -1326,22 +2015,55 @@ pre.streaming {
 .cardGrid .facts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .cardGrid .foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-2); }
 
-/* A Lesson in a Course's list: its standing on the left, its bar on the right. */
-ol.lessons > li {
+/* A Lesson in a Course's list: its standing on the left, its meter on the right,
+   and the whole of it is the way in.
+
+   It used to be the title alone. That put a target four words wide inside a card
+   the width of the column, and everything a person actually aims at when they
+   mean "this Lesson" — the number, the line saying how far they got, the bar —
+   did nothing. The row is the anchor now; the title is a span inside it. */
+ol.lessons .row {
+  /* `flex: 1` and not merely `display: flex`: the card is itself a flex
+     container, so the row is one of its items and would otherwise shrink to its
+     contents — which left the meter floating in the middle of the card instead
+     of sitting at its right edge, and left a strip of unclickable card beside
+     it. */
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  color: inherit;
+  text-decoration: none;
 }
-li > .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+ol.lessons .row .title { font-size: var(--text-base); font-weight: var(--weight-medium); }
+/* The card answers the pointer, rather than the four words in it picking up an
+   underline: what is being offered is the whole row, so the whole row is what
+   lights. */
+ol.lessons > li:has(a.row):hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+ol.lessons .row:hover .title { color: var(--accent); }
+/* The ring belongs on the card, not on the anchor inside it — an outline drawn
+   two pixels outside a row that fills its card is an outline hidden under the
+   card's own border. */
+ol.lessons .row:focus-visible { outline: none; }
+ol.lessons > li:has(.row:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+li > .body, .row > .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 li > .body > a,
 li > .body > span:first-child {
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
 }
-ol.lessons > li > ol.progress { width: 8rem; flex: none; margin: 0; }
+ol.lessons .row > .meter { width: 8rem; flex: none; }
 ol.lessons > li.here { border-color: var(--accent); box-shadow: var(--shadow-md); }
 
-/* The same mark the navigation column uses, at the size a list wants. */
+/* The same mark the navigation column uses, at the size a list wants. A disc
+   pressed into the row, so it is painted from `--surface-well` like every other
+   recess: a Lesson's number was unreadable the moment the row itself turned
+   grey. */
 .mark {
   width: var(--space-6);
   height: var(--space-6);
@@ -1350,13 +2072,13 @@ ol.lessons > li.here { border-color: var(--accent); box-shadow: var(--shadow-md)
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
+  background: var(--surface-well);
   color: var(--fg-muted);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
 }
 .mark[class*='state-'] {
-  background: var(--wash, var(--surface-sunken));
+  background: var(--wash, var(--surface-well));
   color: var(--ink, var(--fg-muted));
 }
 .mark.here { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
@@ -1370,7 +2092,7 @@ ol.lessons > li.here { border-color: var(--accent); box-shadow: var(--shadow-md)
 /* The two facts a Course carries that are shown and not offered. */
 .fixedFacts {
   padding: var(--space-3) var(--space-4);
-  background: var(--surface-sunken);
+  background: var(--surface-well);
   border-radius: var(--radius);
 }
 .fixedFacts p { margin: 0; }

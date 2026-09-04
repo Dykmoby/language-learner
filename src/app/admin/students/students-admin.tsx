@@ -116,7 +116,8 @@ export function StudentsAdmin({ initialAccounts, actingStudentId }: Props) {
   }
 
   return (
-    <>
+    <div className="sections">
+      <section className="panel">
       <h2>{ru.admin.accountsListTitle}</h2>
       <p className="muted">{ru.admin.accountsHint}</p>
 
@@ -170,7 +171,12 @@ export function StudentsAdmin({ initialAccounts, actingStudentId }: Props) {
           </li>
         ))}
       </ul>
+      </section>
 
+      {/* Adding an account is a different act from listing them, and the frame
+          is what says so. The two used to run together down one column, told
+          apart by the weight of a heading and nothing else. */}
+      <section className="panel">
       <h2>{ru.admin.newAccountTitle}</h2>
       <p className="muted">{ru.admin.newAccountHint}</p>
       <TextInput
@@ -205,6 +211,7 @@ export function StudentsAdmin({ initialAccounts, actingStudentId }: Props) {
         </ul>
       )}
       {notice === null ? null : <p className="ok" role="status">{notice}</p>}
-    </>
+      </section>
+    </div>
   );
 }

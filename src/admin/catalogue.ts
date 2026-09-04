@@ -10,11 +10,11 @@
 // Nothing here checks who is asking. The Admin narrowing happens once, at the
 // page, the same way the health check does it.
 
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, count, eq, inArray } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
-  courses, lessons, exerciseSets, exercises, enrollments, students,
+  courses, lessons, exerciseSets, exercises, submissions, enrollments, students,
   type CourseRow, type LessonRow, type StudentRow,
 } from '../db/schema.ts';
 import { lessonsWithUnpublishedChanges } from './drafts.ts';
@@ -63,6 +63,15 @@ export type AdminLesson = {
   lesson: LessonRow;
   exerciseCount: number;
   publication: LessonPublication;
+  /**
+   * How many Submissions a Student has made against this Lesson's Exercises.
+   *
+   * Read for one reason: the screen offers to delete a Lesson, and deleting one
+   * takes every Submission in it with no way back. The confirmation has to be
+   * able to name the cost before the act rather than report it after, so the
+   * number travels with the list.
+   */
+  submissionCount: number;
 };
 
 export type AdminCourse = {
@@ -83,12 +92,31 @@ export function adminCourse(db: Db, courseId: number): AdminCourse | null {
     .where(inArray(exerciseSets.lessonId, own.map((l) => l.id))).all();
 
   const counts = new Map<number, number>();
+  const submitted = new Map<number, number>();
   if (sets.length > 0) {
     const lessonBySet = new Map(sets.filter((s) => s.lessonId !== null).map((s) => [s.id, s.lessonId!]));
-    for (const row of db.select({ setId: exercises.exerciseSetId }).from(exercises)
+    const lessonByExercise = new Map<number, number>();
+    for (const row of db.select({ id: exercises.id, setId: exercises.exerciseSetId }).from(exercises)
       .where(inArray(exercises.exerciseSetId, [...lessonBySet.keys()])).all()) {
       const lessonId = lessonBySet.get(row.setId);
-      if (lessonId !== undefined) counts.set(lessonId, (counts.get(lessonId) ?? 0) + 1);
+      if (lessonId === undefined) continue;
+      counts.set(lessonId, (counts.get(lessonId) ?? 0) + 1);
+      lessonByExercise.set(row.id, lessonId);
+    }
+
+    // Grouped in the database rather than counted here: this asks for one row
+    // per Exercise, which is bounded by the Lesson, where selecting the
+    // Submissions themselves would be one row per answer every Student ever gave.
+    if (lessonByExercise.size > 0) {
+      for (const row of db
+        .select({ exerciseId: submissions.exerciseId, made: count() })
+        .from(submissions)
+        .where(inArray(submissions.exerciseId, [...lessonByExercise.keys()]))
+        .groupBy(submissions.exerciseId)
+        .all()) {
+        const lessonId = lessonByExercise.get(row.exerciseId);
+        if (lessonId !== undefined) submitted.set(lessonId, (submitted.get(lessonId) ?? 0) + row.made);
+      }
     }
   }
 
@@ -99,6 +127,7 @@ export function adminCourse(db: Db, courseId: number): AdminCourse | null {
     lessons: own.map((lesson) => ({
       lesson,
       exerciseCount: counts.get(lesson.id) ?? 0,
+      submissionCount: submitted.get(lesson.id) ?? 0,
       publication: lesson.publishedAt === null
         ? 'draft'
         : ahead.has(lesson.id) ? 'unpublished_changes' : 'published',

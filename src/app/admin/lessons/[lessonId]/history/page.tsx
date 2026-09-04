@@ -17,6 +17,7 @@ import { draftHistory, findDraft, openDraft } from '../../../../../admin/drafts.
 import { renderTheory } from '../../../../../content/markdown.ts';
 import { isDeterministic } from '../../../../../content/exercise-validity.ts';
 import { RestoreButton } from './restore.tsx';
+import { Crumb } from '../../../../shared/crumb.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,14 +47,18 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
     <main>
       <div className="pageHead">
         <div>
-          <p className="muted">
-            <a href={`/admin/lessons/${lessonId}`}>{open.lesson.title}</a>
-          </p>
+          <Crumb href={`/admin/lessons/${lessonId}`}>{open.lesson.title}</Crumb>
           <h1>{ru.draft.historyTitle}</h1>
           <p className="muted">{ru.draft.historyExplanation}</p>
         </div>
       </div>
 
+      {/* One section, one frame: the list of versions, then the version being
+          read. They ran together, so the Theory of the chosen Draft looked like
+          the tail of the list that chose it. */}
+      <div className="sections">
+      <section className="panel">
+      <h2>{ru.draft.historyVersionsTitle}</h2>
       {history.length === 0 ? (
         <p className="muted">{ru.draft.historyEmpty}</p>
       ) : (
@@ -84,16 +89,18 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
               {' '}
               {entry.id === selectedId
                 ? <span className="muted">{ru.draft.historySelected}</span>
-                : <a href={`/admin/lessons/${lessonId}/history?draft=${entry.id}`}>{ru.draft.historyShow}</a>}
+                : <a className="button secondary small" href={`/admin/lessons/${lessonId}/history?draft=${entry.id}`}>{ru.draft.historyShow}</a>}
             </li>
           ))}
         </ul>
       )}
+      </section>
 
       {selected === null ? null : (
         <>
           <RestoreButton lessonId={lessonId} draftId={selected.id} />
 
+          <section className="panel">
           <h2>{ru.draft.historyTheory}</h2>
           <p className="muted">{selected.document.title} · {selected.document.grammarFocus}</p>
           <div
@@ -103,6 +110,9 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
             dangerouslySetInnerHTML={{ __html: renderTheory(selected.document.theoryMarkdown) }}
           />
 
+          </section>
+
+          <section className="panel">
           <h2>{ru.draft.historyExercises}</h2>
           {selected.document.exercises.length === 0 ? (
             <p className="muted">{ru.draft.historyNoExercises}</p>
@@ -152,8 +162,10 @@ export default async function DraftHistoryPage({ params, searchParams }: Props) 
               ))}
             </ol>
           )}
+          </section>
         </>
       )}
+      </div>
 
     </main>
   );
