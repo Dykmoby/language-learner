@@ -15,11 +15,12 @@
 // Nothing here checks who is asking. The Admin narrowing happens once, at the
 // page or the endpoint, the same way the rest of the section does it.
 
-import { and, asc, eq, max } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, max } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../db/schema.ts';
 import {
   courses, lessons, lessonDrafts, enrollments, students,
+  exerciseSets, exercises, submissions,
   type CourseRow, type LessonRow, type LessonDraftRow,
 } from '../db/schema.ts';
 import { LANGUAGES, type Language } from '../grader/contract.ts';
@@ -45,6 +46,10 @@ export const AUTHORING_FAULTS = [
   'course_not_found',
   'student_not_found',
   'order_mismatch',
+  'lesson_not_found',
+  // The typed name did not match. A confirmation the caller can skip is not a
+  // confirmation, so the name is checked here and not only in the dialog.
+  'lesson_title_mismatch',
 ] as const;
 export type AuthoringFaultCode = (typeof AUTHORING_FAULTS)[number];
 
@@ -488,4 +493,71 @@ export function withdrawStudent(
   });
 
   return { ok: true, removed: true };
+}
+
+// --- Removing a Lesson -------------------------------------------------------
+
+/**
+ * How much of a Student's work hangs off one Lesson.
+ *
+ * Counted before the delete rather than after, because after there is nothing
+ * left to count: the foreign keys cascade from the Lesson through its Exercise
+ * Set, its Exercises, and every Submission made against them, and on through the
+ * Errors and Disputes those Submissions carry.
+ */
+export function lessonSubmissionCount(db: Db, lessonId: number): number {
+  const setIds = db.select({ id: exerciseSets.id }).from(exerciseSets)
+    .where(eq(exerciseSets.lessonId, lessonId)).all().map((row) => row.id);
+  if (setIds.length === 0) return 0;
+
+  const exerciseIds = db.select({ id: exercises.id }).from(exercises)
+    .where(inArray(exercises.exerciseSetId, setIds)).all().map((row) => row.id);
+  if (exerciseIds.length === 0) return 0;
+
+  return db.select({ n: count() }).from(submissions)
+    .where(inArray(submissions.exerciseId, exerciseIds)).get()?.n ?? 0;
+}
+
+export type DeleteLessonResult =
+  | { ok: true; title: string; submissionsRemoved: number }
+  | Refused;
+
+/**
+ * Removes a Lesson and everything that was that Lesson's.
+ *
+ * The one destructive act in authoring, and the only one that reaches a
+ * Student's own work: the cascade takes the Exercises, every Submission made
+ * against them, the Errors found in those Submissions and the Disputes raised
+ * over them. None of it is recoverable, and none of it is anywhere else — the
+ * Draft history goes too, so there is no copy of the Lesson left to restore.
+ *
+ * Which is why the confirmation is the Lesson's own title, typed out, rather
+ * than a second button. The count is returned so the caller can say what was
+ * destroyed in the words a person understands — «12 ответов» rather than «12
+ * rows» — and it is measured before the delete because afterwards there is
+ * nothing left to measure.
+ *
+ * The positions of the Lessons left behind are deliberately not closed up. They
+ * are unique within a Course and ordered by comparison, never by arithmetic, so
+ * a gap is invisible on every screen; renumbering would be a write against every
+ * remaining Lesson to fix something nobody can see.
+ */
+export function deleteLesson(
+  db: Db,
+  input: { lessonId: number; confirmTitle: string },
+): DeleteLessonResult {
+  const lesson = db.select().from(lessons).where(eq(lessons.id, input.lessonId)).get();
+  if (!lesson) return { ok: false, faults: ['lesson_not_found'] };
+
+  // Trimmed on both sides: a trailing space from a copy-paste is not a different
+  // Lesson, and refusing over one would teach an Admin that the confirmation is
+  // broken rather than that the name is wrong.
+  if (input.confirmTitle.trim() !== lesson.title.trim()) {
+    return { ok: false, faults: ['lesson_title_mismatch'] };
+  }
+
+  const submissionsRemoved = lessonSubmissionCount(db, input.lessonId);
+  db.delete(lessons).where(eq(lessons.id, input.lessonId)).run();
+
+  return { ok: true, title: lesson.title, submissionsRemoved };
 }

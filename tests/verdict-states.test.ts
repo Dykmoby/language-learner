@@ -159,6 +159,13 @@ test('no screen keeps a private treatment for a state the system defines', () =>
     // One rule, because both are the same refusal to call grading proven. What
     // separates them is the edge, which is where the difference actually is.
     '.healthBanner .bannerUnhealthy, .healthBanner .bannerStale': 'the sentence that makes the claim',
+    // Deleting a Lesson is not a Verdict on anybody's answer. It borrows the
+    // incorrect hue for the same reason `.error` does — it is the one red this
+    // palette has, and it is the colour of the thing that goes wrong — and it
+    // takes only the glyph and the edge, never a fill, so nothing here is read as
+    // a state a Submission could be in.
+    '.mantine-ActionIcon-root.danger:hover, .mantine-ActionIcon-root.danger:focus-visible':
+      'a destructive control, not a judgement — the hue marks what the press destroys',
   };
 
   // Built from the state names rather than from a prefix: `--rail-width` is the

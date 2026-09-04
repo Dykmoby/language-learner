@@ -11,11 +11,20 @@
 // The mapping runs one way on purpose. Nothing here reads a Mantine default and
 // copies it into a token; tokens are the input.
 
-import { createTheme, type CSSVariablesResolver, type MantineThemeOverride } from '@mantine/core';
+import {
+  createTheme,
+  type ButtonProps,
+  type CSSVariablesResolver,
+  type MantineTheme,
+  type MantineThemeOverride,
+} from '@mantine/core';
 
 /** Mantine wants a colour as ten steps. Ours live in the token layer. */
 const BRAND = Array.from({ length: 10 }, (_, step) => `var(--brand-${step})`) as unknown as
   readonly [string, string, string, string, string, string, string, string, string, string];
+
+/** Label, control, hint. Stated once so five components cannot drift apart. */
+const FIELD_ORDER = ['label', 'input', 'description', 'error'] as const;
 
 export const theme: MantineThemeOverride = createTheme({
   fontFamily: 'var(--font-sans)',
@@ -46,12 +55,55 @@ export const theme: MantineThemeOverride = createTheme({
   cursorType: 'pointer',
 
   components: {
-    Button: { defaultProps: { radius: 'md' } },
-    TextInput: { defaultProps: { radius: 'md' } },
-    Textarea: { defaultProps: { radius: 'md' } },
-    NumberInput: { defaultProps: { radius: 'md' } },
-    Select: { defaultProps: { radius: 'md', allowDeselect: false } },
-    NativeSelect: { defaultProps: { radius: 'md' } },
+    Button: {
+      defaultProps: { radius: 'md' },
+      // The label on a filled button, pointed at the token that decides it.
+      //
+      // Mantine's own default is `--mantine-color-white`, written into the
+      // Button's root rule and therefore out of reach of the variable mapping
+      // below, which can only set things on `:root`. So a filled button carried
+      // white text in both themes while `a.button` — the same control written as
+      // a link — carried `--accent-on`. In the light theme the two agreed by
+      // coincidence. In the dark one the accent is the *light* colour, so the
+      // hand-built control had near-black text and the library one had white
+      // text on the same pale blue: two buttons on two screens of the same
+      // Lesson, disagreeing.
+      //
+      // `--accent-on` is the answer to "what is legible on `--accent`" and it is
+      // measured in `tests/design-tokens.test.ts` in both themes. This is what
+      // makes Mantine ask the question rather than assume white.
+      vars: (_theme: MantineTheme, props: ButtonProps) => {
+        // Only the filled variant in the brand colour. `variant="default"` paints
+        // itself from `--mantine-color-default-color`, and a button given an
+        // explicit `color` — the one destructive action in the Admin section — is
+        // not on `--accent` and must not be told what is legible on it.
+        const filled = props.variant === undefined || props.variant === 'filled';
+        return {
+          root: filled && props.color === undefined
+            ? { '--button-color': 'var(--accent-on)' }
+            : {},
+        };
+      },
+    },
+    // The hint goes *under* the control it explains, not between the control and
+    // its own label.
+    //
+    // Mantine's default order is label, description, input — which makes the
+    // height of a field depend on whether it happens to carry a hint, and two
+    // fields side by side in a `Group` are then two fields whose boxes start at
+    // different heights. The New Course form is where that shows: Language has
+    // no hint and CEFR level has one, so the two sat a line and a half apart in
+    // a row that exists to say they belong together.
+    //
+    // Under the control they are all one shape again, and the reading is the
+    // better one anyway: this is the field, and this is what choosing costs.
+    // `aria-describedby` is written from the same prop whichever order it is in,
+    // so what a screen reader announces does not change.
+    TextInput: { defaultProps: { radius: 'md', inputWrapperOrder: FIELD_ORDER } },
+    Textarea: { defaultProps: { radius: 'md', inputWrapperOrder: FIELD_ORDER } },
+    NumberInput: { defaultProps: { radius: 'md', inputWrapperOrder: FIELD_ORDER } },
+    Select: { defaultProps: { radius: 'md', allowDeselect: false, inputWrapperOrder: FIELD_ORDER } },
+    NativeSelect: { defaultProps: { radius: 'md', inputWrapperOrder: FIELD_ORDER } },
     Card: { defaultProps: { radius: 'lg', withBorder: true } },
     Paper: { defaultProps: { radius: 'lg' } },
     Badge: { defaultProps: { radius: 'xl' } },

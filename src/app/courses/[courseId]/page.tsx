@@ -9,7 +9,7 @@ import { getDatabase } from '../../../db/index.ts';
 import { courseOutline, enrolledCourses, rememberCurrentCourse } from '../../../practice/lessons.ts';
 import { courseTests } from '../../../tests/taking.ts';
 import { courseProgress } from '../../../progress/report.ts';
-import { ProgressBar } from '../../shared/progress-bar.tsx';
+import { ProgressMeter } from '../../shared/progress-meter.tsx';
 import { stateClass } from '../../shared/verdict-state.ts';
 import { CourseTests } from './tests.tsx';
 
@@ -57,16 +57,25 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
           </p>
         </div>
         {/* The one number that answers "how is this going", beside a way to the
-            screen that answers it properly. */}
+            screen that answers it properly. The way there is drawn as a control
+            rather than as a run of underlined text: it is the only thing on this
+            card that does anything, and a word that has to be aimed at is not
+            how anything else in this application offers an action. Quiet rather
+            than filled, because the number is what this card is for. */}
         <div className="figure">
           <span>
             <span className="big">{ru.progress.percent(report.course.percent)}</span>
             <span className="under">{ru.progress.courseTotal}</span>
           </span>
-          <a href={`/courses/${course.id}/progress`}>{ru.progress.link}</a>
+          <a className="button secondary" href={`/courses/${course.id}/progress`}>{ru.progress.link}</a>
         </div>
       </div>
 
+      {/* One section, one frame: the Lessons and the Tests are two lists about
+          two different things, and a heading between them was the only thing
+          saying where one stopped. */}
+      <div className="sections">
+      <section className="panel">
       <h2>{ru.course.lessonsTitle}</h2>
       <ol className="lessons">
         {outline.map(({ lesson, unlocked, complete, progress }, index) => {
@@ -77,13 +86,11 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
               ? <span className={`mark ${stateClass(withHelp ? 'help' : 'correct')}`}>{TICK}</span>
               : <span className="mark">{index + 1}</span>;
 
-          return (
-            <li key={lesson.id} className={unlocked ? undefined : 'locked'}>
+          const inside = (
+            <>
               {mark}
               <span className="body">
-                {unlocked
-                  ? <a href={`/lessons/${lesson.id}`}>{lesson.title}</a>
-                  : <span>{lesson.title}</span>}
+                <span className="title">{lesson.title}</span>
                 <span className="muted">
                   {!unlocked
                     ? ru.course.locked
@@ -99,19 +106,33 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
                     : ''}
                 </span>
               </span>
-              {unlocked ? (
-                <ProgressBar
-                  segments={progress.exercises.map((exercise) => ({
-                    position: exercise.position,
-                    state: exercise.state,
-                  }))}
-                />
-              ) : null}
+              {unlocked ? <ProgressMeter standing={progress.counts} /> : null}
+            </>
+          );
+
+          // The whole row is the way in, not the title inside it. A card that
+          // looks like one thing and can only be opened by hitting the four
+          // words at its top is a card with an invisible target in it — and the
+          // rest of it, the mark and the bar, is exactly what a person aims at
+          // when they mean "this Lesson". A locked row is a row and not a link,
+          // because there is nowhere for it to go.
+          return (
+            <li key={lesson.id} className={unlocked ? undefined : 'locked'}>
+              {unlocked
+                ? (
+                  <a className="row" href={`/lessons/${lesson.id}`} aria-label={ru.course.openLesson(lesson.title)}>
+                    {inside}
+                  </a>
+                )
+                : <span className="row">{inside}</span>}
             </li>
           );
         })}
       </ol>
 
+      </section>
+
+      <section className="panel">
       <h2 id="tests">{ru.test.sectionTitle}</h2>
       <CourseTests
         tests={tests.map(({ test, exerciseCount, attempts }) => ({
@@ -121,6 +142,8 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
           attempts,
         }))}
       />
+      </section>
+      </div>
       {/* No back-link. The navigation column carries the way out, and this one
           pointed at the home screen — which redirects to the Current Course, and
           working in a Course is what makes it the Current Course, so it led

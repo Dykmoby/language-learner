@@ -91,7 +91,11 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
   const busy = phase === 'submitting';
 
   return (
-    <section>
+    <div className="sections">
+      {/* Two sections: the sheet being answered, and what earlier attempts
+          scored. The attempts list used to sit directly under the submit
+          button, so a past score read as part of the answer in progress. */}
+      <section>
       <ol className="exercises">
         {exercises.map((exercise) => (
           <li key={exercise.exerciseId} className="askCard">
@@ -140,9 +144,12 @@ export function TestShell({ testId, exercises, attempts, courseId }: Props) {
         </p>
       )}
 
+      </section>
+
+      <section className="panel">
       <h2>{ru.test.attemptsTitle}</h2>
       <AttemptList testId={testId} attempts={attempts} />
-
-    </section>
+      </section>
+    </div>
   );
 }

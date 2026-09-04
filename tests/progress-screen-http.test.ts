@@ -328,9 +328,47 @@ test('a span with no Errors says so rather than rendering as a broken chart', as
   const html = await progressHtml(client);
 
   assert.ok(html.includes(ru.changeOverTime.noErrors));
-  // The chart's own element, not any `<svg>` on the page: the span pickers are
-  // Mantine listboxes now and each draws its own chevron.
+  // The chart's own element, not any `<svg>` on the page: each span picker
+  // draws its own chevron, and so does the panel it opens.
   assert.ok(!html.includes('class="chart"'), 'and nothing is drawn');
+});
+
+test('the two long lists fold, and a folded one still says how much is in it', async () => {
+  // A Course of a hundred Lessons put a hundred bars between the header and the
+  // statistics this screen exists for. Both lists are `<details>` now — which
+  // has to keep working with no bundle at all, so it is asserted in the markup
+  // the server sent rather than through a browser.
+  const client = await signedIn();
+  const html = await progressHtml(client);
+
+  // Matched as one class among however many the element carries, rather than as
+  // the whole attribute: a folding section is also a framed one, and an
+  // assertion that reads the class list as a single string fails the next time
+  // the frame is named — which is a fact about the paint, not about the fold.
+  const sections = [...html.matchAll(/<details[^>]*class="[^"]*\bsection\b[^"]*"/g)];
+  assert.equal(sections.length, 2, 'the Lessons and the Test attempts both fold');
+
+  assert.ok(
+    html.includes(ru.progress.lessonsCount(DETERMINISTIC_COURSE.lessons.length)),
+    'the Lessons section names its count, so folding it hides nothing',
+  );
+  assert.ok(html.includes(ru.progress.attemptsCount(0)), 'and so does the attempts section');
+});
+
+test('a Lesson is numbered in the list, the way it is numbered everywhere else', async () => {
+  const client = await signedIn();
+  const html = await progressHtml(client);
+
+  // Scoped to the list rather than to the page: the navigation column draws the
+  // same mark for the same reason, which is the point — but it is not what this
+  // asserts, and matching it here would pass whatever the list did.
+  const list = html.slice(html.indexOf('progressLessons'));
+  const marks = [...list.matchAll(/class="mark">(\d+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(
+    marks.slice(0, DETERMINISTIC_COURSE.lessons.length),
+    DETERMINISTIC_COURSE.lessons.map((_, index) => String(index + 1)),
+    'numbered in Course order',
+  );
 });
 
 test('a span of Lessons can be chosen, and its Error Types are charted', async () => {
@@ -341,8 +379,8 @@ test('a span of Lessons can be chosen, and its Error Types are charted', async (
 
   const html = await progressHtml(client);
 
-  assert.ok(html.includes(ru.changeOverTime.from), 'the span has two ends to choose');
-  assert.ok(html.includes(ru.changeOverTime.to));
+  assert.ok(html.includes(ru.changeOverTime.pickFrom), 'the span has two ends to choose');
+  assert.ok(html.includes(ru.changeOverTime.pickTo));
   assert.ok(html.includes('class="chart"'), 'and the span is drawn');
   assert.ok(html.includes(ru.changeOverTime.tableCaption), 'with the same numbers as text beside it');
 });
@@ -367,6 +405,30 @@ test('series are distinguishable without relying on colour alone', async () => {
   // Named at its own end rather than in a legend elsewhere: matching a swatch to
   // a line is the step where two similar hues get confused.
   assert.ok(html.includes('seriesLabel'));
+});
+
+test('two series ending on the same count are labelled apart, not on top of each other', async () => {
+  // A label is placed at the height its line ends at, so two Error Types that
+  // end the span on the same count wanted the same y — and got it. «Заглавная
+  // буква» and «Пропущено слово» were drawn one over the other, which is two
+  // labels neither of which can be read.
+  const client = await signedIn();
+  const { exercises } = firstLesson();
+  // Three types, all finishing on exactly the same count.
+  giveErrors(client.username, exercises[0]!.id, ['article', 'tense', 'spelling']);
+
+  const html = await progressHtml(client);
+
+  const ys = [...html.matchAll(/class="seriesLabel"[^>]*\by="([\d.]+)"/g)]
+    .map((match) => Number(match[1]));
+  assert.ok(ys.length >= 3, 'three lines are labelled');
+
+  const sorted = [...ys].sort((a, b) => a - b);
+  const gaps = sorted.slice(1).map((y, index) => y - sorted[index]!);
+  assert.ok(
+    gaps.every((gap) => gap >= 15),
+    `labels closer together than a line of type: ${JSON.stringify(sorted)}`,
+  );
 });
 
 test('the chart holds in both themes, and adds no charting dependency', () => {

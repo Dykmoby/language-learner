@@ -40,19 +40,25 @@ export default async function AdminCoursePage({ params }: { params: Promise<{ co
               changes is this Course, and an Admin who wants it is already
               looking at one. */}
           <a className="button" href={`/admin/courses/${course.id}/settings`}>{ru.admin.settingsLink}</a>
-          {/* Plain link rather than a control: the response is a file, and the
-              browser already knows what to do with one. */}
-          <a href={`/api/admin/courses/${course.id}/export`}>{ru.transfer.exportCourse}</a>
+          {/* Still an anchor, because the response is a file and the browser
+              already knows what to do with one — but drawn as a control, because
+              what it is offering is an act rather than somewhere to read next.
+              A line of underlined text sitting beside a button reads as a
+              footnote to it. */}
+          <a className="button secondary" href={`/api/admin/courses/${course.id}/export`}>
+            {ru.transfer.exportCourse}
+          </a>
         </p>
       </div>
 
       <CourseAdmin
         courseId={course.id}
-        initialLessons={lessons.map(({ lesson, exerciseCount, publication }) => ({
+        initialLessons={lessons.map(({ lesson, exerciseCount, publication, submissionCount }) => ({
           id: lesson.id,
           title: lesson.title,
           exerciseCount,
           publication,
+          submissionCount,
         }))}
         initialTests={adminCourseTests(db, course.id).map(({ test, exerciseCount }) => ({
           id: test.id,

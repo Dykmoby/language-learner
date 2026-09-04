@@ -207,7 +207,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
                 </p>
               </>
             )}
-            <p><a href={`/courses/${courseId}`}>{ru.lesson.backToCourse}</a></p>
+            <p className="actions"><a className="button secondary" href={`/courses/${courseId}`}>{ru.lesson.backToCourse}</a></p>
           </div>
         </div>
       </section>

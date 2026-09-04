@@ -14,7 +14,7 @@
 // shape, and Refinement will exchange exactly this each turn.
 
 import { useRef, useState } from 'react';
-import { Button, TextInput, Textarea } from '@mantine/core';
+import { Button, Drawer, Tabs, TextInput, Textarea } from '@mantine/core';
 import { ru } from '../../../../ru.ts';
 import { renderTheory } from '../../../../content/markdown.ts';
 import type { DocumentFault, LessonDocument } from '../../../../content/lesson-document.ts';
@@ -68,6 +68,10 @@ export function DraftEditor({
   // What made the Draft on the screen. It changes under the Admin as they save,
   // generate or refine, so it is state rather than the prop it started as.
   const [draftOrigin, setDraftOrigin] = useState<DraftOrigin | null>(origin);
+  // Claude, open or not. Both halves stay mounted either way: a generation is a
+  // request that runs for a minute, and unmounting the panel that started it
+  // while it is in flight would throw the Lesson away at the moment it arrives.
+  const [claudeOpen, setClaudeOpen] = useState(false);
   const theoryRef = useRef<HTMLTextAreaElement | null>(null);
 
   const busy = phase !== 'editing';
@@ -234,21 +238,33 @@ export function DraftEditor({
           work rather than at the bottom of it. Publishing used to be a scroll
           past every Exercise away from the thing being published. */}
       <div className="workBar">
-        <span className={`tag ${standing.state}`}>{standing.words}</span>
-        {neverPublished ? <span className="tag">{ru.draft.neverPublished}</span> : null}
-        {/* What made this Draft, said wherever a Draft is shown. Until now a Draft
-            an Admin wrote every word of and one Claude produced thirty seconds ago
-            were indistinguishable here. */}
-        {draftOrigin === null ? null : (
-          <span className="madeBy">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</span>
-        )}
-        <span className="spacer" />
-        <Button onClick={save} disabled={busy}>
-          {phase === 'saving' ? ru.draft.saving : ru.draft.save}
-        </Button>
-        <Button variant="default" onClick={() => publish()} disabled={busy || !canPublish}>
-          {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
-        </Button>
+        {/* Two groups rather than a run of items with a spacer in the middle:
+            what the bar says gives way, and what it offers does not. Left to one
+            flex line, a long standing pushed the last button onto a second row
+            of its own — the bar grew a line to hold one control. */}
+        <span className="standing">
+          <span className={`tag ${standing.state}`}>{standing.words}</span>
+          {neverPublished ? <span className="tag">{ru.draft.neverPublished}</span> : null}
+          {/* What made this Draft, said wherever a Draft is shown. Until now a
+              Draft an Admin wrote every word of and one Claude produced thirty
+              seconds ago were indistinguishable here. */}
+          {draftOrigin === null ? null : (
+            <span className="madeBy">{ru.draft.madeBy(ru.draftOrigins[draftOrigin] ?? draftOrigin)}</span>
+          )}
+        </span>
+        <span className="writes">
+          <Button onClick={save} disabled={busy}>
+            {phase === 'saving' ? ru.draft.saving : ru.draft.save}
+          </Button>
+          <Button variant="default" onClick={() => publish()} disabled={busy || !canPublish}>
+            {phase === 'publishing' ? ru.draft.publishing : ru.draft.publish}
+          </Button>
+          {/* Beside the two writes because it is a third one: what comes back
+              from Claude lands as a saved Draft exactly as Save does. */}
+          <Button variant="default" onClick={() => setClaudeOpen(true)}>
+            {ru.draft.claude}
+          </Button>
+        </span>
       </div>
 
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
@@ -274,8 +290,10 @@ export function DraftEditor({
         </div>
       ) : null}
 
-      <div className="editorLayout">
-      <div className="draft">
+      {/* Three sections down the screen — the Lesson's own fields, its Exercises,
+          and the preview — each in its own frame. The preview in particular was
+          loose text under a heading, directly beneath the last Exercise form. */}
+      <div className="sections">
       <div className="panel">
         <TextInput
           label={ru.draft.lessonTitle}
@@ -313,6 +331,7 @@ export function DraftEditor({
         onChange={(exercises) => edit({ exercises })}
       />
 
+      <section className="panel">
       <h2>{ru.draft.preview}</h2>
       <div
         className="theory"
@@ -320,41 +339,69 @@ export function DraftEditor({
         // writes any tag, so the only angle brackets here are ones it wrote.
         dangerouslySetInnerHTML={{ __html: renderTheory(draft.theoryMarkdown) }}
       />
+      </section>
       </div>
 
-      {/* Claude, beside the Draft rather than under it. Generation and
-          refinement change the document on the left, and until now reaching
-          either meant scrolling past every Exercise in the Lesson they were
-          about. */}
-      <div className="aside">
-      {/* A generated Lesson lands here exactly as a save does: the Draft is
-          already appended server-side, so the editor is catching up with a row
-          rather than holding unsaved work. That is why `unsaved` goes false and
-          Publish becomes available — the deliberate second act is still the only
-          thing that reaches a Student. */}
-      <GeneratePanel
-        lessonId={lessonId}
-        earlier={earlierLessons}
-        defaultModel={defaultAuthorModel}
-        disabled={busy}
-        onGenerated={(document, id) => acceptAuthored(document, id, 'generation')}
-      />
+      {/* Claude, in front of the Draft rather than in a column beside it.
+          
+          No overlay and no scroll lock: what both halves do is rewrite the
+          document underneath, and dimming it would hide the thing being changed
+          at the moment of changing it. Closing is Escape or the cross — not a
+          click outside, because with the page still live a click outside is
+          somebody editing their Lesson. */}
+      <Drawer
+        opened={claudeOpen}
+        onClose={() => setClaudeOpen(false)}
+        position="right"
+        size="30rem"
+        title={ru.draft.claudeTitle}
+        className="claudeDrawer"
+        withOverlay={false}
+        lockScroll={false}
+        closeOnClickOutside={false}
+        keepMounted
+        closeButtonProps={{ 'aria-label': ru.common.close }}
+      >
+        <Tabs defaultValue="generate">
+          <Tabs.List grow>
+            <Tabs.Tab value="generate">{ru.generation.tab}</Tabs.Tab>
+            <Tabs.Tab value="refine">{ru.refinement.tab}</Tabs.Tab>
+          </Tabs.List>
 
-      {/* The document it is handed is `draft` — whatever is in the editor at this
-          moment, hand edits included — and the Draft it forks from is the one on
-          the screen. Both are what make editing and conversing interleave. */}
-      <RefinePanel
-        lessonId={lessonId}
-        document={draft}
-        fromDraftId={savedDraftId}
-        initialTurns={refinementTurns}
-        defaultModel={defaultAuthorModel}
-        disabled={busy}
-        onRefined={(document, id) => acceptAuthored(document, id, 'refinement')}
-      />
+          {/* A generated Lesson lands here exactly as a save does: the Draft is
+              already appended server-side, so the editor is catching up with a
+              row rather than holding unsaved work. That is why `unsaved` goes
+              false and Publish becomes available — the deliberate second act is
+              still the only thing that reaches a Student. */}
+          <Tabs.Panel value="generate">
+            <GeneratePanel
+              lessonId={lessonId}
+              earlier={earlierLessons}
+              defaultModel={defaultAuthorModel}
+              disabled={busy}
+              bare
+              onGenerated={(document, id) => acceptAuthored(document, id, 'generation')}
+            />
+          </Tabs.Panel>
 
-      </div>
-      </div>
+          {/* The document it is handed is `draft` — whatever is in the editor at
+              this moment, hand edits included — and the Draft it forks from is
+              the one on the screen. Both are what make editing and conversing
+              interleave. */}
+          <Tabs.Panel value="refine">
+            <RefinePanel
+              lessonId={lessonId}
+              document={draft}
+              fromDraftId={savedDraftId}
+              initialTurns={refinementTurns}
+              defaultModel={defaultAuthorModel}
+              disabled={busy}
+              bare
+              onRefined={(document, id) => acceptAuthored(document, id, 'refinement')}
+            />
+          </Tabs.Panel>
+        </Tabs>
+      </Drawer>
     </>
   );
 }

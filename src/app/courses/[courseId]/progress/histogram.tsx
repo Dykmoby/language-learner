@@ -28,17 +28,30 @@ export function ErrorHistogram({ counts }: { counts: ErrorCount[] }) {
         <thead>
           <tr>
             <th scope="col">{ru.errorStats.typeHeading}</th>
-            <th scope="col">{ru.errorStats.countHeading}</th>
+            {/* One heading over two columns: the bar and the number are one
+                answer to «сколько раз», drawn twice. */}
+            <th scope="col" colSpan={2}>{ru.errorStats.countHeading}</th>
           </tr>
         </thead>
         <tbody>
           {counts.map((entry) => (
             <tr key={`${entry.language}:${entry.type}`}>
               <th scope="row">{errorTypeLabel(entry.type)}</th>
-              <td>
-                <span className="bar" style={{ width: `${Math.round((entry.count / largest) * 100)}%` }} />
-                <span className="value">{ru.errorStats.count(entry.count)}</span>
+              {/* Two cells, and that is the whole point of them. The number used
+                  to follow the bar inside one cell — first in the text flow,
+                  where a long bar pushed it onto a second line, then as a flex
+                  item, where it took exactly as much width as its own text. That
+                  second version was worse in a quieter way: «1 ошибка» and «12
+                  ошибок» are different widths, so every row's track ended
+                  somewhere slightly different and no two bars were drawn against
+                  the same scale. A table column is uniform by construction, so
+                  the number gets one and the bars are finally comparable. */}
+              <td className="barCell">
+                <span className="track">
+                  <span className="bar" style={{ width: `${Math.round((entry.count / largest) * 100)}%` }} />
+                </span>
               </td>
+              <td className="value">{ru.errorStats.count(entry.count)}</td>
             </tr>
           ))}
         </tbody>

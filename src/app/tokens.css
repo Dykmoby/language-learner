@@ -29,10 +29,21 @@
      Three depths, and the redesign inverted the first two. The page is now the
      tinted one and a panel lifted off it is white — which is what makes a card
      read as a card without a shadow doing the work. `--surface-sunken` is a well
-     pressed into either: a code block, the track a progress bar fills. */
+     pressed into either: a code block, a row inside a framed section. */
   --bg: #f7f8fa;
   --surface: #ffffff;
   --surface-sunken: #f0f2f6;
+  /* A fourth depth, because a well can now be pressed into a well. Framing every
+     screen's sections put the rows inside them on `--surface-sunken`, and
+     everything drawn as a recess *within* a row — the track a meter fills, the
+     disc a Lesson's number sits in, a tag — was painted from that same value.
+     A well pressed into itself is not a well; it is a rectangle nobody can see.
+     This is the one step further in.
+
+     It is a single value rather than one per context because the old one was
+     barely visible on a white card either: `--surface-sunken` on `--surface` is
+     1.06:1, which is a track you have to already know is there. */
+  --surface-well: #dbdfe8;
   --fg: #16181d;
   --fg-muted: #5b6371;
 
@@ -47,6 +58,12 @@
 
   --accent: #3559c7;
   --accent-quiet: #eef2fd;
+  /* The quiet fill one step on, for a control that is sitting on the quiet fill
+     and has to answer a pointer. The navigation column was reaching for
+     `--surface-sunken` there — a neutral grey laid over a blue panel, which is
+     the one place in this design where a hover reads as a smudge rather than as
+     a highlight. A tint has to be answered by more of the same tint. */
+  --accent-quiet-strong: #dfe7fb;
   /* Text painted on an accent fill. */
   --accent-on: #ffffff;
   /* The same fill, under the pointer. Measured against `--accent-on` like the
@@ -141,6 +158,10 @@
   --bg: #101216;
   --surface: #191c22;
   --surface-sunken: #23272f;
+  /* The same step further in, read the other way up: on a dark ground "deeper"
+     is towards the light, because the page is already the darkest thing there
+     is and a recess drawn below it would leave the palette. */
+  --surface-well: #333a45;
   --fg: #e8eaef;
   --fg-muted: #a2a9b7;
 
@@ -149,6 +170,9 @@
 
   --accent: #8fb2ff;
   --accent-quiet: #1b2231;
+  /* Away from the page rather than towards it, which on a dark ground is what
+     "one step stronger" means. */
+  --accent-quiet-strong: #242e42;
   --accent-on: #101420;
   /* Lighter rather than darker on hover: on a dark page the accent is the
      light thing, so leaning into it is what reads as pressed. */

@@ -41,6 +41,9 @@ export const ru = {
     // asks twice before doing something irreversible should offer the same word
     // for "no" every time it asks.
     cancel: 'Отмена',
+    // The cross on a panel that opened over the screen. Named here because the
+    // component library would otherwise label it in English.
+    close: 'Закрыть',
   },
 
   // The six states a judgement can be in, named once.
@@ -226,11 +229,35 @@ export const ru = {
     lessonTitleField: 'Название урока',
     lessonStartsAsDraft:
       'Урок создаётся черновиком: студенты увидят его только после публикации.',
+    // The name a Lesson is born with. There is no form asking for one any more:
+    // the plus in the corner of the Lessons frame makes the Lesson and opens it,
+    // and the first field in the editor is its title. Asking for a name on the
+    // way in was a form standing between an author and the thing they came to
+    // write — and the name they typed there was the first thing they changed.
     createLesson: 'Добавить урок',
     creatingLesson: 'Добавление урока…',
     lessonCreated: 'Урок добавлен. Откройте его, чтобы написать теорию и упражнения.',
     reordering: 'Сохранение порядка…',
     orderSaved: 'Порядок уроков сохранён.',
+
+    // Removing a Lesson — the one destructive act in authoring.
+    //
+    // The wording carries the whole weight of the confirmation, so it names what
+    // goes rather than asking «вы уверены?»: the Exercises, the answers Students
+    // gave, and the history of the Lesson itself. There is no copy anywhere.
+    deleteLesson: 'Удалить урок',
+    deleteLessonTitle: (title: string) => `Удалить урок «${title}»?`,
+    deleteLessonWhatGoes:
+      'Вместе с уроком удаляются его упражнения, вся история черновиков и всё, что студенты в нём написали. Восстановить это будет нечем: копии не остаётся.',
+    deleteLessonSubmissions: (n: number) =>
+      `Ответов студентов в этом уроке: ${n}. Все они будут удалены вместе с найденными в них ошибками и апелляциями.`,
+    deleteLessonNoSubmissions: 'В этом уроке пока никто ничего не отвечал.',
+    deleteLessonConfirmField: 'Название урока',
+    deleteLessonConfirmHint: (title: string) =>
+      `Чтобы подтвердить, напечатайте название урока: ${title}`,
+    confirmDeleteLesson: 'Удалить навсегда',
+    deletingLesson: 'Удаление урока…',
+    lessonDeleted: (title: string) => `Урок «${title}» удалён.`,
 
     // Enrollment.
     rosterTitle: 'Доступ к курсу',
@@ -239,6 +266,10 @@ export const ru = {
     enroll: 'Записать на курс',
     enrolling: 'Запись…',
     enrolledAlready: 'Записан',
+    // Said out loud rather than left blank. Every row on this list carries a
+    // name and a standing, and a row whose standing was nothing was a row of a
+    // different height in a list of three people.
+    notEnrolled: 'Не записан',
     enrolledNow: 'Студент записан на курс.',
     noStudents: 'Нет ни одного аккаунта.',
     // Taking the Enrollment away. The message says what was *not* removed,
@@ -364,6 +395,10 @@ export const ru = {
     course_not_found: 'Курс не найден. Обновите страницу.',
     student_not_found: 'Студент не найден. Обновите страницу.',
     order_mismatch: 'Порядок уроков устарел. Обновите страницу и попробуйте снова.',
+    lesson_not_found: 'Урок не найден. Обновите страницу.',
+    // The name is the confirmation, so a name that does not match is a field to
+    // correct rather than a failure: the Lesson is still there.
+    lesson_title_mismatch: 'Название не совпадает. Напечатайте его в точности так, как оно написано выше.',
   },
 
   // Why an account could not be made, removed, or given a new password — keyed
@@ -533,6 +568,10 @@ export const ru = {
     inProgress: 'В работе',
     lockedRefusal: 'Этот урок ещё закрыт. Сначала пройдите предыдущий.',
     back: 'К курсам',
+    // The whole card is the control now, so the card is what carries the name a
+    // screen reader reads out — the title alone no longer says what pressing it
+    // does, because the title is no longer the thing being pressed.
+    openLesson: (title: string) => `Открыть урок: ${title}`,
   },
 
   lesson: {
@@ -637,6 +676,10 @@ export const ru = {
     link: 'Возражения',
     // On the Admin index, so the queue is not something to remember to look at.
     waiting: (n: number) => `Ждут решения: ${n}`,
+    // The same queue as a section of its own, where the list is underneath and
+    // counting it is the reader's for free. The count belongs to the index,
+    // where the list is not on the screen to be counted.
+    pendingTitle: 'Ждут решения',
     queueEmpty: 'Возражений, ожидающих решения, нет.',
     resolvedTitle: 'Рассмотренные',
     resolvedEmpty: 'Рассмотренных возражений пока нет.',
@@ -727,6 +770,12 @@ export const ru = {
 
     lessonsTitle: 'Уроки',
     courseTotal: 'Курс целиком',
+    // Both long lists on this screen fold away, and a folded list has to say how
+    // much is inside it — otherwise closing it hides the fact that there is
+    // anything to open. A Course of a hundred Lessons is the case that made this
+    // necessary and the case these counts are read in.
+    lessonsCount: (n: number) => `${n} ${plural(n, 'урок', 'урока', 'уроков')}`,
+    attemptsCount: (n: number) => `${n} ${plural(n, 'попытка', 'попытки', 'попыток')}`,
     // Read out beside the bar, because a bar alone is not a number.
     percent: (n: number) => `${n}%`,
     breakdown: (completed: number, withHelp: number, total: number) =>
@@ -760,8 +809,6 @@ export const ru = {
   changeOverTime: {
     title: 'Как меняется со временем',
     hint: 'Выберите отрезок уроков — сколько раз встречался каждый тип ошибки.',
-    from: 'С урока',
-    to: 'По урок',
     // Errors made in a Test belong to no Lesson, so they are counted in the table
     // above and not on this chart. Saying so is cheaper than a wrong conclusion.
     testsExcluded: 'Ошибки из тестов сюда не попадают — они относятся не к уроку.',
@@ -770,6 +817,36 @@ export const ru = {
     noLessons: 'Пока не из чего выбирать — в курсе нет опубликованных уроков.',
     lessonShort: (position: number) => `У${position}`,
     tableCaption: 'Те же числа, по урокам',
+
+    // --- Choosing an end of the span -----------------------------------------
+    // A drop-down over a hundred Lessons is a hundred lines of truncated title,
+    // so the two ends of the span are chosen in a panel that can be searched
+    // instead. These are the words in it.
+    pickFrom: 'С какого урока',
+    pickTo: 'По какой урок',
+    search: 'Найти урок',
+    // Says what may be typed, because two of the three are not obvious: the
+    // number is the one in the circle, and a date is chosen below rather than
+    // typed here.
+    searchHint: 'Номер или название',
+    nothingFound: 'Ничего не нашлось. Попробуйте другой номер или другое слово.',
+    // The calendar, folded away until it is wanted: most spans are chosen by
+    // number, and a month grid open by default is a month grid in the way.
+    byDate: 'Когда урок был пройден',
+    // A day carries a dot when something was answered on it, which is what makes
+    // the grid worth looking at rather than just worth clicking.
+    dayHasWork: 'В этот день были ответы',
+    rangeClear: 'Сбросить даты',
+    rangeStart: 'Начало промежутка',
+    rangeEnd: 'Конец промежутка',
+    previousMonth: 'Предыдущий месяц',
+    nextMonth: 'Следующий месяц',
+    // What is known about a Lesson besides its name: when it was worked, or that
+    // it has not been. Said rather than left blank — an empty cell reads as a
+    // fault, and «not started yet» is a real answer to «when».
+    workedOn: (first: string, last: string) =>
+      first === last ? `Отвечали ${first}` : `Отвечали с ${first} по ${last}`,
+    notWorked: 'Ответов пока нет',
     // A cap, and it is said out loud rather than silently dropping the rest.
     shownSeries: (shown: number, all: number) =>
       `Показаны ${shown} самых частых типов из ${all}. Остальные — в таблице ниже.`,
@@ -963,6 +1040,13 @@ export const ru = {
     // Exercises and says so: the theory and the title are still in the form.
     saveRefused: 'Черновик не сохранён: исправьте упражнения ниже.',
 
+    // Claude, in a panel that slides in over the Draft rather than in a column
+    // beside it. Both halves used to stand permanently to the right of the
+    // editor, where together they were taller than a screen: reaching the bottom
+    // of the second meant scrolling the whole Lesson past.
+    claude: 'Claude',
+    claudeTitle: 'Claude и этот урок',
+
     // Images in Theory.
     imageUpload: 'Вставить изображение',
     imageUploading: 'Загрузка изображения…',
@@ -975,6 +1059,8 @@ export const ru = {
     historyTitle: 'История черновиков',
     historyExplanation:
       'Каждое сохранение создаёт новый черновик, и ни один не удаляется. Восстановление добавляет копию выбранного черновика в конец истории — все предыдущие остаются на месте.',
+    // The list of versions, as a section of its own beside the one being read.
+    historyVersionsTitle: 'Версии',
     historyEmpty: 'Черновиков пока нет: урок ещё ни разу не сохраняли.',
     historyEntry: (position: number) => `Черновик ${position}`,
     historyAuthor: (username: string) => `автор: ${username}`,
@@ -1102,6 +1188,9 @@ export const ru = {
   // design.md § Authoring — the Admin describes a Lesson and Claude writes it.
   generation: {
     title: 'Сгенерировать урок',
+    // The short form, for the tab that names this half of the Claude panel. The
+    // title above is a sentence about an act; a tab is a label on a drawer.
+    tab: 'Генерация',
     // Says plainly where the result lands, because that is the whole safeguard:
     // a сгенерированный урок публикуется только отдельным решением человека.
     explanation:
@@ -1157,6 +1246,7 @@ export const ru = {
   // design.md § Authoring — the ongoing conversation with Claude over a Draft.
   refinement: {
     title: 'Доработка с Claude',
+    tab: 'Доработка',
     explanation:
       'Скажите, что изменить, и Claude вернёт весь урок целиком с этой правкой. Каждый ответ — новый черновик; предыдущие остаются. Ваши правки руками тоже уходят в запрос, так что править и обсуждать можно вперемешку.',
     // The conversation is over a Draft, and there is nothing to converse about

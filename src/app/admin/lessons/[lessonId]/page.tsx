@@ -10,6 +10,7 @@ import { requireAdmin } from '../../../../admin/guard.ts';
 import { getDatabase } from '../../../../db/index.ts';
 import { openDraft, publishedLessonsUpTo, refinementThread } from '../../../../admin/drafts.ts';
 import { config } from '../../../../config.ts';
+import { Crumb } from '../../../shared/crumb.tsx';
 import { DraftEditor } from './editor.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -33,9 +34,7 @@ export default async function DraftPage({ params }: { params: Promise<{ lessonId
     <main>
       <div className="pageHead">
         <div>
-          <p className="muted">
-            <a href={`/admin/courses/${open.course.id}`}>{open.course.title}</a>
-          </p>
+          <Crumb href={`/admin/courses/${open.course.id}`}>{open.course.title}</Crumb>
           <h1>{open.lesson.title}</h1>
           <p className="facts">
             <span>{ru.draft.title}</span>
@@ -43,7 +42,7 @@ export default async function DraftPage({ params }: { params: Promise<{ lessonId
           </p>
         </div>
         <p className="actions">
-          <a href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyTitle}</a>
+          <a className="button secondary" href={`/admin/lessons/${lessonId}/history`}>{ru.draft.historyTitle}</a>
         </p>
       </div>
 

@@ -79,7 +79,10 @@ export function CourseSettingsForm({
   }
 
   return (
-    <>
+    <div className="sections">
+      {/* Two sections: what the Course is, and the instruction its Grader reads.
+          They used to run together under one heading-in-the-middle. */}
+      <section className="panel">
       <Stack gap="sm">
         <TextInput
           label={ru.admin.courseTitleField}
@@ -117,7 +120,9 @@ export function CourseSettingsForm({
           onEffort={(next) => edited(setGraderEffort)(next)}
         />
       </Stack>
+      </section>
 
+      <section className="panel">
       {/* Issue #80 — plain text, not markdown: this goes into a prompt, not onto
           a page. There is no «Вернуть исходный текст» beside it, and nothing is
           hidden by its absence: what a Course ships with is the empty string, so
@@ -136,7 +141,10 @@ export function CourseSettingsForm({
         disabled={busy}
         onChange={(event) => edited(setGraderInstruction)(event.currentTarget.value)}
       />
+      </section>
 
+      {/* Outside both frames, because one press saves both: a button inside the
+          second panel would say it saved the instruction and not the title. */}
       {problem === null ? null : <p className="error" role="alert">{problem}</p>}
       {faults.length === 0 ? null : (
         <ul className="cards">
@@ -150,6 +158,6 @@ export function CourseSettingsForm({
           {busy ? ru.admin.savingSettings : ru.admin.saveSettings}
         </Button>
       </p>
-    </>
+    </div>
   );
 }

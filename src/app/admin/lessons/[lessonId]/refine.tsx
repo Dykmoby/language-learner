@@ -39,11 +39,13 @@ type Props = {
   initialTurns: Turn[];
   defaultModel: string;
   disabled: boolean;
+  /** Without a frame and without a heading — see `GeneratePanel`. */
+  bare?: boolean;
   onRefined: (document: LessonDocument, draftId: number) => void;
 };
 
 export function RefinePanel({
-  lessonId, document, fromDraftId, initialTurns, defaultModel, disabled, onRefined,
+  lessonId, document, fromDraftId, initialTurns, defaultModel, disabled, bare, onRefined,
 }: Props) {
   const [turns, setTurns] = useState<Turn[]>(initialTurns);
   const [message, setMessage] = useState('');
@@ -75,8 +77,8 @@ export function RefinePanel({
   }
 
   return (
-    <section className="panel">
-      <h3>{ru.refinement.title}</h3>
+    <section className={bare ? 'claudePane' : 'panel'}>
+      {bare ? null : <h3>{ru.refinement.title}</h3>}
       <p className="muted">{ru.refinement.explanation}</p>
 
       {fromDraftId === null ? <p className="muted">{ru.refinement.saveFirst}</p> : null}

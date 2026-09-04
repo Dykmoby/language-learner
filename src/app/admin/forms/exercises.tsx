@@ -95,7 +95,7 @@ export function ExerciseList({
   }
 
   return (
-    <>
+    <section className="panel">
       <h2>{ru.draft.exercisesTitle}</h2>
       {exercises.length === 0 ? <p className="muted">{ru.draft.noExercises}</p> : null}
 
@@ -254,7 +254,7 @@ export function ExerciseList({
           {ru.draft.addExercise}
           </Button>
       </p>
-    </>
+    </section>
   );
 }
 
