@@ -323,7 +323,17 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
             <p className="actions">
               {advancing || disputed
                 ? <Button onClick={advance}>{ru.practice.next}</Button>
-                : <Button onClick={retry}>{ru.practice.submit}</Button>}
+                : (
+                  // Issue #96 — this button checks nothing. It clears a Verdict
+                  // that has already been given and hands the Exercise back, and
+                  // «Проверить» described the step after the one it performs. A
+                  // failed grading keeps «Проверить»: nothing was judged there,
+                  // so there is nothing to answer again — the same answer is
+                  // going back to the same check.
+                  <Button onClick={retry}>
+                    {result.status === 'graded' ? ru.practice.retry : ru.practice.submit}
+                  </Button>
+                )}
               {!advancing && !disputed && result.progression.revealOffered ? (
                 <Button variant="default" onClick={reveal}>{ru.practice.reveal}</Button>
               ) : null}

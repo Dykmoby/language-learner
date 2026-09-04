@@ -596,6 +596,11 @@ export const ru = {
     buildSentence: 'Нажимайте на слова, чтобы составить предложение',
     clear: 'Очистить',
     submit: 'Проверить',
+    // Issue #96 — after a Verdict went against the Student, the same button no
+    // longer checks anything: it clears the judgement and hands the Exercise
+    // back. It says so. Once they are answering again it is «Проверить» once
+    // more, because then it does check.
+    retry: 'Ответить заново',
     // The Student waits roughly three seconds before the first token arrives.
     // This says what is happening in that gap rather than spinning at them.
     checking: 'Проверяющий читает ваш ответ…',
