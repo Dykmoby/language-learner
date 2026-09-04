@@ -170,6 +170,32 @@ test('static assets are reachable while signed out', async () => {
   assert.equal(response.status, 200, 'the login screen can actually render for a signed-out visitor');
 });
 
+test('the tab icon is reachable while signed out, and is an image', async () => {
+  // The same argument as the typeface below, and it was got wrong once: the
+  // matcher excluded `favicon.ico` and not `icon.svg`, so the browser's request
+  // for a tab icon — which it makes on its own schedule, often before any
+  // session exists — was redirected to the sign-in screen and answered with
+  // `text/html`. Nothing errored. The tab was simply blank, and stayed blank
+  // after signing in, because a browser caches that answer.
+  //
+  // So the content type is asserted and not only the status: a 200 of the wrong
+  // type is exactly the failure that happened.
+  const client = new Client(app.baseUrl);
+  const response = await client.fetch('/icon.svg');
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type') ?? '', /image\/svg/);
+});
+
+test('the sign-in screen points at that icon', async () => {
+  // The file being reachable and the page naming it are two claims, and only the
+  // pair of them puts an icon in the tab.
+  const client = new Client(app.baseUrl);
+  const html = await (await client.fetch('/login')).text();
+
+  assert.match(html, /<link[^>]+rel="icon"[^>]+href="\/icon\.svg/);
+});
+
 test('the typeface is reachable while signed out', async () => {
   // The sign-in screen is the one screen served to somebody with no session. A
   // font behind the session gate would be answered with a redirect to the

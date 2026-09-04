@@ -69,5 +69,11 @@ export const config = {
   // session would be answered with a redirect to the sign-in screen — leaving
   // the sign-in screen as the only screen in the application not set in the
   // application's own typeface.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|fonts/).*)'],
+  //
+  // `icon.svg` is here for exactly that reason and was missing it: a browser
+  // asks for a tab icon on its own schedule, often before any session exists and
+  // never as a navigation, so the redirect handed it the sign-in page as
+  // `text/html` — which is not an image, so the tab stayed blank. Worse, the
+  // browser then caches that answer, so signing in did not fix it either.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|fonts/).*)'],
 };
