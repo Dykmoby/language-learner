@@ -32,7 +32,7 @@ type Db = BetterSQLite3Database<typeof schema>;
 
 export type SubmitRefusal =
   | LessonRefusal
-  | { ok: false; reason: 'already_complete' | 'not_current' | 'empty_answer' | 'not_ready' };
+  | { ok: false; reason: 'already_complete' | 'disputed' | 'empty_answer' | 'not_ready' };
 
 /**
  * Deterministic Check Exercises are settled before this function returns.
@@ -214,16 +214,24 @@ export function priorAnswersFor(db: Db, studentId: number, exerciseId: number): 
 }
 
 /**
- * Exercises are worked in the Exercise Set's order, and that is a rule about the
- * Practice rather than about the screen: presenting one Exercise at a time is
- * worth nothing if the endpoint behind it will accept an answer to any of them.
- * A Student could otherwise complete a Practice backwards.
+ * What an Exercise still being answerable comes down to, since issue #95: it has
+ * not been left behind.
+ *
+ * Order used to be the rule here — an answer to anything but the current
+ * Exercise was refused, because presenting one at a time is worth nothing if the
+ * endpoint behind it accepts an answer to any of them. That rule is gone with
+ * the sequence it enforced: a Student may work the Set in whatever order they
+ * like, and «упражнение 7 перед упражнением 3» is no longer a thing to prevent.
+ *
+ * What is still refused is an Exercise that is behind the Student, and for the
+ * two different reasons it can be. A second Submission against a finished one
+ * would count as an attempt at work already done; an Exercise under objection is
+ * waiting on an Admin rather than on the Student, and answering it again while
+ * the ruling is out would leave two answers for one question.
  */
 function notAnswerable(state: ExerciseState): SubmitRefusal | null {
-  // A second Submission against a finished Exercise would count as an attempt at
-  // work already done.
   if (isComplete(state)) return { ok: false, reason: 'already_complete' };
-  if (state !== 'current') return { ok: false, reason: 'not_current' };
+  if (state === 'disputed') return { ok: false, reason: 'disputed' };
   return null;
 }
 

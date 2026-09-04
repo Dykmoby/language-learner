@@ -13,7 +13,7 @@ const REFUSALS: Record<SubmitRefusal['reason'], { status: number; message: strin
   // about, so it is missing rather than forbidden.
   not_found: { status: 404, message: ru.errors.notFound },
   already_complete: { status: 409, message: ru.practice.alreadyComplete },
-  not_current: { status: 409, message: ru.practice.notCurrent },
+  disputed: { status: 409, message: ru.practice.underDispute },
   empty_answer: { status: 400, message: ru.practice.emptyAnswer },
   not_ready: { status: 409, message: ru.practice.revealHint },
 };

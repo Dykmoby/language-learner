@@ -640,6 +640,12 @@ export const ru = {
       'Проверка идёт дольше обычного — так бывает, если для курса выбрано высокое усилие Проверяющего. Подождите: если проверка всё же сорвётся, попытка не засчитается.',
     emptyAnswer: 'Сначала напишите ответ.',
     next: 'Дальше',
+    // Issue #95 — the arrows either side of the position line. They carry only
+    // an arrow on screen, so the words are what a screen reader is given, and
+    // they name the Exercise rather than the direction: «вперёд» in a Practice
+    // where the Student may be anywhere says nothing about where that is.
+    previousExercise: 'Предыдущее упражнение',
+    nextExercise: 'Следующее упражнение',
     correct: 'Верно!',
     partiallyCorrect: 'Почти верно',
     incorrect: 'Неверно',
@@ -660,7 +666,9 @@ export const ru = {
     revealed: 'Ответ показан',
     // Seen only by a stale tab: the Exercise moved on while it was open.
     alreadyComplete: 'Это упражнение уже пройдено. Обновите страницу.',
-    notCurrent: 'Упражнения проходятся по порядку. Обновите страницу.',
+    // An objection is waiting on an Admin rather than on the Student, and a
+    // second answer to it would leave two answers for one question.
+    underDispute: 'По этому упражнению идёт разбор возражения. Обновите страницу.',
     lessonComplete: 'Урок пройден!',
     nextLesson: 'Следующий урок',
     // Issue #98 — finishing a Lesson opens nothing any more: every Lesson in

@@ -159,9 +159,11 @@ Grading runs to completion server-side and persists regardless of whether the cl
 
 - `correct` advances.
 - `partially_correct` keeps the Student on the Exercise with a sharper Progressive Hint.
-- After 3 failures, Reveal is offered → state becomes Completed With Help, which counts as complete but renders as a distinct segment in the progress bar. The same third failure is where the corrected answer starts reaching the browser (§ Grading).
+- After 3 failures, Reveal is offered → state becomes Completed With Help, which counts as complete but renders as a distinct segment in the progress bar. The same third failure is where the corrected answer starts reaching the browser (§ Grading). The Errors arrive one failure earlier, on the second: the first failure carries the Verdict and the explanation alone, so there is something left to notice.
 - Dispute unblocks progression immediately and queues for Admin review.
-- Lessons unlock sequentially, with a per-Course Admin toggle for free navigation.
+- Nothing gates anything. Every published Lesson in an enrolled Course is open, and every Exercise of a Practice can be opened in any order — finished ones read-only, the rest answerable. What is still refused is answering an Exercise that is behind the Student: a finished one, or one under objection.
+
+Sequential unlocking was the rule until issue #98, and the order of a Practice was enforced by the submit endpoint until issue #95. Both are gone for the same reason: a Student stuck on one Exercise had everything after it closed to them, which is the opposite of what a course of study is for. What replaced them is derivation — where a Student is up to is still read off their Submissions, and «Дальше» still asks the server for it, so nothing about progress moved into the browser.
 
 ## Tests
 

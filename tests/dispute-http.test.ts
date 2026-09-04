@@ -163,22 +163,37 @@ test('a Student can dispute the Verdict on an Exercise they answered', async () 
   assert.equal(outcome.status, 200);
 });
 
-test('disputing unblocks progression immediately: the next Exercise is available', async () => {
+test('disputing puts the Exercise behind the Student immediately', async () => {
   const { client, result } = await toldTheyAreWrong();
-  const { exercises } = firstLesson();
+  const { lesson, exercises } = firstLesson();
 
-  // Before: the second Exercise is not the current one, and the endpoint says so
-  // rather than merely the screen hiding it.
-  const early = await client.fetch(`/api/exercises/${exercises[1]!.id}/submit`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ answers: ['an'] }),
-  });
-  assert.equal(early.status, 409, 'Exercises are worked in order until something moves');
+  // Before: the Exercise they were told they got wrong is where they stand, and
+  // it is still answerable.
+  const before = await client.fetch(`/api/lessons/${lesson.id}/practice/current`);
+  const standing = await before.json() as { view: { exercise: { position: number } } };
+  assert.equal(standing.view.exercise.position, 1, 'still on the Exercise under objection');
 
   assert.equal((await dispute(client, result.submissionId!)).status, 200);
 
-  // After: without waiting for anybody.
+  // After: without waiting for anybody. Since issue #95 this is a claim about
+  // progression alone — every Exercise was reachable either way — and the one
+  // thing that did change is that the disputed Exercise stops accepting answers:
+  // it is waiting on an Admin rather than on the Student.
+  const after = await client.fetch(`/api/lessons/${lesson.id}/practice/current`);
+  const moved = await after.json() as { view: { exercise: { position: number } } };
+  assert.equal(moved.view.exercise.position, 2, 'and the Student has moved on');
+
+  const again = await client.fetch(`/api/exercises/${exercises[0]!.id}/submit`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ answers: ['a'] }),
+  });
+  assert.equal(again.status, 409, 'an Exercise under objection is not answered a second time');
+  assert.equal(
+    ((await again.json()) as { error: string }).error, ru.practice.underDispute,
+    'and the refusal says which of the two reasons it is',
+  );
+
   const now = await answer(client, exercises[1]!.id, 'an');
   assert.equal(now.verdict, 'correct');
 });

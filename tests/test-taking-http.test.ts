@@ -281,7 +281,9 @@ test('a Test gates nothing, and answering one is not Practice progress', async (
     html.includes(`${ru.course.inProgress}: 0/`),
     'the Lessons of the Course have had nothing answered in them',
   );
-  assert.ok(!html.includes(ru.course.complete), 'and none of them reads as finished');
+  // The word in its own element rather than anywhere in the page: «Пройдено: 0»
+  // beside a Lesson's bar starts with the same seven letters as «Пройден».
+  assert.ok(!html.includes(`>${ru.course.complete}<`), 'and none of them reads as finished');
 });
 
 test('another Student’s attempt, an unpublished Test and a Course not theirs are all missing', async () => {

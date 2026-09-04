@@ -7,7 +7,9 @@
 //
 // Shared by both sides so the browser cannot drift from what the route sends.
 
+import type { ExerciseKind } from '../db/schema.ts';
 import type { Verdict } from '../grader/contract.ts';
+import type { ExerciseState } from './progress.ts';
 import { takeFrames as takeAnyFrames, type DeltaFrame } from '../wire/ndjson.ts';
 
 export { encodeFrame } from '../wire/ndjson.ts';
@@ -79,6 +81,65 @@ export type ResultFrame = {
 export type RevealResult = {
   referenceAnswer: string;
   progression: ProgressionView;
+};
+
+/**
+ * One Exercise as the Practice shows it — issue #95.
+ *
+ * The Practice used to hand the browser the current Exercise and nothing else,
+ * because the current Exercise was the only one a Student could be on. Now that
+ * any of them can be opened, the browser asks for one at a time by position and
+ * is handed this: the Exercise, where the Student stands on it, and whatever
+ * they last did with it.
+ *
+ * Still one Exercise on the wire. What is *not* here is the point: no Reference
+ * Answer on an Exercise that has not been finished, and nothing at all about the
+ * Exercises either side of it.
+ */
+export type ExerciseView = {
+  id: number;
+  position: number;
+  kind: ExerciseKind;
+  prompt: string;
+  choices: string[];
+  state: ExerciseState;
+  revealOffered: boolean;
+  /**
+   * The last judged answer, in the shape the screen already draws a judgement
+   * in. Null where this Exercise has never been answered.
+   *
+   * The same frame the submit stream ends with, deliberately: a Verdict read
+   * back an hour later has to look like the one that arrived live, and two
+   * shapes for it is how the two come to disagree. It is withheld the same way
+   * too — the correction until the third failed attempt, the Errors until the
+   * second.
+   */
+  past: ResultFrame | null;
+  /**
+   * What the Student wrote at each gap last time, in reading order — a list of
+   * one on every Kind with a single place to answer, and empty where this
+   * Exercise has never been answered.
+   *
+   * Beside the frame rather than inside it because a Verdict is about an answer
+   * without carrying one: the live stream never needed this, since the browser
+   * still had what it had just sent.
+   */
+  pastAnswers: string[];
+  /** What Reveal showed, where the Student asked for it. */
+  revealed: RevealResult | null;
+  /** An objection stands against this Exercise, ruled on or not. */
+  disputed: boolean;
+};
+
+/** Where the Student stands in the whole Practice, and the Exercise they are on. */
+export type PracticeView = {
+  /** Every Exercise's state, in order — the progress bar and the way to each. */
+  segments: { position: number; state: ExerciseState }[];
+  counts: { completed: number; completedWithHelp: number; disputed: number; total: number };
+  /** Null only where the Practice has no Exercises at all. */
+  exercise: ExerciseView | null;
+  /** Nothing is left to work on. Not the same as "every answer was right". */
+  complete: boolean;
 };
 
 export type Frame = DeltaFrame | ResultFrame;

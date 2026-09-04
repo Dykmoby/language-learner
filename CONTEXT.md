@@ -37,7 +37,7 @@ The written explanation part of a Lesson, authored as markdown.
 _Avoid_: material, article, content
 
 **Practice**:
-The Exercise Set attached to a Lesson, worked through in order.
+The Exercise Set attached to a Lesson. Its Exercises are numbered and shown one at a time, and the Student may open any of them — finished, current or not yet reached — in whatever order they like.
 _Avoid_: homework, drill, workout
 
 **Exercise Set**:

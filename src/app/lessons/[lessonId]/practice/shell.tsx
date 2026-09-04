@@ -3,10 +3,18 @@
 // The Practice shell: the progress bar, the Exercise being asked, its input, and
 // whatever came back.
 //
-// It holds no progression logic. The server decides which Exercise is current by
-// deriving it from Submissions, and "Дальше" simply asks the server again —
-// which is why there is exactly one Exercise on the wire at a time and no second
-// copy of the rules living in the browser.
+// It holds no progression logic. The server decides what state every Exercise is
+// in by deriving it from Submissions, and every move — a segment, an arrow,
+// «Дальше» — is a question put back to it. That is why there is exactly one
+// Exercise on the wire at a time and no second copy of the rules living in the
+// browser, and it is why «Дальше» asks for `current` rather than working out
+// which Exercise that is: where the Student stands is derived, and a browser that
+// derived it too would be a second answer waiting to disagree.
+//
+// What the browser does keep is what has been typed and not sent. Moving away
+// from a half-written answer and coming back to find it gone would make the
+// navigation this screen just gained a thing to be careful around; the drafts
+// live for as long as the page does, and nothing about them reaches the server.
 //
 // Every branch on Exercise Kind lives in ExerciseQuestion, which a Test asks with
 // too: the shell asks a question and receives one value per gap, without knowing
@@ -16,39 +24,28 @@
 // paths drift apart.
 //
 // The Verdict is drawn inside the card the answer is in rather than as a
-// paragraph below it. That is the redesign's one substantive change here: a
-// judgement is about the sentence above it, and a block that starts below a card
-// reads as being about the screen.
+// paragraph below it: a judgement is about the sentence above it, and a block
+// that starts below a card reads as being about the screen.
 
 import { useEffect, useState } from 'react';
 import { Button } from '@mantine/core';
 import { ru, errorTypeLabel } from '../../../../ru.ts';
-import type { ExerciseKind } from '../../../../db/schema.ts';
 import { isDeterministic } from '../../../../content/exercise-validity.ts';
-import { takeFrames, type ResultFrame, type RevealResult } from '../../../../practice/wire.ts';
+import { isBehind } from '../../../../practice/progress.ts';
+import {
+  takeFrames, type ExerciseView, type PracticeView, type ResultFrame, type RevealResult,
+} from '../../../../practice/wire.ts';
 import { ExerciseQuestion } from '../../../shared/exercise-question.tsx';
 import { Explanation } from '../../../shared/explanation.tsx';
 import { DisputeForm } from '../../../shared/dispute-form.tsx';
-import { ProgressBar, type Segment } from '../../../shared/progress-bar.tsx';
+import { ProgressBar } from '../../../shared/progress-bar.tsx';
 import { stateClass, stateOfVerdict, type JudgementState } from '../../../shared/verdict-state.ts';
 import { VerdictLine } from '../../../shared/verdict-line.tsx';
 
-export type CurrentExercise = {
-  id: number;
-  position: number;
-  kind: ExerciseKind;
-  prompt: string;
-  choices: string[];
-  revealOffered: boolean;
-};
-
-export type { Segment };
-
 type Props = {
-  /** Null when every Exercise in the Practice is complete. */
-  current: CurrentExercise | null;
-  segments: Segment[];
-  counts: { completed: number; completedWithHelp: number; disputed: number; total: number };
+  lessonId: number;
+  /** The Exercise the Practice opens on, and the standing of the whole Set. */
+  initial: PracticeView;
   nextLessonId: number | null;
   courseId: number;
 };
@@ -66,26 +63,47 @@ const PRACTICE_WORDS: Record<JudgementState, string> = {
   incorrect: ru.practice.incorrect,
 };
 
-export function PracticeShell({ current, segments, counts, nextLessonId, courseId }: Props) {
-  const [phase, setPhase] = useState<Phase>('answering');
+/**
+ * Which phase an Exercise opens in, decided by what the Student already did to
+ * it rather than by how they arrived. Opening Exercise 3 an hour later shows
+ * exactly what it showed when its Verdict came in.
+ */
+function phaseOf(exercise: ExerciseView | null): Phase {
+  if (exercise === null) return 'answering';
+  if (exercise.revealed !== null) return 'revealed';
+  return exercise.past === null ? 'answering' : 'result';
+}
+
+export function PracticeShell({ lessonId, initial, nextLessonId, courseId }: Props) {
+  const [view, setView] = useState<PracticeView>(initial);
+  const [phase, setPhase] = useState<Phase>(() => phaseOf(initial.exercise));
   // One value per gap, in reading order. A list rather than a string even where
   // there is one gap: the shell asks a question and is handed back what was
   // written, and how many places that is is the Exercise's business.
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>(initial.exercise?.pastAnswers ?? []);
+  // What was typed and not sent, per Exercise, for as long as this page lives.
+  const [drafts, setDrafts] = useState<Record<number, string[]>>({});
   const [streamed, setStreamed] = useState('');
   // Issue #76 — a Course whose Grader runs at a high Effort is checked in
   // minutes, and the Student chose none of that. After about a minute the wait
   // says so, rather than showing the same sentence it showed at three seconds.
   const [checkingLong, setCheckingLong] = useState(false);
-  const [result, setResult] = useState<ResultFrame | null>(null);
-  const [revealed, setRevealed] = useState<RevealResult | null>(null);
+  const [result, setResult] = useState<ResultFrame | null>(initial.exercise?.past ?? null);
+  const [revealed, setRevealed] = useState<RevealResult | null>(initial.exercise?.revealed ?? null);
   const [refusal, setRefusal] = useState<string | null>(null);
-  const [revealOffered, setRevealOffered] = useState(current?.revealOffered ?? false);
+  const [revealOffered, setRevealOffered] = useState(initial.exercise?.revealOffered ?? false);
   // Set the moment an objection lands. Progression has already unblocked on the
   // server by then — this is only what the screen offers next.
-  const [disputed, setDisputed] = useState(false);
+  const [disputed, setDisputed] = useState(initial.exercise?.disputed ?? false);
+  const [moving, setMoving] = useState(false);
 
-  if (segments.length === 0) return <p className="muted">{ru.practice.empty}</p>;
+  const current = view.exercise;
+  const total = view.counts.total;
+  const at = current?.position ?? 0;
+  // An Exercise that is behind the Student is read rather than worked: there is
+  // nothing here that will accept another answer to it, and the server would
+  // refuse one anyway.
+  const settled = current !== null && isBehind(current.state);
 
   function retry() {
     setStreamed('');
@@ -96,10 +114,49 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     setPhase('answering');
   }
 
-  // The next Exercise comes from the server, not from a list the browser was
-  // handed up front: the Practice is one Exercise at a time on the wire too.
-  function advance() {
-    window.location.reload();
+  /** Everything that is about the Exercise on screen, replaced at once. */
+  function adopt(next: PracticeView) {
+    setView(next);
+    const opened = next.exercise;
+    setResult(opened?.past ?? null);
+    setRevealed(opened?.revealed ?? null);
+    setRevealOffered(opened?.revealOffered ?? false);
+    setDisputed(opened?.disputed ?? false);
+    setStreamed('');
+    setRefusal(null);
+    setCheckingLong(false);
+    setPhase(phaseOf(opened));
+    // A draft wins over what was last sent: it is the more recent of the two,
+    // and it is the thing the Student was in the middle of.
+    setAnswers(opened === null ? [] : drafts[opened.id] ?? opened.pastAnswers);
+  }
+
+  /**
+   * Opens an Exercise — one by its place in the Set, or `current`, which is the
+   * server's answer to "where am I up to".
+   */
+  async function open(target: number | 'current') {
+    if (moving) return;
+    setMoving(true);
+    // Stashed before the fetch, so an Exercise left mid-sentence is still
+    // mid-sentence when the Student comes back to it.
+    if (current !== null) setDrafts((held) => ({ ...held, [current.id]: answers }));
+
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/practice/${target}`, {
+        headers: { 'cache-control': 'no-cache' },
+      });
+      const body = await response.json().catch(() => null) as { ok?: boolean; view?: PracticeView } | null;
+      if (!response.ok || body?.ok !== true || body.view === undefined) {
+        setRefusal(ru.errors.serverError);
+        return;
+      }
+      adopt(body.view);
+    } catch {
+      setRefusal(ru.errors.serverError);
+    } finally {
+      setMoving(false);
+    }
   }
 
   async function submit() {
@@ -149,12 +206,37 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
             setResult(frame);
             setRevealOffered(frame.progression.revealOffered);
             setPhase('result');
+            // The bar is drawn from states the server derived, so an answer that
+            // moved one is a reason to ask again rather than to guess. Only when
+            // it moved: a wrong answer changes nothing about where anything
+            // stands, and re-reading the Practice to be told that would be a
+            // request per failed attempt.
+            if (frame.verdict === 'correct') void restate(current.position);
           }
         }
       }
     } catch {
       setRefusal(ru.errors.serverError);
       setPhase('answering');
+    }
+  }
+
+  /**
+   * The bar and the counts, re-read after something moved — without touching the
+   * Exercise on screen, which is showing a Verdict the Student is still reading.
+   */
+  async function restate(position: number) {
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/practice/${position}`, {
+        headers: { 'cache-control': 'no-cache' },
+      });
+      const body = await response.json().catch(() => null) as { ok?: boolean; view?: PracticeView } | null;
+      if (body?.ok !== true || body.view === undefined) return;
+      const fresh = body.view;
+      setView((held) => ({ ...fresh, exercise: held.exercise }));
+    } catch {
+      // The bar is a picture of what the server already knows. It catches up on
+      // the next move, and nothing here depends on it being right this second.
     }
   }
 
@@ -178,42 +260,70 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
     }
     setRevealed(body);
     setPhase('revealed');
+    void restate(current.position);
   }
+
+  if (view.segments.length === 0) return <p className="muted">{ru.practice.empty}</p>;
 
   const progress = (
     <>
-      <ProgressBar segments={segments} />
-      <p className="muted">
-        {current ? <>{ru.practice.position(current.position, counts.total)}{' · '}</> : null}
-        {ru.practice.doneCount(counts.completed)}
-        {counts.completedWithHelp > 0 ? <>{' · '}{ru.practice.withHelpCount(counts.completedWithHelp)}</> : null}
-        {counts.disputed > 0 ? <>{' · '}{ru.practice.disputedCount(counts.disputed)}</> : null}
+      {/* The bar is the way to every Exercise as well as the picture of them —
+          issue #95. A Student who wants to look back at Exercise 3 aims at the
+          third mark, which is where they were already looking. */}
+      <ProgressBar segments={view.segments} at={at} onSelect={(position) => void open(position)} />
+      <p className="practiceNav">
+        <Button
+          variant="default"
+          size="compact-sm"
+          disabled={moving || at <= 1}
+          aria-label={ru.practice.previousExercise}
+          onClick={() => void open(at - 1)}
+        >
+          ←
+        </Button>
+        <span className="muted">
+          {current ? <>{ru.practice.position(at, total)}{' · '}</> : null}
+          {ru.practice.doneCount(view.counts.completed)}
+          {view.counts.completedWithHelp > 0 ? <>{' · '}{ru.practice.withHelpCount(view.counts.completedWithHelp)}</> : null}
+          {view.counts.disputed > 0 ? <>{' · '}{ru.practice.disputedCount(view.counts.disputed)}</> : null}
+        </span>
+        <Button
+          variant="default"
+          size="compact-sm"
+          disabled={moving || at >= total}
+          aria-label={ru.practice.nextExercise}
+          onClick={() => void open(at + 1)}
+        >
+          →
+        </Button>
       </p>
     </>
   );
 
+  // Said above the Exercise rather than instead of it: a finished Practice is
+  // still a Practice to re-read, which is the whole of what issue #95 changed
+  // about this screen.
+  const finished = view.complete ? (
+    <div className="askCard">
+      <div className="askBody">
+        <p className="ok" role="status">{ru.practice.lessonComplete}</p>
+        {nextLessonId === null ? (
+          <p className="muted">{ru.practice.courseComplete}</p>
+        ) : (
+          <>
+            <p className="muted">{ru.practice.nextLessonAhead}</p>
+            <p className="actions">
+              <a className="button" href={`/lessons/${nextLessonId}`}>{ru.practice.nextLesson}</a>
+            </p>
+          </>
+        )}
+        <p className="actions"><a className="button secondary" href={`/courses/${courseId}`}>{ru.lesson.backToCourse}</a></p>
+      </div>
+    </div>
+  ) : null;
+
   if (!current) {
-    return (
-      <section>
-        {progress}
-        <div className="askCard">
-          <div className="askBody">
-            <p className="ok" role="status">{ru.practice.lessonComplete}</p>
-            {nextLessonId === null ? (
-              <p className="muted">{ru.practice.courseComplete}</p>
-            ) : (
-              <>
-                <p className="muted">{ru.practice.nextLessonAhead}</p>
-                <p className="actions">
-                  <a className="button" href={`/lessons/${nextLessonId}`}>{ru.practice.nextLesson}</a>
-                </p>
-              </>
-            )}
-            <p className="actions"><a className="button secondary" href={`/courses/${courseId}`}>{ru.lesson.backToCourse}</a></p>
-          </div>
-        </div>
-      </section>
-    );
+    return <section>{progress}{finished}</section>;
   }
 
   const verdictState = result?.verdict == null ? null : stateOfVerdict(result.verdict);
@@ -227,6 +337,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
   return (
     <section>
       {progress}
+      {finished}
 
       <div className="askCard">
         <div className="askBody">
@@ -234,7 +345,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
             exercise={current}
             answers={answers}
             onAnswer={setAnswers}
-            disabled={phase === 'checking'}
+            disabled={phase === 'checking' || moving}
             answered={phase === 'result' || phase === 'revealed'}
             // Which gaps held, once a Verdict is in. Empty while answering and on
             // everything the Grader judges, where an Error is where the detail is.
@@ -245,7 +356,7 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
 
           {phase === 'answering' ? (
             <p className="actions">
-              <Button onClick={submit}>{ru.practice.submit}</Button>
+              <Button onClick={submit} disabled={moving}>{ru.practice.submit}</Button>
               {revealOffered ? (
                 <Button variant="default" onClick={reveal}>{ru.practice.reveal}</Button>
               ) : null}
@@ -323,21 +434,33 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
 
                 Not offered on what the Grader judges — «Почти верно» arrived
                 with the Grader's own explanation under it. */}
-            {!advancing && !disputed && result.status === 'graded'
+            {!advancing && result.status === 'graded'
               && result.submissionId !== null && isDeterministic(current.kind) ? (
-                <Explanation submissionId={result.submissionId} />
+                <Explanation key={result.submissionId} submissionId={result.submissionId} />
               ) : null}
 
             {/* An objection is only offered against a judgement that went against
                 the Student: a failed grading was never judged, and a correct
-                Verdict is not something anybody objects to. */}
-            {!advancing && result.status === 'graded' && result.submissionId !== null ? (
-              <DisputeForm submissionId={result.submissionId} onDisputed={() => setDisputed(true)} />
-            ) : null}
+                Verdict is not something anybody objects to. Nor is one that has
+                already been objected to, which is what a settled Exercise showing
+                its old Verdict would otherwise offer a second time. */}
+            {!advancing && !disputed && !settled
+              && result.status === 'graded' && result.submissionId !== null ? (
+                <DisputeForm submissionId={result.submissionId} onDisputed={() => {
+                  setDisputed(true);
+                  void restate(current.position);
+                }} />
+              ) : null}
 
             <p className="actions">
-              {advancing || disputed
-                ? <Button onClick={advance}>{ru.practice.next}</Button>
+              {advancing || disputed || settled
+                // «Дальше» means "back to where I am up to", which is a place
+                // that stops existing once the Practice is finished — the panel
+                // above carries the way onward from there, and a button that
+                // silently returned to Exercise 1 would not.
+                ? (view.complete ? null : (
+                  <Button onClick={() => void open('current')} disabled={moving}>{ru.practice.next}</Button>
+                ))
                 : (
                   // Issue #96 — this button checks nothing. It clears a Verdict
                   // that has already been given and hands the Exercise back, and
@@ -345,17 +468,18 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
                   // failed grading keeps «Проверить»: nothing was judged there,
                   // so there is nothing to answer again — the same answer is
                   // going back to the same check.
-                  <Button onClick={retry}>
+                  <Button onClick={retry} disabled={moving}>
                     {result.status === 'graded' ? ru.practice.retry : ru.practice.submit}
                   </Button>
                 )}
-              {!advancing && !disputed && result.progression.revealOffered ? (
+              {!advancing && !disputed && !settled && result.progression.revealOffered ? (
                 <Button variant="default" onClick={reveal}>{ru.practice.reveal}</Button>
               ) : null}
             </p>
-            {!advancing && !disputed && !result.progression.revealOffered && result.status === 'graded' ? (
-              <p className="muted">{ru.practice.revealHint}</p>
-            ) : null}
+            {!advancing && !disputed && !settled
+              && !result.progression.revealOffered && result.status === 'graded' ? (
+                <p className="muted">{ru.practice.revealHint}</p>
+              ) : null}
           </div>
         ) : null}
 
@@ -365,9 +489,11 @@ export function PracticeShell({ current, segments, counts, nextLessonId, courseI
                 borrows the hue of neither. */}
             <VerdictLine state="help" words={ru.practice.revealed} />
             <p className="corrected">{ru.practice.corrected}: <strong>{revealed.referenceAnswer}</strong></p>
-            <p className="actions">
-              <Button onClick={advance}>{ru.practice.next}</Button>
-            </p>
+            {view.complete ? null : (
+              <p className="actions">
+                <Button onClick={() => void open('current')} disabled={moving}>{ru.practice.next}</Button>
+              </p>
+            )}
           </div>
         ) : null}
       </div>
