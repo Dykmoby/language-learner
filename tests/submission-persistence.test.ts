@@ -21,7 +21,7 @@ import {
 import { coherenceGuard, errorTypesFor, type GraderError, type GraderResponse } from '../src/grader/contract.ts';
 import type { GradingOutcome } from '../src/grader/grade.ts';
 import {
-  recordGrading, priorAnswersFor, graderRequestFor, correctedForStudent,
+  recordGrading, priorAnswersFor, graderRequestFor, correctedForStudent, errorsForStudent,
 } from '../src/practice/submit.ts';
 import { openExercise } from '../src/practice/lessons.ts';
 import { ru, errorTypeLabel } from '../src/ru.ts';
@@ -208,17 +208,23 @@ function failOnce(s: ReturnType<typeof scenario>, answer: string) {
   });
 }
 
-test('the first two failed attempts show the Verdict, the explanation and the Errors — not the answer', () => {
+test('the first two failed attempts show the Verdict and the explanation — not the answer', () => {
+  // What a Student is given grows with what they have already tried. The Verdict
+  // and the explanation arrive on every attempt; the Errors join on the second
+  // (issue #97) and the corrected answer on the third (issue #81).
   const s = scenario();
   try {
-    for (const attempt of [1, 2]) {
-      const frame = failOnce(s, `i have cat ${attempt}`);
-      assert.equal(frame.verdict, 'incorrect', 'the Verdict still travels');
-      assert.equal(frame.feedbackRu, 'Не хватает артикля.', 'and so does the explanation');
-      assert.equal(frame.errors.length, 1, 'and so do the Errors');
-      assert.equal(frame.corrected, null, `attempt ${attempt} must not hand over the finished sentence`);
-      assert.equal(frame.progression.revealOffered, false);
-    }
+    const first = failOnce(s, 'i have cat 1');
+    assert.equal(first.verdict, 'incorrect', 'the Verdict still travels');
+    assert.equal(first.feedbackRu, 'Не хватает артикля.', 'and so does the explanation');
+    assert.equal(first.errors.length, 0, 'the error list is not handed over on the first failure');
+    assert.equal(first.corrected, null, 'and neither is the finished sentence');
+    assert.equal(first.progression.revealOffered, false);
+
+    const second = failOnce(s, 'i have cat 2');
+    assert.equal(second.errors.length, 1, 'the second failure names what is wrong');
+    assert.equal(second.corrected, null, 'and still does not hand over the finished sentence');
+    assert.equal(second.progression.revealOffered, false);
   } finally { s.cleanup(); }
 });
 
@@ -313,6 +319,21 @@ test('the rule reads the attempt count and nothing else — no Exercise Kind is 
   assert.equal(correctedForStudent('I have a cat.', 'incorrect', true), 'I have a cat.');
   assert.equal(correctedForStudent('I have a cat.', 'correct', false), 'I have a cat.');
   assert.equal(correctedForStudent(null, 'incorrect', true), null, 'nothing to show is still nothing');
+});
+
+test('the error list is withheld until the second failed attempt — issue #97', () => {
+  // The same shape as the correction above, one failure earlier, and asserted on
+  // the rule for the same reason: every Grader-judged Kind reaches the browser
+  // through this one function.
+  const errors = [{ type: 'grammar', span: 'have', explanationRu: 'Нужна форма has.' }];
+
+  assert.deepEqual(errorsForStudent(errors, 'incorrect', 1), [],
+    'the first failure carries the Verdict and the explanation alone');
+  assert.deepEqual(errorsForStudent(errors, 'partially_correct', 1), [],
+    'a partly right answer is a failed attempt like any other');
+  assert.deepEqual(errorsForStudent(errors, 'incorrect', 2), errors, 'and the list arrives on the second');
+  assert.deepEqual(errorsForStudent(errors, 'correct', 0), errors,
+    'a correct Verdict keeps whatever it has, which the Coherence Guard has already made empty');
 });
 
 test('a failed grading is stored as a failure, with a reason and no Verdict', () => {
