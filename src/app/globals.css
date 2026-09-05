@@ -171,8 +171,7 @@ main {
    what a column buys that a bar could not: where you are, beside what you are
    doing, without a screen of its own. */
 .appNav .lessonRail { display: flex; flex-direction: column; gap: var(--space-1); }
-.appNav .lessonRail a,
-.appNav .lessonRail span.locked {
+.appNav .lessonRail a {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -183,7 +182,6 @@ main {
   text-decoration: none;
 }
 .appNav .lessonRail a:hover { background: var(--surface-sunken); color: var(--fg); }
-.appNav .lessonRail span.locked { color: var(--line-strong); }
 .appNav .lessonRail .open {
   background: var(--accent-quiet);
   border-radius: var(--radius-lg);
@@ -684,12 +682,6 @@ ul.cards > li > .actions, ol.cards > li > .actions, ul.attempts > li > .actions 
    be a frame around the target rather than part of it — a band a few millimetres
    wide, all the way round, that looks pressable and is not. */
 ol.lessons > li { padding: 0; overflow: hidden; }
-ol.lessons > li.locked {
-  background: none;
-  border-style: dashed;
-  box-shadow: none;
-  color: var(--fg-muted);
-}
 ul.cards > li a, ol.lessons > li a, ul.attempts > li a, ol.cards > li a {
   font-weight: var(--weight-medium);
   text-decoration: none;
@@ -916,6 +908,28 @@ ol.progress .segment {
   background: var(--surface-well);
 }
 ol.progress .segment[class*='state-'] { background: var(--ink, var(--line-strong)); }
+/* A segment holds a control now, because in the Practice it is the way to its
+   Exercise (issue #95). The control fills the segment and takes none of its
+   drawing: what is seen is still the bar. */
+ol.progress .segment > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: inherit;
+}
+/* Eight pixels tall is a bar to read, not a target to hit — so on a bar that can
+   be aimed at, the target grows past the drawing in the one direction that costs
+   nothing: a segment is as wide as it looks and three times as tall. */
+ol.progress.selectable .segment { position: relative; }
+ol.progress.selectable .segment > button { position: absolute; inset: -6px 0; cursor: pointer; }
+ol.progress.selectable .segment > button:hover { background: var(--fg-muted); opacity: 0.35; }
+/* Which Exercise is open. It is not one of the six states and takes none of
+   their hues — it is the same "you are here" the bar has always drawn, said
+   again for a Student who has moved away from where they are up to. */
+ol.progress .segment.open { outline: var(--border-width) solid var(--fg); outline-offset: 3px; }
 /* Where the Student is, and where they have not been. Neither is a judgement, so
    neither borrows a state's hue — and `--accent` was borrowing one anyway. It
    sits 49 apart from Disputed and 70 from Completed With Help in the dark
@@ -925,6 +939,19 @@ ol.progress .segment[class*='state-'] { background: var(--ink, var(--line-strong
    emphatic value in the palette that is not a hue at all, which is what this
    segment actually means. `tests/design-tokens` now holds it to the same floor. */
 ol.progress .segment.current { background: var(--fg); }
+
+/* The row under the bar: an arrow either side of where the Student stands.
+   The arrows sit at the edges rather than beside the words, because they are
+   about the whole bar above them and a person aiming for "back" should not have
+   to find the end of a sentence first. */
+.practiceNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.practiceNav > span { text-align: center; }
 
 /* --- The meter ---------------------------------------------------------------
    The same three facts as the bar above, drawn as proportions of one track
@@ -1109,6 +1136,26 @@ input[type='text'].gap:focus { border-bottom-color: var(--accent); }
   border-radius: var(--radius-sm);
 }
 
+/* An Explanation (issue #94), which is neither a Verdict nor an Error: it is
+   asked for after the judgement, changes nothing about it, and says nothing that
+   could be mistaken for one. So it takes none of the six states' hues — it is a
+   quiet block inside the judgement it was asked about, marked as a passage of
+   writing rather than as a finding. */
+.explanation {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius);
+}
+.explanation > h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--fg-muted);
+}
+.explanation > :last-child { margin-bottom: 0; }
+
 /* --- Authoring ---------------------------------------------------------------
    The Admin's screens, which are denser than a Student's by nature: a Lesson's
    worth of Exercise forms rather than one Exercise.
@@ -1241,7 +1288,7 @@ input[type='text'].gap:focus { border-bottom-color: var(--accent); }
 .panel ol.cards > li,
 .panel ul.attempts > li,
 .panel ol.progressLessons > li,
-.panel ol.lessons > li:not(.locked) {
+.panel ol.lessons > li {
   background: var(--surface-sunken);
   box-shadow: none;
 }

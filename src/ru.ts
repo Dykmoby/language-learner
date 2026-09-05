@@ -563,11 +563,15 @@ export const ru = {
 
   course: {
     lessonsTitle: 'Уроки',
-    locked: 'Откроется после предыдущего урока',
+    // A Course with nothing published in it yet. Said out loud rather than left
+    // as an empty frame, which reads as something having gone wrong.
+    noLessons: 'В этом курсе пока нет уроков.',
+    // Issue #99 — the toggle in the Lessons frame. «Пройденные» is the tick's
+    // own word: what it hides is exactly what the tick marks.
+    hideFinished: 'Скрыть пройденные',
+    allFinishedHidden: 'Все уроки пройдены и скрыты этим переключателем.',
     complete: 'Пройден',
     inProgress: 'В работе',
-    lockedRefusal: 'Этот урок ещё закрыт. Сначала пройдите предыдущий.',
-    back: 'К курсам',
     // The whole card is the control now, so the card is what carries the name a
     // screen reader reads out — the title alone no longer says what pressing it
     // does, because the title is no longer the thing being pressed.
@@ -579,6 +583,24 @@ export const ru = {
     toPractice: 'Перейти к упражнениям',
     backToCourse: 'К списку уроков',
     grammarFocus: 'Тема урока',
+  },
+
+  // Issue #94 — what Claude writes about a wrong answer on a Kind judged in
+  // code, when the Student asks for it. Never the right answer: the whole offer
+  // is «I will tell you what went wrong, you work out what goes there».
+  explain: {
+    ask: 'Получить объяснение',
+    title: 'Объяснение',
+    writing: 'Клод пишет объяснение…',
+    // The same two failures a Verdict has, in the same two words, because they
+    // ask for the same two things from the Student.
+    busy: 'Клод сейчас перегружен. Подождите немного и попробуйте ещё раз.',
+    failed: 'Не удалось получить объяснение. Это сбой, а не что-то в вашем ответе.',
+    // Seen only by a stale tab or a hand-made request: the three states in which
+    // there is nothing to explain.
+    notJudged: 'Этот ответ не был проверен, поэтому объяснять нечего.',
+    notWrong: 'Этот ответ верный.',
+    alreadyExplained: 'Проверяющий уже объяснил этот ответ.',
   },
 
   practice: {
@@ -596,6 +618,11 @@ export const ru = {
     buildSentence: 'Нажимайте на слова, чтобы составить предложение',
     clear: 'Очистить',
     submit: 'Проверить',
+    // Issue #96 — after a Verdict went against the Student, the same button no
+    // longer checks anything: it clears the judgement and hands the Exercise
+    // back. It says so. Once they are answering again it is «Проверить» once
+    // more, because then it does check.
+    retry: 'Ответить заново',
     // The Student waits roughly three seconds before the first token arrives.
     // This says what is happening in that gap rather than spinning at them.
     checking: 'Проверяющий читает ваш ответ…',
@@ -613,6 +640,12 @@ export const ru = {
       'Проверка идёт дольше обычного — так бывает, если для курса выбрано высокое усилие Проверяющего. Подождите: если проверка всё же сорвётся, попытка не засчитается.',
     emptyAnswer: 'Сначала напишите ответ.',
     next: 'Дальше',
+    // Issue #95 — the arrows either side of the position line. They carry only
+    // an arrow on screen, so the words are what a screen reader is given, and
+    // they name the Exercise rather than the direction: «вперёд» in a Practice
+    // where the Student may be anywhere says nothing about where that is.
+    previousExercise: 'Предыдущее упражнение',
+    nextExercise: 'Следующее упражнение',
     correct: 'Верно!',
     partiallyCorrect: 'Почти верно',
     incorrect: 'Неверно',
@@ -633,10 +666,14 @@ export const ru = {
     revealed: 'Ответ показан',
     // Seen only by a stale tab: the Exercise moved on while it was open.
     alreadyComplete: 'Это упражнение уже пройдено. Обновите страницу.',
-    notCurrent: 'Упражнения проходятся по порядку. Обновите страницу.',
+    // An objection is waiting on an Admin rather than on the Student, and a
+    // second answer to it would leave two answers for one question.
+    underDispute: 'По этому упражнению идёт разбор возражения. Обновите страницу.',
     lessonComplete: 'Урок пройден!',
     nextLesson: 'Следующий урок',
-    nextLessonUnlocked: 'Следующий урок открыт.',
+    // Issue #98 — finishing a Lesson opens nothing any more: every Lesson in
+    // the Course was already open. What is left to say is where to go next.
+    nextLessonAhead: 'Впереди ещё один урок.',
     courseComplete: 'Это был последний урок курса.',
     empty: 'В этом уроке пока нет упражнений.',
   },
@@ -780,7 +817,6 @@ export const ru = {
     percent: (n: number) => `${n}%`,
     breakdown: (completed: number, withHelp: number, total: number) =>
       `Пройдено самостоятельно: ${completed} · с подсказкой: ${withHelp} · всего: ${total}`,
-    locked: 'ещё не открыт',
     noLessons: 'В этом курсе пока нет опубликованных уроков.',
 
     attemptsTitle: 'Попытки в тестах',
@@ -859,6 +895,11 @@ export const ru = {
   test: {
     sectionTitle: 'Проверочные работы',
     none: 'В этом курсе пока нет проверочных работ.',
+    // Issue #99 — the Tests frame's own toggle. A Test is «сдана» once there is
+    // an attempt, whatever it scored: it can be retaken without limit, so when a
+    // Student is done with one is theirs to say.
+    hideFinished: 'Скрыть сданные',
+    allFinishedHidden: 'Все работы сданы и скрыты этим переключателем.',
     exerciseCount: (n: number) => `${n} ${plural(n, 'задание', 'задания', 'заданий')}`,
     threshold: (n: number) => `Порог прохождения: ${n}%`,
     start: 'Пройти работу',

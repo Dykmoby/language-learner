@@ -218,7 +218,6 @@ test('publishing a created Lesson is what makes the Student able to open it', ()
 
     const outline = courseOutline(db, student.id, course.id);
     assert.equal(outline.length, 1, 'now in the Student\'s Course');
-    assert.equal(outline[0]!.unlocked, true, 'and the first Lesson is unlocked on enrollment');
     assert.equal(openLesson(db, student.id, lesson.id).ok, true);
 
     const published = db.select().from(lessons).where(eq(lessons.id, lesson.id)).get()!;
@@ -228,7 +227,7 @@ test('publishing a created Lesson is what makes the Student able to open it', ()
   }
 });
 
-test('an unpublished Lesson between two published ones does not gate the second', () => {
+test('an unpublished Lesson between two published ones is absent from the Course', () => {
   const handle = freshDatabase();
   try {
     const db = handle.db;
@@ -241,7 +240,7 @@ test('an unpublished Lesson between two published ones does not gate the second'
 
     // The first Lesson gets an Exercise, so completing it is a thing that can
     // happen: an empty Practice is deliberately never complete, and a Course of
-    // empty Lessons could not tell "unlocked" from "never gated" apart.
+    // empty Lessons could not tell a finished Lesson from an untouched one.
     const withPractice = saveDraft(db, {
       lessonId: made[0]!.id,
       studentId: admin(db).id,
@@ -265,24 +264,24 @@ test('an unpublished Lesson between two published ones does not gate the second'
     // The third is published; the second is left as a Draft.
     assert.equal(publishDraft(db, savedDocument(db, made[2]!.id, 'Третий').id).ok, true);
 
-    const locked = courseOutline(db, student.id, course.id);
-    assert.deepEqual(locked.map((o) => o.lesson.title), ['Первый', 'Третий'], 'the Draft is not there');
-    assert.deepEqual(locked.map((o) => o.unlocked), [true, false], 'and the third is gated by the first');
+    const outline = courseOutline(db, student.id, course.id);
+    assert.deepEqual(outline.map((o) => o.lesson.title), ['Первый', 'Третий'], 'the Draft is not there');
+    // Dropped rather than hidden, which is what lets every caller walk the
+    // outline without remembering to check a flag first.
+    assert.equal(openLesson(db, student.id, made[1]!.id).ok, false,
+      'and it cannot be opened by typing its address either');
 
-    const exerciseId = locked[0]!.progress.exercises[0]!.exerciseId;
+    const exerciseId = outline[0]!.progress.exercises[0]!.exerciseId;
     db.insert(submissions).values({
       studentId: student.id, exerciseId, attempt: 1, answer: 'a',
       status: 'graded', proposedVerdict: 'correct', guardedVerdict: 'correct',
       feedbackRu: 'Верно', corrected: null, failureReason: null, createdAt: new Date(),
     }).run();
 
-    // Completing the first Lesson unlocks the third directly. If the unpublished
-    // Lesson sat in the chain, the third would stay locked behind a Lesson no
-    // Student can open — which is the whole reason it is absent rather than
-    // hidden.
     assert.deepEqual(
-      courseOutline(db, student.id, course.id).map((o) => o.unlocked),
-      [true, true],
+      courseOutline(db, student.id, course.id).map((o) => o.complete),
+      [true, false],
+      'finishing the first Lesson is a fact about the first Lesson and nothing else',
     );
   } finally {
     handle.cleanup();

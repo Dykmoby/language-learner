@@ -1,6 +1,6 @@
 // One place that turns a refusal from the practice module into an HTTP answer,
-// so the submit route and the reveal route cannot disagree about what a locked
-// Lesson is.
+// so the submit route and the reveal route cannot disagree about what a missing
+// Exercise is.
 
 import { NextResponse } from 'next/server';
 import { ru } from '../../../../ru.ts';
@@ -12,9 +12,8 @@ const REFUSALS: Record<SubmitRefusal['reason'], { status: number; message: strin
   // An Exercise in a Course the Student is not enrolled in is not theirs to know
   // about, so it is missing rather than forbidden.
   not_found: { status: 404, message: ru.errors.notFound },
-  locked: { status: 403, message: ru.course.lockedRefusal },
   already_complete: { status: 409, message: ru.practice.alreadyComplete },
-  not_current: { status: 409, message: ru.practice.notCurrent },
+  disputed: { status: 409, message: ru.practice.underDispute },
   empty_answer: { status: 400, message: ru.practice.emptyAnswer },
   not_ready: { status: 409, message: ru.practice.revealHint },
 };

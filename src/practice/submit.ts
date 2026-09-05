@@ -32,7 +32,7 @@ type Db = BetterSQLite3Database<typeof schema>;
 
 export type SubmitRefusal =
   | LessonRefusal
-  | { ok: false; reason: 'already_complete' | 'not_current' | 'empty_answer' | 'not_ready' };
+  | { ok: false; reason: 'already_complete' | 'disputed' | 'empty_answer' | 'not_ready' };
 
 /**
  * Deterministic Check Exercises are settled before this function returns.
@@ -167,6 +167,38 @@ export function correctedForStudent(
 }
 
 /**
+ * The Errors the Student is shown, or none — issue #97.
+ *
+ * The list under «Что не так» is every fault the Grader found, named and
+ * explained. Handed over on the first failure it is the correction itself: there
+ * is nothing left to notice, and «Почти верно» above it becomes a heading rather
+ * than a prompt to look again.
+ *
+ * So the first failed attempt carries the Verdict and the Grader's explanation
+ * and nothing else, and the list arrives from the second. The same shape as the
+ * correction being withheld until the third (`correctedForStudent`): what a
+ * Student is given grows with what they have already tried, and the count it
+ * grows against is the one progression already derives.
+ *
+ * A correct Verdict keeps whatever it has, which the Coherence Guard has already
+ * made empty — a correct answer has no Errors, and a rule that read otherwise
+ * here would be describing a state the Guard forbids.
+ *
+ * The row keeps every Error on every attempt. This is the wire only: an Admin
+ * resolving a Dispute is reading the judgement, not being taught by it.
+ */
+export const ERRORS_AFTER_FAILED_ATTEMPTS = 2;
+
+export function errorsForStudent<E>(
+  errors: readonly E[],
+  verdict: Verdict | null,
+  failedAttempts: number,
+): E[] {
+  if (verdict === 'correct') return [...errors];
+  return failedAttempts >= ERRORS_AFTER_FAILED_ATTEMPTS ? [...errors] : [];
+}
+
+/**
  * ADR 0004 — the whole of Progressive Hints: the earlier answers, oldest first,
  * and no session state anywhere. Only judged attempts count. An answer whose
  * grading failed was never read by the Grader, and handing it back as "you
@@ -182,16 +214,24 @@ export function priorAnswersFor(db: Db, studentId: number, exerciseId: number): 
 }
 
 /**
- * Exercises are worked in the Exercise Set's order, and that is a rule about the
- * Practice rather than about the screen: presenting one Exercise at a time is
- * worth nothing if the endpoint behind it will accept an answer to any of them.
- * A Student could otherwise complete a Practice backwards.
+ * What an Exercise still being answerable comes down to, since issue #95: it has
+ * not been left behind.
+ *
+ * Order used to be the rule here — an answer to anything but the current
+ * Exercise was refused, because presenting one at a time is worth nothing if the
+ * endpoint behind it accepts an answer to any of them. That rule is gone with
+ * the sequence it enforced: a Student may work the Set in whatever order they
+ * like, and «упражнение 7 перед упражнением 3» is no longer a thing to prevent.
+ *
+ * What is still refused is an Exercise that is behind the Student, and for the
+ * two different reasons it can be. A second Submission against a finished one
+ * would count as an attempt at work already done; an Exercise under objection is
+ * waiting on an Admin rather than on the Student, and answering it again while
+ * the ruling is out would leave two answers for one question.
  */
 function notAnswerable(state: ExerciseState): SubmitRefusal | null {
-  // A second Submission against a finished Exercise would count as an attempt at
-  // work already done.
   if (isComplete(state)) return { ok: false, reason: 'already_complete' };
-  if (state !== 'current') return { ok: false, reason: 'not_current' };
+  if (state === 'disputed') return { ok: false, reason: 'disputed' };
   return null;
 }
 
@@ -449,11 +489,17 @@ export function recordGrading(db: Db, record: GradingRecord): ResultFrame {
     // Nothing the Grader judges is judged gap by gap: it reads a whole answer,
     // and its Errors are where it says which part of one was wrong.
     gaps: [],
-    errors: response.errors.map((error) => ({
-      type: error.type,
-      span: error.span,
-      explanationRu: error.explanation_ru,
-    })),
+    // Written to the row in full above; withheld here until the second failed
+    // attempt (issue #97).
+    errors: errorsForStudent(
+      response.errors.map((error) => ({
+        type: error.type,
+        span: error.span,
+        explanationRu: error.explanation_ru,
+      })),
+      guarded.verdict,
+      progression.failedAttempts,
+    ),
     progression,
   };
 }

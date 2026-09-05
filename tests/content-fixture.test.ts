@@ -183,7 +183,7 @@ test('every seeded Exercise Set is owned by a Lesson\'s Practice and never by a 
   } finally { dbh.cleanup(); }
 });
 
-test('a second Lesson exists, so sequential unlocking has something to unlock', () => {
+test('the seeded Course has more than one Lesson, and every one of them is open', () => {
   const dbh = freshDatabase();
   try {
     seedCourseContent(dbh.db);
@@ -192,8 +192,9 @@ test('a second Lesson exists, so sequential unlocking has something to unlock', 
     const outline = courseOutline(dbh.db, student.id, course.id);
 
     assert.ok(outline.length >= 2, 'there is a next Lesson');
-    assert.equal(outline[0]!.unlocked, true, 'the first Lesson is unlocked on enrollment');
-    assert.equal(outline[1]!.unlocked, false, 'and the second is not, until the first is finished');
+    // Issue #98 — nothing in the outline gates anything, so a Student who is
+    // stuck on the first Lesson can work in the second.
+    assert.equal(openLesson(dbh.db, student.id, outline[1]!.lesson.id).ok, true);
   } finally { dbh.cleanup(); }
 });
 

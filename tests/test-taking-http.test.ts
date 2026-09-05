@@ -267,20 +267,23 @@ test('an unanswered Exercise is judged, not skipped', async () => {
   assert.equal(view.state, 'scored', 'submitting nothing is not answering, and needs no model to say so');
 });
 
-test('a Test gates nothing: Lesson unlocking is untouched by any of it', async () => {
+test('a Test gates nothing, and answering one is not Practice progress', async () => {
   const client = await signedIn(STUDENT);
   await submit(client, ['a', 'an', 'This is a cat']);
 
   const course = await client.fetch(`/courses/${courseId}`);
   const html = await course.text();
 
+  // Three Exercises answered correctly, in a Test whose Exercises are the same
+  // ones the Lessons drill — and the Lessons are untouched by all of it. A Test's
+  // answers are Submissions (ADR 0005), and these belong to the attempt.
   assert.ok(
-    html.includes(ru.course.locked),
-    'the second Lesson is still locked behind the first, whatever the Test says',
+    html.includes(`${ru.course.inProgress}: 0/`),
+    'the Lessons of the Course have had nothing answered in them',
   );
-
-  const secondLesson = await client.fetch('/lessons/2');
-  assert.ok([403, 404].includes(secondLesson.status), 'and is still refused');
+  // The word in its own element rather than anywhere in the page: «Пройдено: 0»
+  // beside a Lesson's bar starts with the same seven letters as «Пройден».
+  assert.ok(!html.includes(`>${ru.course.complete}<`), 'and none of them reads as finished');
 });
 
 test('another Student’s attempt, an unpublished Test and a Course not theirs are all missing', async () => {

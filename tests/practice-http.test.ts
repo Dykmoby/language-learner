@@ -21,11 +21,11 @@ import {
   KIND_SHOWCASES, kindShowcase,
 } from './helpers/fixtures.ts';
 import { lessonsOf, submissionsOf, unenroll } from './helpers/inspect.ts';
-import type { Frame, ResultFrame, RevealResult } from '../src/practice/wire.ts';
+import type { Frame, PracticeView, ResultFrame, RevealResult } from '../src/practice/wire.ts';
 
 // One account per test. Progress is per Student, so this is the whole of the
 // isolation this suite needs.
-const STUDENTS: SeedAccount[] = Array.from({ length: 32 }, (_, i) => ({
+const STUDENTS: SeedAccount[] = Array.from({ length: 36 }, (_, i) => ({
   username: `student${i + 1}`, password: 'staple monkey trombone', isAdmin: false,
 }));
 
@@ -134,16 +134,17 @@ test('a Lesson in the Course listing is opened by the whole card, not by its tit
   );
 });
 
-test('a locked Lesson\'s card is not a link at all', async () => {
+test('every Lesson\'s card is a link, whatever the Student has done so far', async () => {
+  // Issue #98 — this Student has answered nothing, and the second Lesson is a
+  // row you can press all the same. It used to be drawn as a lock with nowhere
+  // to go.
   const client = await signedIn();
   const [, second] = course(ENGLISH_A1.title);
   const courseId = second!.lesson.courseId;
 
   const html = await (await client.fetch(`/courses/${courseId}`)).text();
-  assert.ok(
-    !html.includes(`href="/lessons/${second!.lesson.id}"`),
-    'there is nowhere for a locked row to go, so it does not offer to go there',
-  );
+  const list = html.slice(html.indexOf('<ol class="lessons"'));
+  assert.match(list, new RegExp(`<a class="row" href="/lessons/${second!.lesson.id}"[^>]*>`));
 });
 
 test('a Lesson\'s Theory renders as formatted HTML, not as raw markdown', async () => {
@@ -333,26 +334,85 @@ test('a correct Verdict advances and an incorrect one keeps the Student on the E
   assert.ok(!html.includes(one!.prompt));
 });
 
-test('an Exercise the Student has not reached yet cannot be answered ahead of the order', async () => {
-  // Presenting one Exercise at a time is worth nothing if the endpoint behind it
-  // accepts an answer to any of them: a Student could complete a Practice
-  // backwards, and the Lesson would be finished without the order being worked.
+test('an Exercise the Student has not reached yet can be answered out of order', async () => {
+  // Issue #95 — order stopped being a rule. A Student may work the Set in
+  // whatever order they like, so the endpoint no longer refuses an Exercise for
+  // not being the current one. What it still refuses is one that is behind them,
+  // which the next two tests are about.
   const client = await signedIn();
   const [first] = course(DETERMINISTIC_COURSE.title);
   const [, two, three] = first!.exercises;
 
   const ahead = await answer(client, three!.id, 'this is a cat');
-  assert.equal(ahead.status, 409);
-  assert.equal(ahead.error, ru.practice.notCurrent);
-
-  assert.equal(
-    (await client.fetch(`/api/exercises/${two!.id}/reveal`, { method: 'POST' })).status, 409,
-    'and it cannot be revealed ahead of the order either',
-  );
+  assert.equal(ahead.status, 200);
+  assert.equal(ahead.result?.verdict, 'correct', 'and it is judged like any other answer');
 
   const username = (client as Client & { username: string }).username;
-  assert.equal(submissionsOf(app.databasePath, username, three!.id).length, 0,
-    'nothing was recorded against it');
+  assert.equal(submissionsOf(app.databasePath, username, three!.id).length, 1,
+    'the answer was recorded against it');
+
+  // Reveal is still earned rather than reached: three failed attempts, and this
+  // Exercise has had none at all.
+  assert.equal(
+    (await client.fetch(`/api/exercises/${two!.id}/reveal`, { method: 'POST' })).status, 409,
+    'an untouched Exercise cannot be revealed, wherever the Student stands',
+  );
+});
+
+// --- #95: every Exercise of a Practice can be opened ---------------------------
+
+/** The Practice view the browser asks for when it moves between Exercises. */
+async function opened(client: Client, lessonId: number, at: number | 'current'): Promise<{
+  status: number;
+  view: PracticeView | null;
+  body: string;
+}> {
+  const response = await client.fetch(`/api/lessons/${lessonId}/practice/${at}`);
+  const body = await response.text();
+  const parsed = response.ok ? JSON.parse(body) as { view: PracticeView } : null;
+  return { status: response.status, view: parsed?.view ?? null, body };
+}
+
+test('a finished Exercise can be opened again, and comes back with the answer that finished it', async () => {
+  const client = await signedIn();
+  const [first] = course(DETERMINISTIC_COURSE.title);
+  const lessonId = first!.lesson.id;
+
+  await answer(client, first!.exercises[0]!.id, 'a');
+
+  const back = await opened(client, lessonId, 1);
+  assert.equal(back.status, 200);
+  assert.equal(back.view?.exercise?.state, 'completed');
+  assert.equal(back.view?.exercise?.past?.verdict, 'correct', 'the Verdict is read back as it was given');
+  assert.deepEqual(back.view?.exercise?.pastAnswers, ['a'], 'and so is what was written');
+
+  // Where the Student is up to is still derived from Submissions and still
+  // answered by the server — «Дальше» asks this question rather than working it
+  // out in the browser.
+  const current = await opened(client, lessonId, 'current');
+  assert.equal(current.view?.exercise?.position, 2);
+  assert.deepEqual(
+    current.view?.segments.map((segment) => segment.state),
+    ['completed', 'current', 'not_reached'],
+  );
+});
+
+test('opening an Exercise the Student has not finished hands over no Reference Answer', async () => {
+  const client = await signedIn();
+  const [first] = course(DETERMINISTIC_COURSE.title);
+
+  // The third Exercise, two ahead of where this Student stands. It is reachable
+  // now, which is exactly why what comes with it is worth asserting: the whole
+  // reason the Practice fetches one Exercise at a time is that a right answer
+  // sitting in the page is a right answer the Student can read.
+  const ahead = await opened(client, first!.lesson.id, 3);
+  assert.equal(ahead.status, 200);
+  assert.equal(ahead.view?.exercise?.state, 'not_reached');
+  assert.equal(ahead.view?.exercise?.past, null, 'nothing has been answered here');
+  assert.ok(!ahead.body.includes('This is a cat'), 'and the Reference Answer is not in the response');
+
+  assert.equal((await opened(client, first!.lesson.id, 99)).status, 404,
+    'a position this Practice does not have is missing');
 });
 
 test('an Exercise already behind the Student cannot be answered again', async () => {
@@ -423,26 +483,27 @@ test('Reveal shows the Reference Answer, moves the Student on, and records Compl
   assert.ok(html.includes(ru.practice.withHelpCount(1)));
 });
 
-// --- #20: unlocking -----------------------------------------------------------
+// --- #98: every Lesson is open ------------------------------------------------
 
-test('the first Lesson is unlocked on enrollment and the next one is not', async () => {
+test('a Lesson is not gated by the one before it', async () => {
   const client = await signedIn();
   const [first, second] = course(DETERMINISTIC_COURSE.title);
 
   assert.equal((await client.fetch(`/lessons/${first!.lesson.id}`)).status, 200);
 
-  const locked = await client.fetch(`/lessons/${second!.lesson.id}`);
-  assert.equal(locked.status, 403, 'typing the URL is refused, not merely unlinked');
-  assert.ok((await locked.text()).includes(ru.course.lockedRefusal), 'and refused in Russian');
+  // Nothing has been answered in the first Lesson, and the second opens anyway —
+  // sequential unlocking left in issue #98. A Student stuck on one Exercise had
+  // the rest of the Course closed to them, which is the opposite of what a list
+  // of Lessons is for.
+  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200,
+    'typing the URL works, and so does the link that was never drawn before');
+  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}/practice`)).status, 200);
 
-  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}/practice`)).status, 403);
-  assert.equal(
-    (await answer(client, second!.exercises[0]!.id, 'works')).status, 403,
-    'nor can its Exercises be answered around the front door',
-  );
+  const answered = await answer(client, second!.exercises[0]!.id, 'works');
+  assert.equal(answered.status, 200, 'and its Exercises are answerable');
 });
 
-test('completing every Exercise completes the Lesson and unlocks the next', async () => {
+test('completing every Exercise completes the Lesson', async () => {
   const client = await signedIn();
   const [first, second] = course(DETERMINISTIC_COURSE.title);
 
@@ -459,8 +520,6 @@ test('completing every Exercise completes the Lesson and unlocks the next', asyn
   const practice = await (await client.fetch(`/lessons/${first!.lesson.id}/practice`)).text();
   assert.ok(practice.includes(ru.practice.lessonComplete));
   assert.ok(practice.includes(ru.practice.nextLesson), 'and the next Lesson is offered');
-
-  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200, 'which is now open');
 
   const overview = await (await client.fetch(`/courses/${first!.lesson.courseId}`)).text();
   assert.ok(overview.includes(ru.course.complete), 'the Course screen agrees');
@@ -488,8 +547,9 @@ test('completion is derived from Submissions, not from a flag that can disagree 
     }
   });
 
-  assert.equal((await client.fetch(`/lessons/${second!.lesson.id}`)).status, 200,
-    'the next Lesson unlocked with no other write anywhere');
+  const overview = await (await client.fetch(`/courses/${first!.lesson.courseId}`)).text();
+  assert.ok(overview.includes(ru.course.complete),
+    'the Lesson reads as finished with no other write anywhere');
 });
 
 // --- #83: a fill-gap Exercise with several gaps -------------------------------

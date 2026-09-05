@@ -21,8 +21,6 @@ export type LessonOutline = {
   lesson: LessonRow;
   /** Every Exercise in the Practice is complete, revealed ones included. */
   complete: boolean;
-  /** Sequential unlocking: the first Lesson, or the one after a complete Lesson. */
-  unlocked: boolean;
   progress: PracticeProgress;
 };
 
@@ -51,13 +49,16 @@ export function rememberCurrentCourse(db: Db, studentId: number, courseId: numbe
 }
 
 /**
- * Every Lesson in a Course with this Student's progress and unlock state.
+ * Every Lesson in a Course, with this Student's progress in each.
  *
  * Published Lessons only. A Lesson an Admin has created and not yet published is
- * not merely hidden here — it is absent, so it cannot sit in the middle of
- * sequential unlocking and gate the Lesson after it. Dropping the row is what
- * makes that true; a flag on the outline would have to be remembered by every
- * caller that walks it.
+ * not merely hidden here — it is absent, so nothing downstream has to remember
+ * to check a flag before showing one.
+ *
+ * Nothing here gates anything. Issue #98 took sequential unlocking out: a
+ * Student stuck on one Exercise had the rest of the Course closed to them, which
+ * is the opposite of what a Lesson list is for. Publication is the only gate
+ * left, and it is the Admin's rather than the Student's own progress.
  */
 export function courseOutline(db: Db, studentId: number, courseId: number): LessonOutline[] {
   const courseLessons = db.select().from(lessons)
@@ -97,7 +98,6 @@ export function courseOutline(db: Db, studentId: number, courseId: number): Less
   // query per Lesson to answer a question the one set of rows already answers.
   const objections = disputesOn(db, rows.map((row) => row.id));
 
-  let previousComplete = true; // the first Lesson in a Course is unlocked on enrollment
   return courseLessons.map((lesson) => {
     const setId = setByLesson.get(lesson.id);
     const own = setId === undefined ? [] : exercisesBySet.get(setId) ?? [];
@@ -107,14 +107,7 @@ export function courseOutline(db: Db, studentId: number, courseId: number): Less
       objections,
     );
 
-    const outline: LessonOutline = {
-      lesson,
-      complete: progress.complete,
-      unlocked: previousComplete,
-      progress,
-    };
-    previousComplete = progress.complete;
-    return outline;
+    return { lesson, complete: progress.complete, progress };
   });
 }
 
@@ -128,11 +121,11 @@ export type OpenLesson = {
   outline: LessonOutline[];
 };
 
-// Refused for three distinguishable reasons, because the screens answer them
-// differently: a Lesson that does not exist is a 404, one in a Course the Student
-// is not enrolled in is also a 404 (its existence is not theirs to learn), and a
-// locked one is a refusal that names itself, since the Student can see it listed.
-export type LessonRefusal = { ok: false; reason: 'not_found' | 'locked' };
+// One refusal, because there is only one thing left to refuse: a Lesson that
+// does not exist is a 404, and one in a Course the Student is not enrolled in is
+// also a 404 — its existence is not theirs to learn. Since issue #98 a Lesson is
+// never refused for the Student's own progress.
+export type LessonRefusal = { ok: false; reason: 'not_found' };
 
 export function openLesson(
   db: Db,
@@ -151,7 +144,6 @@ export function openLesson(
   const outline = courseOutline(db, studentId, found.course.id);
   const entry = outline.find((o) => o.lesson.id === lessonId);
   if (!entry) return { ok: false, reason: 'not_found' };
-  if (!entry.unlocked) return { ok: false, reason: 'locked' };
 
   const set = db.select().from(exerciseSets).where(eq(exerciseSets.lessonId, lessonId)).get();
   const own = set === undefined ? [] : db.select().from(exercises)
