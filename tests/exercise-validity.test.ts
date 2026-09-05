@@ -121,7 +121,7 @@ test('multiple choice: the options, and what may be judged correct among them', 
   ]);
 });
 
-test('word order: every accepted order is built from exactly the fragments shown', () => {
+test('word order: every accepted order is tiled from the fragments, each used at most once', () => {
   const base = { kind: 'word_order' as const };
   runTable([
     {
@@ -155,14 +155,26 @@ test('word order: every accepted order is built from exactly the fragments shown
       expect: ['fragments_do_not_build_answer'],
     },
     {
-      what: 'an accepted order that leaves a fragment unused',
+      what: 'a fragment no accepted order uses is a distractor, which is the Student\'s job to spot',
       exercise: {
         ...base,
         referenceAnswer: 'This is a cat',
         acceptedAnswers: [['This is a cat']],
-        choices: ['is', 'a', 'this', 'cat', 'big'],
+        choices: ['is', 'a', 'this', 'cat', 'big', 'are'],
       },
-      expect: ['fragments_do_not_build_answer'],
+      expect: [],
+    },
+    {
+      what: 'the tiling is searched for, not read left to right: a longer distractor does not block it',
+      exercise: {
+        ...base,
+        referenceAnswer: 'This is a cat',
+        acceptedAnswers: [['This is a cat']],
+        // `a cat` matches at the same place `a` does, and only one of the two
+        // choices leaves the rest of the sentence buildable.
+        choices: ['this', 'is a', 'a', 'cat', 'a cat'],
+      },
+      expect: [],
     },
     {
       what: 'an accepted order that reuses one fragment twice',
@@ -191,6 +203,16 @@ test('word order: every accepted order is built from exactly the fragments shown
         referenceAnswer: 'a cat and a dog',
         acceptedAnswers: [['a cat and a dog']],
         choices: ['a', 'cat', 'and', 'a', 'dog'],
+      },
+      expect: [],
+    },
+    {
+      what: 'one accepted order may leave a fragment the other uses',
+      exercise: {
+        ...base,
+        referenceAnswer: 'I usually go to school',
+        acceptedAnswers: [['I usually go to school', 'I go to school']],
+        choices: ['I', 'usually', 'go', 'to school'],
       },
       expect: [],
     },

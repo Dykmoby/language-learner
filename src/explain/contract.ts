@@ -44,7 +44,9 @@ const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', tj: 'Tajik' };
 const KINDS: Record<ExerciseKind, string> = {
   multiple_choice: 'a multiple choice question — the student picked one of the listed options',
   fill_gap: 'a fill-in-the-gap sentence — the student typed a word into each gap, written ___',
-  word_order: 'a word-order task — the student arranged the given fragments into a sentence',
+  word_order: 'a word-order task — the student arranged fragments into a sentence, choosing from'
+    + ' the fragments listed below, some of which may belong in no correct sentence and are'
+    + ' there to be left out',
   composition: 'a short composition',
   translation: 'a translation',
   open_writing: 'an open writing task',
