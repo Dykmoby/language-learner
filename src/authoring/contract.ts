@@ -188,10 +188,32 @@ function kindRules(): string[] {
       parts.push(`"prompt": each place the student writes is marked ${GAP}, and there may be several`);
     }
 
+    // A word order's prompt says what the sentence must mean, and a prompt that
+    // also listed the fragments would hand back the very thing the distractors
+    // take away: which of them belong.
+    if (kind === 'word_order') {
+      parts.push('"prompt": the task, in Russian — what the sentence has to say. Do NOT list'
+        + ' the fragments in it: that would show which of them belong');
+    }
+
     if (offersChoices(kind)) {
-      parts.push(kind === 'multiple_choice'
-        ? '"choices": at least two options the student picks between'
-        : '"choices": the fragments the student arranges, each used exactly once');
+      if (kind === 'multiple_choice') {
+        parts.push('"choices": at least two options the student picks between');
+      } else {
+        // The distractors are asked for here rather than left to taste. A word
+        // order whose fragments all belong is answered by using them all up,
+        // which is a jigsaw: the student arranges words instead of choosing
+        // them, and gets it right without knowing the grammar being taught.
+        parts.push(
+          '"choices": the fragments the student arranges — every fragment the sentence'
+          + ' is built from, PLUS two or three MORE that belong in no correct ordering',
+          '  those extra fragments are the point: the student has to leave them out.'
+          + ' Make them plausible — a wrong tense of a verb that is used, a pronoun or'
+          + ' an article that fits the topic, a word from a sentence like this one',
+          '  never so many that the exercise is a search: two or three against a short'
+          + ' sentence, and never more than the sentence itself uses',
+        );
+      }
     } else {
       parts.push('"choices": []');
     }
@@ -271,8 +293,9 @@ export function buildAuthorSystemPrompt(language: Language): string {
     `  - answers are compared after trimming, collapsing spaces, ignoring case`,
     `    (unless "caseSensitive"), and dropping a trailing . ! or ?`,
     `  - two accepted answers that compare equal are one answer written twice`,
-    `  - a word-order exercise has at most 12 fragments, and every accepted ordering`,
-    `    must use every fragment exactly once`,
+    `  - a word-order exercise has at most 12 fragments counting the extra ones, and`,
+    `    every accepted ordering must be built out of them with no fragment used twice`,
+    `    — fragments left over are the ones the student is meant to leave out`,
     `  - a fill-gap has exactly as many accepted-answer lists as its prompt has ${GAP},`,
     `    and every one of those lists holds at least one value`,
     `  - no field is empty except where a kind says it is []`,

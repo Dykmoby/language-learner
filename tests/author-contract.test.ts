@@ -102,7 +102,20 @@ test('the system prompt describes every Kind, derived from the rules that judge 
   assert.match(prompt, /Russian/);
   // The rules it states are the ones that will reject the answer.
   assert.match(prompt, /12 fragments/);
-  assert.match(prompt, /exactly once/);
+  assert.match(prompt, /no fragment used twice/);
+});
+
+test('the contract asks a word order for fragments that do not belong', () => {
+  // A word order whose fragments all belong is answered by using them all up:
+  // the student arranges words rather than choosing them, and gets it right
+  // without knowing the grammar. The validity rules permit the distractors; this
+  // is what asks for them.
+  const prompt = buildAuthorSystemPrompt('en');
+  const wordOrder = prompt.slice(prompt.indexOf('  word_order'), prompt.indexOf('Rules that will be checked'));
+
+  assert.match(wordOrder, /belong in no correct ordering/, 'the extra fragments are asked for');
+  assert.match(wordOrder, /leave them out/, 'and what the student does with them is said');
+  assert.match(wordOrder, /Do NOT list/, 'a prompt that listed the fragments would give the extras away');
 });
 
 test('the contract asks for a fill-gap\'s accepted answers per gap, and a matching prompt', () => {

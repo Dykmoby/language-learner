@@ -60,7 +60,7 @@ export function offersChoices(kind: ExerciseKind): boolean {
  *
  * Only a multiple choice works that way, and the distinction is sharper than it
  * looks: a word order also has options, but its accepted answers are whole
- * orderings that must tile every fragment, not the fragments themselves. So
+ * orderings tiled out of the fragments, not the fragments themselves. So
  * "has options" and "answers are options" are two different properties, and
  * conflating them carries an option label across into a Kind where it is not an
  * answer at all.
@@ -157,13 +157,26 @@ export function isBlank(value: string): boolean {
 // Word-order fragments are not words. The fixture offers `to school` and `by bus`
 // as single fragments, so an accepted order cannot be checked by splitting it on
 // whitespace — the question is whether the fragments *tile* the answer, each used
-// exactly once, and that is a search rather than a comparison.
+// at most once, and that is a search rather than a comparison.
+//
+// **At most once, not exactly once.** A word order may offer fragments that
+// belong in no correct ordering, and leaving those out is part of what is being
+// asked: a Student who can be sure every fragment is used is arranging words
+// rather than choosing them, and the exercise becomes a jigsaw with no wrong
+// pieces. So an ordering is built if it can be tiled out of what is on offer
+// without using anything twice; whatever is left over is a distractor.
+//
+// What that costs is a rule that used to catch a typo: a fragment nobody could
+// use was a mistake, and now it is a legitimate authoring choice. Nothing can
+// tell the two apart, so nothing tries.
 //
 // Bounded by memoising (position, fragments-used) so a pathological set cannot
 // hang the form. Beyond the cap the Exercise is **refused** rather than waved
-// through: a word order with more than twelve fragments is not something anyone
-// can author usefully, and passing what could not be checked would leave exactly
-// the hole these rules exist to close once Generation is writing the Drafts.
+// through: a word order with more than twelve fragments — distractors included,
+// they are fragments the search must consider like any other — is not something
+// anyone can author usefully, and passing what could not be checked would leave
+// exactly the hole these rules exist to close once Generation is writing the
+// Drafts.
 export const MAX_FRAGMENTS = 12;
 
 function fragmentsBuildAnswer(
@@ -178,13 +191,17 @@ function fragmentsBuildAnswer(
 
   if (parts.length === 0 || target === '') return false;
 
-  const everyFragment = (1 << parts.length) - 1;
+  // One state per (position, set of fragments already spent), which is what the
+  // memo is keyed on and what bounds the search.
+  const fragmentSets = 1 << parts.length;
   const exhausted = new Set<number>();
 
   const walk = (index: number, used: number): boolean => {
-    if (index === target.length) return used === everyFragment;
+    // The answer is complete. Whatever is still unused is a fragment the Student
+    // was meant to leave out.
+    if (index === target.length) return true;
 
-    const state = index * (everyFragment + 1) + used;
+    const state = index * fragmentSets + used;
     if (exhausted.has(state)) return false;
 
     for (let i = 0; i < parts.length; i += 1) {
