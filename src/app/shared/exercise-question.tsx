@@ -16,12 +16,18 @@
 // ../../content/gaps.ts, which is the same module the validity rules count them
 // with, so the number of inputs on the screen can never disagree with the number
 // of accepted answer lists behind them.
+//
+// The choices are shuffled on the way to the screen, and the authored order is
+// shown nowhere here — see ./choice-order.ts for what that order gives away.
+// Everything below works in the shuffled one, so nothing in this file has two
+// ideas about where a fragment is.
 
 import { Fragment, useState } from 'react';
 import { ru } from '../../ru.ts';
 import type { ExerciseKind } from '../../db/schema.ts';
 import { pieces } from '../../content/gaps.ts';
 import { AnsweredSentence } from './answered-sentence.tsx';
+import { useRememberedOrder } from './remembered-order.ts';
 
 export type AskedExercise = {
   /** What makes this Exercise's radio group its own when several are on a page. */
@@ -54,18 +60,31 @@ export function ExerciseQuestion({
    */
   gaps?: readonly boolean[];
 }) {
-  // Positions in `choices` rather than the words themselves. Two identical
-  // fragments in one sentence are two fragments, and telling them apart by value
-  // means guessing which of the two was taken.
-  const [fragments, setFragments] = useState<number[]>([]);
+  // Positions in the shuffled `choices` rather than the words themselves. Two
+  // identical fragments in one sentence are two fragments, and telling them apart
+  // by value means guessing which of the two was taken.
+  //
+  // Held per Exercise, because a Practice keeps one of these components for a
+  // whole Set and moves Exercises through it. A list of positions belongs to the
+  // Exercise it was built in: carried over, it would arrange the next Exercise's
+  // fragments into a sentence nobody chose, and coming back to a half-built
+  // sentence finds it half-built.
+  const [built, setBuilt] = useState<Record<number, number[]>>({});
+  const fragments = built[exercise.id] ?? [];
+
+  // The order this Student meets the choices in, drawn once per Exercise and
+  // remembered for the session. Everything below reads `choices`;
+  // `exercise.choices` is the authored order and is not shown.
+  const order = useRememberedOrder(exercise.id, exercise.choices.length);
+  const choices = order.map((at) => exercise.choices[at] ?? '');
 
   const answer = answers[0] ?? '';
 
   function useFragments(next: number[]) {
-    setFragments(next);
+    setBuilt((held) => ({ ...held, [exercise.id]: next }));
     // Word order is answered as a sentence like any other: the fragments are how
     // it is built, not what is submitted.
-    onAnswer([next.map((at) => exercise.choices[at] ?? '').join(' ')]);
+    onAnswer([next.map((at) => choices[at] ?? '').join(' ')]);
   }
 
   if (exercise.kind === 'fill_gap') {
@@ -129,7 +148,7 @@ export function ExerciseQuestion({
 
       {!answered && exercise.kind === 'multiple_choice' ? (
         <ul className="choices" aria-label={ru.practice.chooseOption}>
-          {exercise.choices.map((choice) => (
+          {choices.map((choice) => (
             <li key={choice}>
               <label>
                 <input
@@ -151,7 +170,7 @@ export function ExerciseQuestion({
 
       {!answered && exercise.kind === 'word_order' ? (
         <WordOrder
-          choices={exercise.choices}
+          choices={choices}
           fragments={fragments}
           onFragments={useFragments}
           disabled={disabled}
